@@ -54,3 +54,4 @@ def load_resource(resource_id: str) -> Any:
     load_fn: Callable[[Path], Any] = TYPE_REGISTRY[type_tag]["load"]
 
     return load_fn(path)
+

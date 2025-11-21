@@ -8,3 +8,11 @@
 
 # # If your MCP runtime expects a global `app` or similar:
 # app = create_mcp_server()
+
+from molml_mcp.tools.demo import canonicalize_smiles
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="molml-mcp")  
+
+if __name__ == "__main__":
+    mcp.run()

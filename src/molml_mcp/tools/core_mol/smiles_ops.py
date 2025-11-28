@@ -1,4 +1,5 @@
 from rdkit.Chem import MolFromSmiles, MolToSmiles
+from molml_mcp.resources.logistics import _load_resource, _store_resource
 
 def canonicalize_smiles(smiles: list[str]) -> list[str]: 
     """ Convert a SMILES string to its canonical form. Failed conversions are treated as None."""
@@ -34,23 +35,21 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str) -> dict:
     dict
         Updated dataset information with canonicalized SMILES in the specified column.
     """
-    from molml_mcp.resources.logistics import _load_resource, _store_resource
-
     df = _load_resource(resource_id)
     
-    if column_name not in df['columns']:
+    if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
 
     smiles_list = df[column_name].tolist()
     canonical_smiles = canonicalize_smiles(smiles_list)
 
-    df['canonic_smiles'] = canonical_smiles
+    df['canonical_smiles'] = canonical_smiles
 
     new_resource_id = _store_resource(df, 'csv')
 
     return {
         "resource_id": new_resource_id,
-        "n_rows": df['n_rows'],
-        "columns": df['columns'],
-        "preview": df['data'][:5],
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "preview": df.head(5).to_dict(orient="records"),
     }

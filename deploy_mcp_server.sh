@@ -10,13 +10,13 @@ UV_BIN="/Users/derekvantilborg/.local/bin/uv"
 CLAUDE_CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
 ##############################################
-# 1. Install / update the MCP server with uv
+# 1. (Optional) sync / ensure deps
 ##############################################
 
 cd "$PROJECT_DIR"
 
-echo "[deploy] Running uv mcp install..."
-"$UV_BIN" run mcp install src/molml_mcp/server.py
+echo "[deploy] Ensuring dependencies are synced with uv..."
+"$UV_BIN" sync
 
 ##############################################
 # 2. Patch Claude Desktop config JSON
@@ -43,10 +43,11 @@ if [ ! -f "$CLAUDE_CONFIG" ]; then
 EOF
 fi
 
-# Safely update only the molml-mcp entry
+# Safely update only the molml-mcp entry and remove any legacy "server" entry
 tmpfile="$(mktemp)"
 jq --arg uv "$UV_BIN" --arg dir "$PROJECT_DIR" '
   .mcpServers = (.mcpServers // {}) |
+  del(.mcpServers["server"]) |
   .mcpServers["molml-mcp"] = {
     "command": $uv,
     "args": [

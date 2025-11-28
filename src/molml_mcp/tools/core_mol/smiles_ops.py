@@ -1,6 +1,9 @@
 from rdkit.Chem import MolFromSmiles, MolToSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
+from molml_mcp.infrastructure.logging import loggable
 
+
+@loggable
 def canonicalize_smiles(smiles: list[str]) -> list[str]: 
     """ Convert a SMILES string to its canonical form. Failed conversions are treated as None."""
 
@@ -18,6 +21,7 @@ def canonicalize_smiles(smiles: list[str]) -> list[str]:
     return canonic
 
 
+@loggable
 def canonicalize_smiles_dataset(resource_id:str, column_name:str) -> dict:
     """
     Canonicalize all SMILES strings in a specified column of a tabular dataset. 

@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from molml_mcp.infrastructure.logging import loggable
 from molml_mcp.infrastructure.supported_resource_types import TYPE_REGISTRY
 from molml_mcp.config import DATA_ROOT
 

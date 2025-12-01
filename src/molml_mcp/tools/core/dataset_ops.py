@@ -250,6 +250,7 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     }
 
 
+@loggable
 def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str) -> dict:
     """
     Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule.
@@ -286,6 +287,7 @@ def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str) -> 
     }
 
 
+@loggable
 def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None = None) -> dict:
     """
     Remove duplicate rows from a dataset based on specified subset of columns.
@@ -325,6 +327,7 @@ def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None = Non
     }
 
 
+@loggable
 def drop_empty_rows(resource_id: str) -> dict:
     """
     Remove rows from a dataset that are completely empty (all columns are null).

@@ -83,6 +83,36 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str) -> dict:
 
 
 # Salt removal
+
+# def _desalt_molecule(self, mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
+    # """Remove salts from molecule."""
+    # if '.' not in Chem.MolToSmiles(mol):
+    #     return mol, True
+    
+    # if self.desalt_policy == 'remove':
+    #     return None, False
+    
+    # if self.desalt_policy == 'keep':
+    #     mol = self.salt_remover.StripMol(mol, dontRemoveEverything=False)
+    #     desalted_smiles = Chem.MolToSmiles(mol)
+        
+    #     if '.' in desalted_smiles:
+    #         if self.brute_force_desalt:
+    #             # Keep largest fragment
+    #             mol = max(
+    #                 Chem.GetMolFrags(mol, asMols=True), 
+    #                 key=lambda x: x.GetNumAtoms()
+    #             )
+    #         else:
+    #             return None, False
+        
+    #     if mol and mol.GetNumAtoms() > 0:
+    #         return mol, True
+    
+    # return None, False
+
 # Tautomer canonicalization
 # Charge neutralization
 # Stereochemistry handling
+# remove duplicates
+

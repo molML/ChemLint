@@ -325,6 +325,37 @@ def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None = Non
     }
 
 
+def drop_empty_rows(resource_id: str) -> dict:
+    """
+    Remove rows from a dataset that are completely empty (all columns are null).
+
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource.
+
+    Returns
+    -------
+    dict
+        Updated dataset information after removing empty rows.
+    """
+    import pandas as pd
+
+    df = _load_resource(resource_id)
+    n_rows_before = len(df)
+
+    df_non_empty = df.dropna(how='all')
+
+    new_resource_id = _store_resource(df_non_empty, 'csv')
+    return {
+        "resource_id": new_resource_id,
+        "n_rows_before": n_rows_before,
+        "n_rows_after": len(df_non_empty),
+        "columns": list(df_non_empty.columns),
+        "preview": df_non_empty.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -334,4 +365,6 @@ def get_all_dataset_tools():
         drop_from_dataset,
         keep_from_dataset,
         deduplicate_molecules_dataset,
+        drop_duplicate_rows,
+        drop_empty_rows
     ]

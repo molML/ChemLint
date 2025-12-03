@@ -76,20 +76,5 @@ SMARTS_COMMON_ISOTOPES = [
     '[2H]',
 ]
 
-SMARTS_COMMON_SALTS = [
-    'Cl',
-    'Na',
-    'Mg',
-    'Ca',
-    'K',
-    'Br',
-    'Zn',
-    'Ag',
-    'Al',
-    'Li',
-    'I',
-    'O',
-    'N',
-    'H',
-]
+SMARTS_COMMON_SALTS = "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"
 

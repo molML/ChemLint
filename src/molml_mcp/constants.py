@@ -3,6 +3,7 @@ Constants for molml_mcp package.
 """
 
 COMMON_SOLVENTS = [
+    'O',
     'O=[N+]([O-])O',
     'F[P-](F)(F)(F)(F)F',
     'O=C([O-])C(F)(F)F',
@@ -36,8 +37,8 @@ COMMON_SOLVENTS = [
     'O=C(O)C(O)C(O)C(=O)O',
     'CC(=O)O',
     'NC(CO)(CO)CO',
-    'O=S(=O)(O)O',
-]
+    'O=S(=O)(O)O'
+    ]
 
 SMARTS_NEUTRALIZATION_PATTERNS = (
     # Imidazoles

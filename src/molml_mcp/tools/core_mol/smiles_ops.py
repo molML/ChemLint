@@ -2,37 +2,29 @@ from rdkit.Chem import MolFromSmiles, MolToSmiles
 from molml_mcp.constants import COMMON_SOLVENTS
 
 
-def _canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]: 
-    """ Convert a SMILES string to its canonical form. Failed conversions are treated as None. Return both canonical SMILES and comments."""
+def _canonicalize_smiles(smi: str) -> tuple[str, str]: 
+    """ Convert a SMILES string to its canonical form. Failed conversions are treated as None. Return both canonical SMILES and comment."""
 
-    canonic = []
-    comment = []
-    for smi in smiles:
-        mol = MolFromSmiles(smi)
+    mol = MolFromSmiles(smi)
 
-        if mol is None:
-            canonic.append(None)
-            comment.append("Failed: Invalid SMILES string")
-            continue
+    if mol is None:
+        return None, "Failed: Invalid SMILES string"
 
-        try:
-            smi_canon = MolToSmiles(mol, canonical=True)
-            canonic.append(smi_canon)
-            comment.append("Passed")
-        except Exception as e:
-            canonic.append(None)
-            comment.append(f"Failed: {str(e)}")
-
-    return canonic, comment
+    try:
+        smi_canon = MolToSmiles(mol, canonical=True)
+        return smi_canon, "Passed"
+    
+    except Exception as e:
+        return None, f"Failed: {str(e)}"
 
 
 
-def _remove_pattern(smiles: list[str], smarts_pattern: str) -> tuple[list[str], list[str]]: 
+def _remove_pattern(smi: str, smarts_pattern: str) -> tuple[str, str]: 
     """ Remove some pattern from a SMILES string using the specified SMARTS.
 
-    :param smiles: list of SMILES strings
+    :param smi: single SMILES string
     :param smarts_pattern: SMARTS pattern (e.g., "[Cl,Na,Mg]")
-    :return: cleaned SMILES without pattern, comments
+    :return: cleaned SMILES without pattern, comment
     """
     from rdkit.Chem.SaltRemover import SaltRemover
 
@@ -40,49 +32,36 @@ def _remove_pattern(smiles: list[str], smarts_pattern: str) -> tuple[list[str], 
     # defnData format: "SMARTS<tab>name" per line
     remover = SaltRemover(defnData=f"{smarts_pattern}\tsalts")
 
-    new_smi, comment = [], []
-    for smi in smiles:
-        # If no fragments, no salts to remove
-        if '.' not in smi:
-            new_smi.append(smi)
-            comment.append("Passed")
-            continue
+    # If no fragments, no salts to remove
+    if '.' not in smi:
+        return smi, "Passed"
 
-        # Try to parse the SMILES with fragments
-        try:
-            mol = MolFromSmiles(smi)
-            
-            if mol is None:
-                new_smi.append(None)
-                comment.append("Failed: Invalid SMILES string")
-                continue
+    # Try to parse the SMILES with fragments
+    try:
+        mol = MolFromSmiles(smi)
+        
+        if mol is None:
+            return None, "Failed: Invalid SMILES string"
 
-            # Remove salts
-            cleaned_mol = remover.StripMol(mol, dontRemoveEverything=True)
+        # Remove salts
+        cleaned_mol = remover.StripMol(mol, dontRemoveEverything=True)
+        
+        if cleaned_mol is None or cleaned_mol.GetNumAtoms() == 0:
+            return None, "Failed: All fragments were salts"
+        
+        cleaned_smi = MolToSmiles(cleaned_mol)
+        
+        # If still has fragments after salt removal, keep the largest
+        if '.' in cleaned_smi:
+            frags = cleaned_smi.split('.')
+            # Sort by length and take longest
+            largest_frag = max(frags, key=len)
+            return largest_frag, "Passed"
+        else:
+            return cleaned_smi, "Passed"
             
-            if cleaned_mol is None or cleaned_mol.GetNumAtoms() == 0:
-                new_smi.append(None)
-                comment.append("Failed: All fragments were salts")
-                continue
-            
-            cleaned_smi = Chem.MolToSmiles(cleaned_mol)
-            
-            # If still has fragments after salt removal, keep the largest
-            if '.' in cleaned_smi:
-                frags = cleaned_smi.split('.')
-                # Sort by length and take longest
-                largest_frag = max(frags, key=len)
-                new_smi.append(largest_frag)
-                comment.append("Passed")
-            else:
-                new_smi.append(cleaned_smi)
-                comment.append("Passed")
-                
-        except Exception as e:
-            new_smi.append(None)
-            comment.append(f"Failed: {str(e)}")
-
-    return new_smi, comment
+    except Exception as e:
+        return None, f"Failed: {str(e)}"
 
 
 
@@ -98,7 +77,7 @@ def _is_common_solvent_fragment(smiles_frag: str) -> bool:
     return can in COMMON_SOLVENTS
 
 
-def _strip_common_solvent_fragments(smiles: list[str]) -> tuple[list[str], list[str]]: 
+def _strip_common_solvent_fragments(smi: str) -> tuple[str, str]: 
     """
     Remove known common solvent fragments from a fragmented SMILES string.
 
@@ -110,53 +89,58 @@ def _strip_common_solvent_fragments(smiles: list[str]) -> tuple[list[str], list[
       is returned unchanged (assumed main molecule of interest).
     """
 
-    new_smiles = [] 
-    comments = []   
+    # Only act on fragmented SMILES
+    if '.' not in smi:
+        return smi, 'Pass'
 
-    for smi in smiles:
-        # Only act on fragmented SMILES
-        if '.' not in smi:
-            new_smiles.append(smi)
-            comments.append('Pass')
-            continue    
-
-        try:
+    try:
+        frags = [f.strip() for f in smi.split('.') if f.strip()]
         
-            frags = [f.strip() for f in smi.split('.') if f.strip()]
-            
-            kept: list[str] = []
-            any_removed = False
+        kept: list[str] = []
+        any_removed = False
 
-            for frag in frags:
-                if _is_common_solvent_fragment(frag):
-                    any_removed = True
-                else:
-                    kept.append(frag)
+        for frag in frags:
+            if _is_common_solvent_fragment(frag):
+                any_removed = True
+            else:
+                kept.append(frag)
 
-            # Case 1: nothing matched as solvent → return original
-            if not any_removed:
-                new_smiles.append(smi)
-                comments.append('SMILES string is fragmented, but found no common solvents')
-                continue    
+        # Case 1: nothing matched as solvent → return original
+        if not any_removed:
+            return smi, 'SMILES string is fragmented, but found no common solvents'
 
-            # Case 2: everything would be removed → keep original (your preference)
-            if not kept:
-                new_smiles.append(smi)
-                comments.append('SMILES string is fragmented, but all fragments are common solvents. Kept original SMILES')
-                continue    
+        # Case 2: everything would be removed → keep original (your preference)
+        if not kept:
+            return smi, 'SMILES string is fragmented, but all fragments are common solvents. Kept original SMILES'
 
-            # Case 3: we removed some solvents but kept at least one fragment
+        # Case 3: we removed some solvents but kept at least one fragment
+        return '.'.join(kept), 'Pass, removed solvents'
 
-            new_smiles.append('.'.join(kept))
-            comments.append('Pass, removed solvents')
-            continue    
-
-        except Exception as e:
-            new_smiles.append(smi)
-            comments.append(f"Failed: {str(e)}")
-            continue
-
-    return new_smiles, comments
+    except Exception as e:
+        return smi, f"Failed: {str(e)}"
 
 
 
+def _defragment_smiles(smiles: str, keep_largest_fragment: bool = False) -> tuple[str, str]:
+    """ Defragment a SMILES string by removing smaller fragments. """
+
+    # If no fragments, nothing to do
+    if '.' not in smiles:
+        return smiles, "Pass"
+
+    try:
+        frags = [f.strip() for f in smiles.split('.') if f.strip()]
+        
+        # if the fragment is repeated, keep only one instance
+        if len(frags) != len(set(frags)):
+            return frags[0], "Pass, kept one instance of repeated fragments"
+        
+        if keep_largest_fragment:
+            # Find the largest fragment by length
+            largest_frag = max(frags, key=len)
+            return largest_frag, "Pass, defragmented to largest component"
+        else:
+            return smiles, "Unresolved, contains fragments and keep_largest_fragment is False"
+
+    except Exception as e:
+        return None, f"Failed: {str(e)}"

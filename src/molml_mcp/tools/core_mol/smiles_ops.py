@@ -1,4 +1,4 @@
-from rdkit.Chem import MolFromSmiles, MolToSmiles, MolFromSmarts
+from rdkit.Chem import MolFromSmiles, MolToSmiles, MolFromSmarts, RemoveStereochemistry
 from rdkit.Chem.AllChem import ReplaceSubstructs
 from rdkit.Chem.rdchem import Mol
 from molml_mcp.constants import COMMON_SOLVENTS, SMARTS_NEUTRALIZATION_PATTERNS
@@ -153,7 +153,7 @@ def _initialise_neutralisation_reactions() -> list[(Mol, Mol)]:
     return [(MolFromSmarts(x), MolFromSmiles(y, False)) for x, y in SMARTS_NEUTRALIZATION_PATTERNS]
 
 
-def _neutralize_smiles(smiles: str, transformations: list[(Mol, Mol)]) -> str:
+def _neutralize_smiles(smiles: str, transformations: list[(Mol, Mol)]) -> tuple[str, str]:
     """ Use several neutralisation reactions based on patterns defined in SMARTS_NEUTRALIZATION_PATTERNS to neutralize charged
     molecules. Transformations should be pre-initialized via _initialise_neutralisation_reactions().
 
@@ -179,3 +179,24 @@ def _neutralize_smiles(smiles: str, transformations: list[(Mol, Mol)]) -> str:
     
     except Exception as e:
         return None, f"Failed: {str(e)}"
+
+
+def _flatten_stereochemistry(smiles: str) -> tuple[str, str]:
+    """
+    Remove all stereochemistry (chiral centers + E/Z double bonds) 
+    from a SMILES string using RDKit.
+    """
+    mol = MolFromSmiles(smiles)
+    
+    if mol is None:
+        return None, "Failed: Invalid SMILES string"
+
+    try:
+
+        RemoveStereochemistry(mol)
+
+        # isomericSmiles=False makes the intent explicit: no stereo in the output
+        return MolToSmiles(mol, isomericSmiles=False, canonical=True), "Passed"
+    except Exception as e:
+        return None, f"Failed: {str(e)}"
+    

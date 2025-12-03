@@ -933,7 +933,6 @@ def get_all_cleaning_tools():
 
 
 # Tautomer canonicalization
-# Charge neutralization
 # Stereochemistry handling
 # remove duplicates
 

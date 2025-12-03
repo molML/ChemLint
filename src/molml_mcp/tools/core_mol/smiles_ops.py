@@ -121,7 +121,7 @@ def _strip_common_solvent_fragments(smi: str) -> tuple[str, str]:
 
 
 
-def _defragment_smiles(smiles: str, keep_largest_fragment: bool = False) -> tuple[str, str]:
+def _defragment_smiles(smiles: str, keep_largest_fragment: bool = True) -> tuple[str, str]:
     """ Defragment a SMILES string by removing smaller fragments. """
 
     # If no fragments, nothing to do

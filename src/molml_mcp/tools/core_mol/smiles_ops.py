@@ -187,7 +187,7 @@ def _flatten_stereochemistry(smiles: str) -> tuple[str, str]:
     from a SMILES string using RDKit.
     """
     mol = MolFromSmiles(smiles)
-    
+
     if mol is None:
         return None, "Failed: Invalid SMILES string"
 
@@ -200,3 +200,27 @@ def _flatten_stereochemistry(smiles: str) -> tuple[str, str]:
     except Exception as e:
         return None, f"Failed: {str(e)}"
     
+
+def _remove_isotopes(smiles: str) -> tuple[str, str]:
+    """
+    Replace all isotopically-labeled atoms in a SMILES string
+    by their default (non-isotopic) form.
+
+    Examples:
+        [13CH3][18F]   ->  CCF
+        CC([2H])O      ->  CCO
+    """
+    mol = MolFromSmiles(smiles)
+
+    if mol is None:
+        return None, "Failed: Invalid SMILES string"
+
+    try:
+        # convert all isotope flags to 0 (default) i.e. convert C13 to C12
+        for atom in mol.GetAtoms():
+            if atom.GetIsotope() != 0:
+                atom.SetIsotope(0)
+        # Keep stereo etc.; isotopes are gone because they're all 0 now
+        return MolToSmiles(mol, isomericSmiles=True, canonical=True), "Passed"
+    except Exception as e:
+        return None, f"Failed: {str(e)}"

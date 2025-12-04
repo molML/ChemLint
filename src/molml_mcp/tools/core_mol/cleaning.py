@@ -2,9 +2,9 @@ from collections import Counter
 from rdkit.Chem import MolFromSmiles, MolToSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 from molml_mcp.infrastructure.logging import loggable
-from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles
+from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles, _normalize_smiles
 
-from molml_mcp.constants import SMARTS_COMMON_SALTS, SMARTS_NEUTRALIZATION_PATTERNS, COMMON_SOLVENTS
+from molml_mcp.constants import SMARTS_COMMON_SALTS
 
 
 
@@ -1651,6 +1651,201 @@ def canonicalize_tautomers_dataset(
     }
 
 
+@loggable
+def normalize_functional_groups(smiles: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Normalize functional groups in SMILES strings using RDKit's Normalizer.
+    
+    This function standardizes functional groups (e.g., nitro groups, N-oxides, azides) 
+    to their preferred representations by fixing "weird valence forms" and ensuring 
+    consistent molecular representations. Normalization is an important standardization 
+    step that comes after basic cleaning but before final canonicalization.
+    
+    Common normalizations include:
+    - Nitro groups: [N+](=O)[O-] → [N+](=O)[O-] (standardized form)
+    - N-oxides: [N+]([O-]) → standardized N-oxide representation
+    - Azides: Correct azide functional group representation
+    - Diazo compounds: Standardized diazo group forms
+    - Sulfoxides and sulfones: Correct sulfur oxidation state representations
+    - Phosphate groups: Standardized phosphorus-oxygen bonding
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to normalize.
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - normalized_smiles : list[str]
+            Normalized canonical SMILES strings. Length matches input list.
+            Failed normalizations return None.
+        - comments : list[str]
+            Comments for each SMILES indicating processing status. Length matches input list.
+            - "Passed": Normalization successful
+            - "Failed: Invalid SMILES string": Input could not be parsed
+            - "Failed: Normalization error: <details>": An error occurred during normalization
+    
+    Examples
+    --------
+    # Normalize nitro groups and other functional groups
+    smiles = ["c1ccccc1[N+](=O)[O-]", "CCN(C)=O", "c1ccccc1"]
+    normalized, comments = normalize_functional_groups(smiles)
+    # Returns normalized forms with "Passed" comments
+    
+    # Invalid SMILES handling
+    smiles = ["c1ccccc1[N+](=O)[O-]", "invalid", "CCO"]
+    normalized, comments = normalize_functional_groups(smiles)
+    # Returns with "Failed: Invalid SMILES string" for invalid entry
+    
+    Notes
+    -----
+    - This function automatically applies canonical SMILES generation (isomeric)
+    - Normalization is typically applied after:
+      * Salt removal
+      * Solvent removal
+      * Defragmentation
+    - But before:
+      * Final canonicalization (if separate step)
+      * Tautomer canonicalization
+    - The function preserves stereochemistry information
+    - Some functional groups may have multiple valid representations; this function 
+      standardizes to RDKit's preferred forms
+    
+    See Also
+    --------
+    normalize_functional_groups_dataset : Dataset version of this function
+    neutralize_smiles : For removing charges from molecules
+    canonicalize_smiles : For standard SMILES canonicalization
+    canonicalize_tautomers : For tautomer standardization
+    """
+    results = [_normalize_smiles(smi) for smi in smiles]
+    normalized_smiles = [smi for smi, _ in results]
+    comments = [cmt for _, cmt in results]
+    return normalized_smiles, comments
+
+
+@loggable
+def normalize_functional_groups_dataset(
+    resource_id: str,
+    column_name: str
+) -> dict:
+    """
+    Normalize functional groups in molecules in a specified column of a tabular dataset.
+    
+    This function processes a tabular dataset by standardizing functional groups in SMILES 
+    strings to their preferred representations. It adds two new columns to the dataframe: 
+    one containing the normalized SMILES and another with comments logged during the 
+    normalization process.
+    
+    Functional group normalization fixes "weird valence forms" and ensures consistent 
+    molecular representations for:
+    - Nitro groups, N-oxides, azides
+    - Diazo compounds
+    - Sulfoxides and sulfones
+    - Phosphate groups
+    - Other functional groups with multiple valid representations
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to be normalized.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with normalized data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different comment types logged during 
+            normalization (e.g., number of successful operations, failures).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the operation.
+        - suggestions : str
+            Recommendations for next steps.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'smiles_after_functional_group_normalization': Contains the normalized SMILES.
+    - 'comments_after_functional_group_normalization': Contains any comments or warnings 
+      from the normalization process.
+    
+    Typical workflow position:
+    1. Remove salts
+    2. Remove solvents
+    3. Defragment
+    4. **Normalize functional groups** ← This step
+    5. Neutralize charges
+    6. Canonicalize tautomers
+    7. Final canonicalization
+    
+    Examples
+    --------
+    # Typical usage after defragmentation
+    result = normalize_functional_groups_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv", 
+        column_name="smiles_after_defragmentation"
+    )
+    
+    # As part of a cleaning pipeline
+    # Step 1: Remove salts
+    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    # Step 2: Defragment
+    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
+                                        column_name="smiles_after_salt_removal")
+    # Step 3: Normalize functional groups
+    result3 = normalize_functional_groups_dataset(resource_id=result2["resource_id"], 
+                                                   column_name="smiles_after_defragmentation")
+    # Step 4: Neutralize
+    result4 = neutralize_smiles_dataset(resource_id=result3["resource_id"], 
+                                        column_name="smiles_after_functional_group_normalization")
+    
+    See Also
+    --------
+    normalize_functional_groups : For processing a list of SMILES strings
+    neutralize_smiles_dataset : For charge neutralization
+    canonicalize_tautomers_dataset : For tautomer standardization
+    defragment_smiles_dataset : For removing disconnected fragments
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    normalized_smiles, comments = normalize_functional_groups(smiles_list)
+
+    df['smiles_after_functional_group_normalization'] = normalized_smiles
+    df['comments_after_functional_group_normalization'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Successful normalization is marked by 'Passed' in comments. Functional groups have been standardized to their preferred representations. The output SMILES are canonical and isomeric.",
+        "suggestions": "Review molecules that failed normalization. Consider proceeding with charge neutralization and tautomer canonicalization steps.",
+    }
+
 
 
 
@@ -1687,9 +1882,14 @@ def get_all_cleaning_tools():
         remove_isotopes_dataset,
         canonicalize_tautomers,
         canonicalize_tautomers_dataset,
+        normalize_functional_groups,
+        normalize_functional_groups_dataset,
     ]
 
 
 
 
 
+# Functional-group normalization + reionization
+# Metal / inorganic handling
+# Final validation step

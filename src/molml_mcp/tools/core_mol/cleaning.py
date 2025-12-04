@@ -1430,6 +1430,227 @@ def remove_isotopes_dataset(
     }
 
 
+@loggable
+def canonicalize_tautomers(smiles: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Canonicalize tautomeric forms of molecules in a list of SMILES strings.
+    
+    This function processes a list of SMILES strings and standardizes each to RDKit's 
+    canonical tautomer representation. This ensures that different tautomeric forms of 
+    the same molecule are represented by the same SMILES string, which is essential for 
+    deduplication, comparison, and ensuring that tautomers are treated as equivalent 
+    structures in downstream analyses.
+    
+    **IMPORTANT**: The output SMILES are tautomer-canonicalized AND canonicalized. No 
+    additional canonicalization step is needed after running this function, as RDKit's 
+    MolToSmiles with canonical=True is automatically applied.
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to process. May contain different tautomeric forms.
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - canonical_tautomers : list[str]
+            Tautomer-canonicalized SMILES strings. Length matches input list.
+        - comments : list[str]
+            Comments for each SMILES indicating processing status. Length matches input list.
+            - "Passed": Tautomer canonicalization successful
+            - "Failed: Invalid SMILES string": Could not parse SMILES
+            - "Failed: <reason>": An error occurred during processing
+    
+    Examples
+    --------
+    # Canonicalize keto-enol tautomers
+    smiles = ["O=C1NC=CC=C1", "OC1=NC=CC=C1"]
+    canonical, comments = canonicalize_tautomers(smiles)
+    # Returns: ["O=C1NC=CC=C1", "O=C1NC=CC=C1"], ["Passed", "Passed"]
+    # Note: Both tautomers become identical
+    
+    # Canonicalize amide-imidic acid tautomers
+    smiles = ["CC(=O)N", "CC(O)=N"]
+    canonical, comments = canonicalize_tautomers(smiles)
+    # Returns: ["CC(=O)N", "CC(=O)N"], ["Passed", "Passed"]
+    
+    # Already canonical tautomer (no change)
+    smiles = ["c1ccccc1", "CCO"]
+    canonical, comments = canonicalize_tautomers(smiles)
+    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
+    
+    Notes
+    -----
+    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
+    - Output is BOTH tautomer-canonicalized AND canonicalized - no additional steps needed
+    - Uses RDKit's TautomerEnumerator with canonical tautomer selection
+    - Common tautomerizations handled:
+      * Keto-enol tautomers
+      * Imine-enamine tautomers
+      * Amide-imidic acid tautomers
+      * Lactam-lactim tautomers
+      * Nitroso-oxime tautomers
+    - Different tautomers of the same molecule will have identical output SMILES
+    - Molecules without tautomeric forms are returned unchanged (but canonicalized)
+    - Output lists have the same length and order as input list
+    
+    Warnings
+    --------
+    - Tautomer canonicalization may affect analysis where specific tautomeric forms 
+      are biologically or chemically relevant
+    - The canonical tautomer selected may not be the predominant form under specific 
+      conditions (pH, solvent, etc.)
+    - Some edge cases with complex tautomeric systems may not be handled perfectly
+    
+    See Also
+    --------
+    canonicalize_tautomers_dataset : For dataset-level tautomer canonicalization
+    canonicalize_smiles : For standard canonicalization without tautomer handling
+    """
+    from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_tautomer_smiles
+    
+    canonical_tautomers, comments = [], []
+    for smi in smiles:
+        canon_smi, comment = _canonicalize_tautomer_smiles(smi)
+        canonical_tautomers.append(canon_smi)
+        comments.append(comment)
+    
+    return canonical_tautomers, comments
+
+
+@loggable
+def canonicalize_tautomers_dataset(
+    resource_id: str,
+    column_name: str
+) -> dict:
+    """
+    Canonicalize tautomeric forms of molecules in a specified column of a tabular dataset.
+    
+    This function processes a tabular dataset by standardizing SMILES strings to their 
+    canonical tautomer representations in the specified column. It adds two new columns 
+    to the dataframe: one containing the tautomer-canonicalized SMILES and another with 
+    comments logged during the canonicalization process.
+    
+    **IMPORTANT**: The output SMILES are tautomer-canonicalized AND canonicalized. No 
+    additional canonicalization step is needed after running this function, as RDKit's 
+    MolToSmiles with canonical=True is automatically applied.
+    
+    This ensures that different tautomeric forms of the same molecule are represented 
+    by the same SMILES string, which is essential for:
+    - Deduplication of datasets where tautomers should be treated as equivalent
+    - Machine learning where tautomers should have the same representation
+    - Consistent database searches and comparisons
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to be canonicalized.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with tautomer-canonicalized data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different comment types logged during 
+            tautomer canonicalization (e.g., number of successful operations, failures).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the operation and canonicalization behavior.
+        - warning : str
+            Important warnings about tautomer canonicalization.
+        - suggestions : str
+            Recommendations for next steps.
+        - question_to_user : str
+            Question directed at the user/client regarding tautomer handling.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'smiles_after_tautomer_canonicalization': Contains the tautomer-canonicalized SMILES.
+    - 'comments_after_tautomer_canonicalization': Contains any comments or warnings from 
+      the canonicalization process.
+    
+    Common tautomerizations handled:
+    - Keto-enol tautomers
+    - Imine-enamine tautomers
+    - Amide-imidic acid tautomers
+    - Lactam-lactim tautomers
+    - Nitroso-oxime tautomers
+    
+    Warnings
+    --------
+    - The canonical tautomer selected may not be the predominant form under specific 
+      experimental conditions (pH, solvent, temperature)
+    - For some molecules, the biologically active form may be a non-canonical tautomer
+    - Tautomer canonicalization may affect structure-activity relationships if specific 
+      tautomeric forms have different activities
+    
+    Examples
+    --------
+    # Typical usage after basic cleaning steps
+    result = canonicalize_tautomers_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv", 
+        column_name="smiles_after_neutralization"
+    )
+    
+    # As part of a cleaning pipeline
+    # Step 1: Remove salts
+    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    # Step 2: Neutralize
+    result2 = neutralize_smiles_dataset(resource_id=result1["resource_id"], 
+                                        column_name="smiles_after_salt_removal")
+    # Step 3: Canonicalize tautomers
+    result3 = canonicalize_tautomers_dataset(resource_id=result2["resource_id"], 
+                                             column_name="smiles_after_neutralization")
+    
+    See Also
+    --------
+    canonicalize_tautomers : For processing a list of SMILES strings
+    canonicalize_smiles_dataset : For standard canonicalization without tautomer handling
+    neutralize_smiles_dataset : For charge neutralization
+    standardize_stereochemistry_dataset : For stereochemistry handling
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    canonical_tautomers, comments = canonicalize_tautomers(smiles_list)
+
+    df['smiles_after_tautomer_canonicalization'] = canonical_tautomers
+    df['comments_after_tautomer_canonicalization'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Successful tautomer canonicalization is marked by 'Passed' in comments. Output SMILES are both tautomer-canonicalized AND canonicalized - no additional canonicalization step is needed. Different tautomers of the same molecule now have identical SMILES representations.",
+        "warning": "The canonical tautomer selected may not be the predominant form under your specific experimental conditions (pH, solvent, etc.). For some molecules, the biologically active form may be a non-canonical tautomer.",
+        "suggestions": "Review molecules that failed tautomer canonicalization. Consider deduplicating the dataset as different tautomers are now identical. If specific tautomeric forms are important for your analysis, verify that canonicalization is appropriate.",
+        "question_to_user": "Are there any molecules in your dataset where specific tautomeric forms are biologically or chemically important? Would you like to review the tautomer canonicalization results?",
+    }
+
+
 
 
 
@@ -1464,6 +1685,8 @@ def get_all_cleaning_tools():
         standardize_stereochemistry_dataset,
         remove_isotopes,
         remove_isotopes_dataset,
+        canonicalize_tautomers,
+        canonicalize_tautomers_dataset,
     ]
 
 

@@ -14,7 +14,8 @@ from rdkit.Chem.EnumerateStereoisomers import (
     EnumerateStereoisomers,
     StereoEnumerationOptions,
 )
-from rdkit.Chem import FindMolChiralCenters, rdMolStandardize
+from rdkit.Chem import FindMolChiralCenters
+from rdkit.Chem.MolStandardize import rdMolStandardize
 
 # create one global enumerator so I don't reallocate it on every call
 _TAUT_ENUM = rdMolStandardize.TautomerEnumerator()

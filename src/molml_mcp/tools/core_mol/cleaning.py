@@ -10,6 +10,8 @@ from molml_mcp.constants import SMARTS_COMMON_SALTS
 def get_SMILES_standardization_guidelines() -> str:
     """
     Return comprehensive guidelines for the default SMILES standardization protocol.
+
+    It is STRONGLY recommended to stick to these steps unless you have a specific reason to deviate.
     
     This function provides detailed documentation of the recommended 11-step molecular
     standardization pipeline designed for general-purpose molecular machine learning
@@ -2926,6 +2928,7 @@ def default_SMILES_standardization_pipeline_dataset():
 def get_all_cleaning_tools():
     """Return a list of all molecular cleaning tools."""
     return [
+        get_SMILES_standardization_guidelines,
         canonicalize_smiles,
         canonicalize_smiles_dataset,
         remove_salts,

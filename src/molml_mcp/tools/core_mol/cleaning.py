@@ -1384,7 +1384,7 @@ def standardize_stereochemistry(
     
     standardized_smiles, comments = [], []
     for smi in smiles:
-        std_smi, comment = standardize_stereo_smiles(
+        std_smi, comment = _standardize_stereo_smiles(
             smi,
             stereo_policy=stereo_policy,
             assign_policy=assign_policy,
@@ -2909,25 +2909,466 @@ def validate_smiles_dataset(
 
 
 
+@loggable
+def default_SMILES_standardization_pipeline(
+    smiles: list[str],
+    stereo_policy: str = "flatten",
+    remove_isotopes: bool = True,
+    disconnect_metals: bool = False,
+    drop_inorganics: bool = False,
+    salt_smarts: str = SMARTS_COMMON_SALTS
+) -> tuple[list[str], list[str]]:
+    """
+    Apply the default SMILES standardization protocol to a list of SMILES strings.
+    
+    This function implements the complete 11-step (or 12-step with metal disconnection)
+    standardization pipeline optimized for general-purpose molecular machine learning.
+    It returns clean SMILES with concise, non-redundant comments.
+    
+    **RECOMMENDED**: Use this function for standardizing SMILES lists. For dataset-level
+    operations with full audit trails, use `default_SMILES_standardization_pipeline_dataset()`.
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to standardize.
+    stereo_policy : str, optional
+        Stereochemistry handling policy (default: "flatten"):
+        - "flatten": Remove all stereochemistry (general ML use case)
+        - "keep": Preserve existing stereochemistry (SAR/drug discovery)
+        - "assign": Enumerate and assign undefined stereocenters
+    remove_isotopes : bool, optional
+        Whether to remove isotope labels (default: True).
+        Set to False for radiolabeling/NMR/mass spec studies.
+    disconnect_metals : bool, optional
+        Whether to disconnect metal-ligand bonds (default: False).
+        Set to True for coordination chemistry analysis.
+    drop_inorganics : bool, optional
+        When disconnect_metals=True, whether to drop purely inorganic fragments
+        (default: False).
+    salt_smarts : str, optional
+        SMARTS pattern for salt removal (default: SMARTS_COMMON_SALTS).
+        **WARNING**: Only change for specialized datasets (e.g., organometallics).
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - standardized_smiles : list[str]
+            Fully standardized SMILES strings. Length matches input list.
+        - comments : list[str]
+            Concise, non-redundant comments for each SMILES. Length matches input list.
+            Only reports issues, warnings, or notable transformations.
+            Successfully standardized molecules: "Standardized"
+            Molecules with issues: "<step>: <issue>" (e.g., "Validation: Invalid SMILES")
+    
+    Examples
+    --------
+    # General ML use case (default settings)
+    smiles = ["CC(=O)O.Na", "C[C@H](O)CC", "c1ccccc1"]
+    clean, comments = default_SMILES_standardization_pipeline(smiles)
+    # Returns: ["CC(=O)O", "CC(O)CC", "c1ccccc1"], 
+    #          ["Standardized", "Standardized", "Standardized"]
+    
+    # Drug discovery (keep stereochemistry)
+    smiles = ["C[C@H](O)CC", "C[C@@H](O)CC"]
+    clean, comments = default_SMILES_standardization_pipeline(
+        smiles, stereo_policy="keep"
+    )
+    # Returns: ["C[C@H](O)CC", "C[C@@H](O)CC"], ["Standardized", "Standardized"]
+    
+    # Coordination chemistry (disconnect metals)
+    smiles = ["c1ccccc1.[Cu+2]"]
+    clean, comments = default_SMILES_standardization_pipeline(
+        smiles, disconnect_metals=True
+    )
+    # Returns: ["c1ccccc1"], ["Standardized"]
+    
+    # Handle invalid SMILES
+    smiles = ["CCO", "invalid_smiles", "c1ccccc1"]
+    clean, comments = default_SMILES_standardization_pipeline(smiles)
+    # Returns with appropriate failure comment for invalid entry
+    
+    Notes
+    -----
+    - This function applies ALL 11 steps of the standardization protocol
+    - Comments are concise and non-redundant (no repeated "Passed" messages)
+    - The function chains: canonicalize → remove_salts → remove_solvents → 
+      defragment → normalize → reionize → neutralize → [optional: remove_isotopes] → 
+      [optional: disconnect_metals + re-defragment] → canonicalize_tautomers → 
+      standardize_stereochemistry → validate
+    - For detailed step-by-step logging, use the dataset version
+    - Output SMILES are fully canonicalized and standardized
+    
+    See Also
+    --------
+    default_SMILES_standardization_pipeline_dataset : Dataset version with full audit trail
+    get_SMILES_standardization_guidelines : Detailed protocol documentation
+    """
+    from molml_mcp.tools.core_mol.smiles_ops import _initialise_neutralisation_reactions
+    
+    # Track which molecules fail at which step
+    n_smiles = len(smiles)
+    failure_info = ["" for _ in range(n_smiles)]  # Track first failure per molecule
+    
+    # Step 1: Initial canonicalization
+    current_smiles, step_comments = canonicalize_smiles(smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Canonicalization: {comment}"
+    
+    # Step 2: Salt removal
+    current_smiles, step_comments = remove_salts(current_smiles, salt_smarts=salt_smarts)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Salt removal: {comment}"
+    
+    # Step 3: Solvent removal
+    current_smiles, step_comments = remove_common_solvents(current_smiles)
+    # Solvent removal doesn't typically fail, skip tracking
+    
+    # Step 4: Defragmentation
+    current_smiles, step_comments = defragment_smiles(current_smiles, keep_largest_fragment=True)
+    for i, comment in enumerate(step_comments):
+        if "Unresolved" in comment and not failure_info[i]:
+            failure_info[i] = f"Defragmentation: {comment}"
+    
+    # Step 5: Functional group normalization
+    current_smiles, step_comments = normalize_functional_groups(current_smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Normalization: {comment}"
+    
+    # Step 6: Reionization
+    current_smiles, step_comments = reionize_smiles(current_smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Reionization: {comment}"
+    
+    # Step 7: Neutralization
+    current_smiles, step_comments = neutralize_smiles(current_smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Neutralization: {comment}"
+    
+    # Step 8 (OPTIONAL): Isotope removal
+    if remove_isotopes:
+        current_smiles, step_comments = remove_isotopes(current_smiles)
+        for i, comment in enumerate(step_comments):
+            if "Failed" in comment and not failure_info[i]:
+                failure_info[i] = f"Isotope removal: {comment}"
+    
+    # Step 9 (OPTIONAL): Metal disconnection
+    if disconnect_metals:
+        current_smiles, step_comments = disconnect_metals_smiles(
+            current_smiles, drop_inorganics=drop_inorganics
+        )
+        for i, comment in enumerate(step_comments):
+            if "Failed" in comment and not failure_info[i]:
+                failure_info[i] = f"Metal disconnection: {comment}"
+        
+        # Step 9b: Re-defragmentation after metal disconnection
+        current_smiles, step_comments = defragment_smiles(current_smiles, keep_largest_fragment=True)
+        for i, comment in enumerate(step_comments):
+            if "Unresolved" in comment and not failure_info[i]:
+                failure_info[i] = f"Re-defragmentation: {comment}"
+    
+    # Step 10: Tautomer canonicalization
+    current_smiles, step_comments = canonicalize_tautomers(current_smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Tautomer canonicalization: {comment}"
+    
+    # Step 11: Stereochemistry standardization
+    current_smiles, step_comments = standardize_stereochemistry(
+        current_smiles,
+        stereo_policy=stereo_policy,
+        assign_policy="first",
+        max_isomers=32,
+        try_embedding=False,
+        only_unassigned=True,
+        random_seed=42
+    )
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Stereochemistry: {comment}"
+    
+    # Step 12: Final validation
+    validated_smiles, step_comments = validate_smiles(current_smiles)
+    for i, comment in enumerate(step_comments):
+        if "Failed" in comment and not failure_info[i]:
+            failure_info[i] = f"Validation: {comment}"
+    
+    # Generate final concise comments
+    final_comments = []
+    for i in range(n_smiles):
+        if failure_info[i]:
+            final_comments.append(failure_info[i])
+        else:
+            final_comments.append("Standardized")
+    
+    return validated_smiles, final_comments
 
-def get_SMILES_standardization_guidelines():
-    """Return guidelines with recommended SMILES cleaning tools in typical order."""
-    pass
 
-
-def default_SMILES_standardization_pipeline():
-    pass
-
-
-def default_SMILES_standardization_pipeline_dataset():
-    pass
-
-
+@loggable
+def default_SMILES_standardization_pipeline_dataset(
+    resource_id: str,
+    column_name: str,
+    stereo_policy: str = "flatten",
+    remove_isotopes: bool = True,
+    disconnect_metals: bool = False,
+    drop_inorganics: bool = False,
+    salt_smarts: str = SMARTS_COMMON_SALTS
+) -> dict:
+    """
+    Apply the default SMILES standardization protocol to a dataset with full audit trail.
+    
+    This function implements the complete 11-step (or 12-step with metal disconnection)
+    standardization pipeline optimized for general-purpose molecular machine learning.
+    It processes a tabular dataset and adds comment columns for EVERY step, plus a final
+    'standardized_smiles' column.
+    
+    **RECOMMENDED**: Use this function for dataset-level standardization with complete
+    documentation of all transformations. For simple list operations, use
+    `default_SMILES_standardization_pipeline()`.
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to standardize.
+    stereo_policy : str, optional
+        Stereochemistry handling policy (default: "flatten"):
+        - "flatten": Remove all stereochemistry (general ML use case)
+        - "keep": Preserve existing stereochemistry (SAR/drug discovery)
+        - "assign": Enumerate and assign undefined stereocenters
+    remove_isotopes : bool, optional
+        Whether to remove isotope labels (default: True).
+        Set to False for radiolabeling/NMR/mass spec studies.
+    disconnect_metals : bool, optional
+        Whether to disconnect metal-ligand bonds (default: False).
+        Set to True for coordination chemistry analysis.
+    drop_inorganics : bool, optional
+        When disconnect_metals=True, whether to drop purely inorganic fragments
+        (default: False).
+    salt_smarts : str, optional
+        SMARTS pattern for salt removal (default: SMARTS_COMMON_SALTS).
+        **WARNING**: Only change for specialized datasets (e.g., organometallics).
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with standardized data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names (includes comments for each step).
+        - preview : list of dict
+            Preview of the first 5 rows of the final dataset.
+        - protocol_summary : dict
+            Summary of the protocol settings used:
+            - stereo_policy, remove_isotopes, disconnect_metals, drop_inorganics
+        - final_validation : dict
+            Validation statistics (n_valid, n_invalid, validation_rate)
+        - note : str
+            Explanation of the standardization process.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Examples
+    --------
+    # General ML use case (default settings)
+    result = default_SMILES_standardization_pipeline_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv",
+        column_name="smiles"
+    )
+    # Returns dataset with all intermediate columns plus 'standardized_smiles'
+    
+    # Drug discovery (keep stereochemistry)
+    result = default_SMILES_standardization_pipeline_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv",
+        column_name="smiles",
+        stereo_policy="keep"
+    )
+    
+    # Coordination chemistry (disconnect metals)
+    result = default_SMILES_standardization_pipeline_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv",
+        column_name="smiles",
+        disconnect_metals=True,
+        drop_inorganics=True
+    )
+    
+    # Radiolabeling study (keep isotopes)
+    result = default_SMILES_standardization_pipeline_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv",
+        column_name="smiles",
+        remove_isotopes=False
+    )
+    
+    Notes
+    -----
+    This function creates many intermediate columns with detailed comments:
+    - smiles_after_canonicalization + comments_after_canonicalization
+    - smiles_after_salt_removal + comments_after_salt_removal
+    - smiles_after_solvent_removal + comments_after_solvent_removal
+    - smiles_after_defragmentation + comments_after_defragmentation
+    - smiles_after_normalization + comments_after_normalization
+    - smiles_after_reionization + comments_after_reionization
+    - smiles_after_neutralization + comments_after_neutralization
+    - [optional] smiles_after_isotope_removal + comments_after_isotope_removal
+    - [optional] smiles_after_metal_disconnection + comments_after_metal_disconnection
+    - [optional] smiles_after_re_defragmentation + comments_after_re_defragmentation
+    - smiles_after_tautomer_canonicalization + comments_after_tautomer_canonicalization
+    - smiles_after_stereo_standardization + comments_after_stereo_standardization
+    - validation_status + validation_comments
+    - **standardized_smiles** (final output, copy of last valid step)
+    
+    The full audit trail allows you to:
+    - Track exactly what happened at each step
+    - Identify which steps caused the most issues
+    - Debug problematic molecules
+    - Understand the complete transformation history
+    
+    See Also
+    --------
+    default_SMILES_standardization_pipeline : Simpler list-based version
+    get_SMILES_standardization_guidelines : Detailed protocol documentation
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column '{column_name}' not found in dataset. Available columns: {list(df.columns)}")
+    
+    current_resource_id = resource_id
+    current_column = column_name
+    
+    # Step 1: Initial canonicalization
+    result = canonicalize_smiles_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_canonicalization"
+    
+    # Step 2: Salt removal
+    result = remove_salts_dataset(current_resource_id, current_column, salt_smarts=salt_smarts)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_salt_removal"
+    
+    # Step 3: Solvent removal
+    result = remove_common_solvents_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_solvent_removal"
+    
+    # Step 4: Defragmentation
+    result = defragment_smiles_dataset(current_resource_id, current_column, keep_largest_fragment=True)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_defragmentation"
+    
+    # Step 5: Functional group normalization
+    result = normalize_functional_groups_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_normalization"
+    
+    # Step 6: Reionization
+    result = reionize_smiles_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_reionization"
+    
+    # Step 7: Neutralization
+    result = neutralize_smiles_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_neutralization"
+    
+    # Step 8 (OPTIONAL): Isotope removal
+    if remove_isotopes:
+        result = remove_isotopes_dataset(current_resource_id, current_column)
+        current_resource_id = result["resource_id"]
+        current_column = "smiles_after_isotope_removal"
+    
+    # Step 9 (OPTIONAL): Metal disconnection
+    if disconnect_metals:
+        result = disconnect_metals_smiles_dataset(
+            current_resource_id, current_column, drop_inorganics=drop_inorganics
+        )
+        current_resource_id = result["resource_id"]
+        current_column = "smiles_after_metal_disconnection"
+        
+        # Step 9b: Re-defragmentation after metal disconnection
+        result = defragment_smiles_dataset(current_resource_id, current_column, keep_largest_fragment=True)
+        current_resource_id = result["resource_id"]
+        current_column = "smiles_after_re_defragmentation"
+    
+    # Step 10: Tautomer canonicalization
+    result = canonicalize_tautomers_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_tautomer_canonicalization"
+    
+    # Step 11: Stereochemistry standardization
+    result = standardize_stereochemistry_dataset(
+        current_resource_id,
+        current_column,
+        stereo_policy=stereo_policy,
+        assign_policy="first",
+        max_isomers=32,
+        try_embedding=False,
+        only_unassigned=True,
+        random_seed=42
+    )
+    current_resource_id = result["resource_id"]
+    current_column = "smiles_after_stereo_standardization"
+    
+    # Step 12: Final validation
+    result = validate_smiles_dataset(current_resource_id, current_column)
+    current_resource_id = result["resource_id"]
+    
+    # Add final 'standardized_smiles' column (copy of the last valid SMILES column)
+    df_final = _load_resource(current_resource_id)
+    df_final['standardized_smiles'] = df_final[current_column]
+    
+    final_resource_id = _store_resource(df_final, 'csv')
+    
+    # Compute validation statistics from the validation result
+    n_valid = result.get("n_valid", 0)
+    n_invalid = result.get("n_invalid", 0)
+    validation_rate = result.get("validation_rate", 0.0)
+    
+    return {
+        "resource_id": final_resource_id,
+        "n_rows": len(df_final),
+        "columns": list(df_final.columns),
+        "preview": df_final.head(5).to_dict(orient="records"),
+        "protocol_summary": {
+            "stereo_policy": stereo_policy,
+            "remove_isotopes": remove_isotopes,
+            "disconnect_metals": disconnect_metals,
+            "drop_inorganics": drop_inorganics if disconnect_metals else "N/A",
+            "salt_smarts": "default (SMARTS_COMMON_SALTS)" if salt_smarts == SMARTS_COMMON_SALTS else "custom"
+        },
+        "final_validation": {
+            "n_valid": n_valid,
+            "n_invalid": n_invalid,
+            "validation_rate": validation_rate
+        },
+        "note": (
+            f"Applied default SMILES standardization protocol with {11 + (1 if remove_isotopes else 0) + (2 if disconnect_metals else 0)} steps. "
+            f"Settings: stereo_policy='{stereo_policy}', remove_isotopes={remove_isotopes}, disconnect_metals={disconnect_metals}. "
+            f"Final standardized SMILES are in 'standardized_smiles' column. "
+            f"All intermediate steps have dedicated comment columns for full audit trail. "
+            f"Validation: {n_valid}/{len(df_final)} molecules passed ({validation_rate:.1f}%)."
+        )
+    }
 
 
 def get_all_cleaning_tools():
     """Return a list of all molecular cleaning tools."""
     return [
+        default_SMILES_standardization_pipeline,
+        default_SMILES_standardization_pipeline_dataset,
         get_SMILES_standardization_guidelines,
         canonicalize_smiles,
         canonicalize_smiles_dataset,

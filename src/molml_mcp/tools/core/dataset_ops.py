@@ -381,12 +381,29 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
     row_indices : list[int] | None
         List of row indices (0-based) to retrieve. If provided, filter_condition is ignored.
     filter_condition : str | None
-        Pandas query string to filter rows. Supports full pandas query syntax:
-        - Numeric: "TPSA > 20", "MolWt <= 500", "label == 1.0"
-        - Range: "200 <= MolWt <= 600"
-        - Null checks: "column.isnull()" or "column.notnull()"
-        - Logic: "TPSA > 20 and MolWt < 400"
-        - String: 'description == "active"'
+        Pandas query string to filter rows. USE BACKTICKS AROUND COLUMN NAMES WITH SPACES OR SPECIAL CHARS.
+        
+        CRITICAL SYNTAX RULES:
+        - Column names: Use backticks for spaces/special chars: `column name` or `comments_after_salt_removal`
+        - String values: Use DOUBLE quotes inside the filter string: column == "value"
+        - The entire filter_condition should be a single string
+        - Operators: >, <, >=, <=, ==, != (use == for equality, not single =)
+        - Logic: and, or, not (lowercase required)
+        
+        Supported patterns:
+        - Numeric comparison: "TPSA > 20" or "MolWt <= 500.5"
+        - Range: "200 <= MolWt <= 600" (chained comparison)
+        - Equality: "label == 1" or 'status == "active"' (note quotes)
+        - Null checks: "column_name.isnull()" or "column_name.notnull()"
+        - Multiple conditions: "TPSA > 20 and MolWt < 400"
+        - Negation: "not (TPSA > 100)" or "status != \"failed\""
+        
+        COMMON MISTAKES TO AVOID:
+        - ❌ "column = value" → ✅ "column == value" (use double ==)
+        - ❌ "column == 'value'" → ✅ 'column == "value"' (use double quotes for strings)
+        - ❌ "TPSA > 20 AND MolWt < 500" → ✅ "TPSA > 20 and MolWt < 500" (lowercase 'and')
+        - ❌ "column with spaces > 10" → ✅ "`column with spaces` > 10" (use backticks)
+        
     max_rows : int, default=100
         Maximum number of rows to return (safety limit to prevent large outputs).
 
@@ -404,26 +421,43 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
 
     Examples
     --------
-    # Filter by numeric comparison
+    # Numeric comparison (simple)
     inspect_dataset_rows(rid, filter_condition="TPSA > 20")
+    inspect_dataset_rows(rid, filter_condition="MolWt <= 500.5")
     
-    # Filter by range
-    inspect_dataset_rows(rid, filter_condition="200 <= MolWt <= 500")
+    # Range filter (chained comparison)
+    inspect_dataset_rows(rid, filter_condition="200 <= MolWt <= 600")
     
-    # Multiple conditions
+    # Multiple numeric conditions
     inspect_dataset_rows(rid, filter_condition="TPSA > 20 and MolLogP < 5")
+    inspect_dataset_rows(rid, filter_condition="TPSA > 20 or MolWt > 500")
     
-    # Find null values
+    # String value comparison (note the double quotes around "Passed")
+    inspect_dataset_rows(rid, filter_condition='comments_after_canonicalization == "Passed"')
+    inspect_dataset_rows(rid, filter_condition='status != "Failed"')
+    
+    # Column names with spaces or special characters (use backticks)
+    inspect_dataset_rows(rid, filter_condition='`comments after cleaning` == "Passed"')
+    
+    # Null value checks
     inspect_dataset_rows(rid, filter_condition="smiles_after_canonicalization.isnull()")
+    inspect_dataset_rows(rid, filter_condition="label.notnull()")
     
-    # Inspect specific rows by index
-    inspect_dataset_rows(rid, row_indices=[5, 10, 15])
+    # Complex conditions
+    inspect_dataset_rows(rid, filter_condition="TPSA > 20 and MolWt < 400 and label == 1")
+    inspect_dataset_rows(rid, filter_condition='(TPSA > 100 or MolWt > 500) and status == "active"')
+    
+    # Inspect specific rows by index (alternative to filter_condition)
+    inspect_dataset_rows(rid, row_indices=[5, 10, 15, 20])
     
     Notes
     -----
     This tool returns matching rows for inspection but does NOT create a new
     filtered dataset. To create a new filtered dataset, you would need to use
     a different workflow or tool.
+    
+    The filter_condition uses pandas.DataFrame.query() syntax. For detailed
+    documentation, see: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html
     """
     import pandas as pd
     
@@ -469,13 +503,15 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     """
     Drop rows from a dataset based on SIMPLE conditions (exact match or null check).
     
-    This tool only supports:
-    1. Dropping rows with null values: condition='is None'
-    2. Dropping rows with exact value match: condition='== "value"'
+    This tool only supports TWO condition types:
+    1. Drop rows with null/missing values: condition="is None" (EXACT STRING)
+    2. Drop rows matching EXACT string value: condition="Passed" or condition="Failed"
+    
+    IMPORTANT: This is NOT pandas query syntax. Do NOT include == or quotes for exact matches.
+    Just provide the literal string value to match.
     
     For numeric comparisons (>, <, >=, <=) or complex conditions, use
-    inspect_dataset_rows() with filter_condition to identify rows, then
-    manually filter the dataset.
+    inspect_dataset_rows() with filter_condition instead.
 
     Parameters
     ----------
@@ -484,8 +520,14 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     column_name : str
         Name of the column to check.
     condition : str
-        Simple condition - either 'is None' or '== "exact_value"'
-        Examples: 'is None', '== "Failed"', '== "invalid"'
+        EITHER:
+        - "is None" (EXACT STRING, no quotes) - drops rows where column is null/missing
+        - "exact_value" (just the value, no == or quotes) - drops rows matching this EXACT value
+        
+        CRITICAL: Do NOT use pandas query syntax here:
+        - ❌ '== "Passed"' → ✅ "Passed"
+        - ❌ "== Failed" → ✅ "Failed"
+        - ❌ 'is None' (with quotes around None) → ✅ "is None" (literal string)
 
     Returns
     -------
@@ -499,16 +541,24 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     
     Examples
     --------
-    # Drop rows with null values in a column
+    # Drop rows with null/missing values (use exact string "is None")
     drop_from_dataset(rid, "smiles_after_canonicalization", "is None")
     
-    # Drop rows with specific failed status
-    drop_from_dataset(rid, "comments", '== "Failed: Invalid SMILES string"')
+    # Drop rows where column value is exactly "Failed" (no == needed)
+    drop_from_dataset(rid, "validation_status", "Failed")
+    
+    # Drop rows where comment is exactly "Failed: Invalid SMILES string"
+    drop_from_dataset(rid, "comments", "Failed: Invalid SMILES string")
+    
+    # Drop rows where status is exactly "Passed"
+    drop_from_dataset(rid, "pains_screening", "Passed")
     
     Notes
     -----
-    For advanced filtering like "TPSA > 20" or "MolWt < 500", this tool
-    is NOT suitable. Use inspect_dataset_rows() to preview filtered data.
+    - This tool does EXACT string matching, not pattern matching
+    - For numeric filtering (e.g., "TPSA > 20"), use inspect_dataset_rows() instead
+    - For complex conditions, use inspect_dataset_rows() with filter_condition
+    - The condition parameter is NOT pandas query syntax - just provide the literal value
     """
     import pandas as pd
     
@@ -536,13 +586,15 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     """
     Keep only rows from a dataset based on SIMPLE conditions (exact match or null check).
     
-    This tool only supports:
-    1. Keeping rows with null values: condition='is None'
-    2. Keeping rows with exact value match: condition='== "value"'
+    This tool only supports TWO condition types:
+    1. Keep rows with null/missing values: condition="is None" (EXACT STRING)
+    2. Keep rows matching EXACT string value: condition="Passed" or condition="active"
+    
+    IMPORTANT: This is NOT pandas query syntax. Do NOT include == or quotes for exact matches.
+    Just provide the literal string value to match.
     
     For numeric comparisons (>, <, >=, <=) or complex conditions, use
-    inspect_dataset_rows() with filter_condition to identify rows, then
-    manually filter the dataset.
+    inspect_dataset_rows() with filter_condition instead.
 
     Parameters
     ----------
@@ -551,8 +603,14 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     column_name : str
         Name of the column to check.
     condition : str
-        Simple condition - either 'is None' or '== "exact_value"'
-        Examples: 'is None', '== "Passed"', '== "active"'
+        EITHER:
+        - "is None" (EXACT STRING, no quotes) - keeps rows where column is null/missing
+        - "exact_value" (just the value, no == or quotes) - keeps rows matching this EXACT value
+        
+        CRITICAL: Do NOT use pandas query syntax here:
+        - ❌ '== "Passed"' → ✅ "Passed"
+        - ❌ "== active" → ✅ "active"
+        - ❌ 'is None' (with quotes around None) → ✅ "is None" (literal string)
 
     Returns
     -------
@@ -566,16 +624,24 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     
     Examples
     --------
-    # Keep only rows with successful canonicalization
-    keep_from_dataset(rid, "comments_after_canonicalization", '== "Passed"')
+    # Keep only rows with successful canonicalization (use exact string "Passed")
+    keep_from_dataset(rid, "comments_after_canonicalization", "Passed")
     
-    # Keep only rows with null labels (for review)
+    # Keep only rows where status is exactly "active" (no == needed)
+    keep_from_dataset(rid, "status", "active")
+    
+    # Keep only rows with null/missing labels for review
     keep_from_dataset(rid, "label", "is None")
+    
+    # Keep only PAINS-free molecules (where screening result is exactly "Passed")
+    keep_from_dataset(rid, "pains_screening", "Passed")
     
     Notes
     -----
-    For advanced filtering like "TPSA > 20" or "MolWt < 500", this tool
-    is NOT suitable. Use inspect_dataset_rows() to preview filtered data.
+    - This tool does EXACT string matching, not pattern matching
+    - For numeric filtering (e.g., "TPSA > 20"), use inspect_dataset_rows() instead
+    - For complex conditions, use inspect_dataset_rows() with filter_condition
+    - The condition parameter is NOT pandas query syntax - just provide the literal value
     """
     import pandas as pd
     

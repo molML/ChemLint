@@ -311,11 +311,11 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
     },
 
     # hydrazine / hydrazone
-    "Hydrazine H2NNH2": {
+    "Hydrazine-like": {
         "pattern": "[NX3][NX3]",
         "comment": "Hydrazine-like N-N single bonds (H2NNH2 and substituted analogues).",
     },
-    "Hydrazone C=NNH2": {
+    "Hydrazone-like": {
         "pattern": "[NX3][NX2]=[*]",
         "comment": "Hydrazone-like N-N=C motifs.",
     },
@@ -475,7 +475,7 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
         "pattern": "[F,Cl,Br,I]",
         "comment": "Halogen atoms (F, Cl, Br, I).",
     },
-    "Three_halides groups": {
+    "Polyhalogenated": {
         "pattern": "[F,Cl,Br,I].[F,Cl,Br,I].[F,Cl,Br,I]",
         "comment": "Molecules containing at least three halogen atoms (polyhalogenated flag).",
     },

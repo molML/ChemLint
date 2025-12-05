@@ -104,14 +104,6 @@ STRUCTURAL_PATTERNS: Dict[str, Dict[str, str]] = {
         "pattern": "[AR0]~[AR0]~[AR0]~[AR0]~[AR0]~[AR0]~[AR0]~[AR0]",
         "comment": "Linear aliphatic chain with at least 8 non-aromatic atoms in a row (no ring atoms).",
     },
-    "Carbon_isolating": {
-        "pattern": "[$([#6+0]);!$(C(F)(F)F);!$(c(:[!c]):[!c])!$([#6]=,#[!#6])]",
-        "comment": (
-            "CLOGP-style isolating carbon: neutral carbon that is not CF3, "
-            "not an aromatic carbon flanked by two aromatic heteroatoms, and not "
-            "multiply bonded to a heteroatom."
-        ),
-    },
 
     # rotation
     "Rotatable bond": {
@@ -278,12 +270,6 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
         "comment": "Simple dialkyl/aryl ether: R-O-R'.",
     },
 
-    # hydrogen/charge patterns
-    "Mono-Hydrogenated Cation": {
-        "pattern": "[+H]",
-        "comment": "Any atom with a positive charge and exactly one attached hydrogen.",
-    },
-
     # amide-related N
     "Cyanamide": {
         "pattern": "[NX3][CX2]#[NX1]",
@@ -363,7 +349,7 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
         "pattern": "[OX2H]",
         "comment": "Hydroxyl group (-OH) attached to any atom.",
     },
-    "Hydroxyl in Alcohol": {
+    "C-bound Hydroxyl": {
         "pattern": "[#6][OX2H]",
         "comment": "Alcohol: C-OH group.",
     },

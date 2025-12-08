@@ -465,7 +465,7 @@ def canonicalize_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with canonicalized data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -505,10 +505,10 @@ def canonicalize_smiles_dataset(
     df['smiles_after_canonicalization'] = canonical_smiles
     df['comments_after_canonicalization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -634,7 +634,7 @@ def remove_salts_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with desalted data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -686,10 +686,10 @@ def remove_salts_dataset(
     df['smiles_after_salt_removal'] = desalted_smiles
     df['comments_after_salt_removal'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -800,7 +800,7 @@ def remove_common_solvents_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with solvent-free data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -853,10 +853,10 @@ def remove_common_solvents_dataset(
     df['smiles_after_solvent_removal'] = cleaned_smiles
     df['comments_after_solvent_removal'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1004,7 +1004,7 @@ def defragment_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with defragmented data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -1051,7 +1051,7 @@ def defragment_smiles_dataset(
     result1 = remove_common_solvents_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                              column_name="smiles_after_salt_removal")
     # Step 2: Then defragment
-    result2 = defragment_smiles_dataset(input_filename=result1["output_filename_id"], 
+    result2 = defragment_smiles_dataset(input_filename=result1["output_filename"], 
                                         column_name="smiles_after_solvent_removal")
     
     See Also
@@ -1072,10 +1072,10 @@ def defragment_smiles_dataset(
     df['smiles_after_defragmentation'] = defragmented_smiles
     df['comments_after_defragmentation'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1224,7 +1224,7 @@ def neutralize_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with neutralized data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -1282,13 +1282,13 @@ def neutralize_smiles_dataset(
     # Step 1: Remove salts
     result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Remove solvents
-    result2 = remove_common_solvents_dataset(input_filename=result1["output_filename_id"], 
+    result2 = remove_common_solvents_dataset(input_filename=result1["output_filename"], 
                                              column_name="smiles_after_salt_removal")
     # Step 3: Defragment
-    result3 = defragment_smiles_dataset(input_filename=result2["output_filename_id"], 
+    result3 = defragment_smiles_dataset(input_filename=result2["output_filename"], 
                                         column_name="smiles_after_solvent_removal")
     # Step 4: Neutralize (already canonicalized, no additional step needed)
-    result4 = neutralize_smiles_dataset(input_filename=result3["output_filename_id"], 
+    result4 = neutralize_smiles_dataset(input_filename=result3["output_filename"], 
                                         column_name="smiles_after_defragmentation")
     
     See Also
@@ -1309,10 +1309,10 @@ def neutralize_smiles_dataset(
     df['smiles_after_neutralization'] = neutralized_smiles
     df['comments_after_neutralization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1506,7 +1506,7 @@ def standardize_stereochemistry_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with standardized data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -1576,11 +1576,11 @@ def standardize_stereochemistry_dataset(
     # Step 1: Remove salts
     result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Standardize stereochemistry
     result3 = standardize_stereochemistry_dataset(
-        input_filename=result2["output_filename_id"], 
+        input_filename=result2["output_filename"], 
         column_name="smiles_after_neutralization",
         stereo_policy="flatten"  # or "keep" or "assign"
     )
@@ -1610,7 +1610,7 @@ def standardize_stereochemistry_dataset(
     df['smiles_after_stereo_standardization'] = standardized_smiles
     df['comments_after_stereo_standardization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     policy_notes = {
         "keep": "Existing stereochemistry has been preserved and canonicalized.",
@@ -1619,7 +1619,7 @@ def standardize_stereochemistry_dataset(
     }
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1762,7 +1762,7 @@ def remove_isotopes_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with de-isotoped data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -1823,10 +1823,10 @@ def remove_isotopes_dataset(
     # Step 1: Remove salts
     result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Remove isotopes if not needed
-    result3 = remove_isotopes_dataset(input_filename=result2["output_filename_id"], 
+    result3 = remove_isotopes_dataset(input_filename=result2["output_filename"], 
                                       column_name="smiles_after_neutralization")
     
     See Also
@@ -1846,10 +1846,10 @@ def remove_isotopes_dataset(
     df['smiles_after_isotope_removal'] = clean_smiles
     df['comments_after_isotope_removal'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1997,7 +1997,7 @@ def canonicalize_tautomers_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with tautomer-canonicalized data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -2056,10 +2056,10 @@ def canonicalize_tautomers_dataset(
     # Step 1: Remove salts
     result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Canonicalize tautomers
-    result3 = canonicalize_tautomers_dataset(input_filename=result2["output_filename_id"], 
+    result3 = canonicalize_tautomers_dataset(input_filename=result2["output_filename"], 
                                              column_name="smiles_after_neutralization")
     
     See Also
@@ -2080,10 +2080,10 @@ def canonicalize_tautomers_dataset(
     df['smiles_after_tautomer_canonicalization'] = canonical_tautomers
     df['comments_after_tautomer_canonicalization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2129,7 +2129,7 @@ def normalize_functional_groups_dataset(
         explanation: Brief description of the normalization performed
         
     Returns:
-        dict with output_filename_id, n_rows, columns, comments (counts), preview, note, suggestions
+        dict with output_filename, n_rows, columns, comments (counts), preview, note, suggestions
         
     Adds columns: smiles_after_functional_group_normalization, comments_after_functional_group_normalization
     """
@@ -2144,10 +2144,10 @@ def normalize_functional_groups_dataset(
     df['smiles_after_functional_group_normalization'] = normalized_smiles
     df['comments_after_functional_group_normalization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2264,7 +2264,7 @@ def reionize_smiles_dataset(
         explanation: Brief description of the reionization performed
         
     Returns:
-        dict with output_filename_id, n_rows, columns, comments (counts), preview, note, warning, suggestions
+        dict with output_filename, n_rows, columns, comments (counts), preview, note, warning, suggestions
         
     Adds columns: smiles_after_reionization, comments_after_reionization
     Output is reionized AND canonicalized.
@@ -2280,10 +2280,10 @@ def reionize_smiles_dataset(
     df['smiles_after_reionization'] = reionized_smiles
     df['comments_after_reionization'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2438,7 +2438,7 @@ def disconnect_metals_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with metal-disconnected data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -2504,17 +2504,17 @@ def disconnect_metals_smiles_dataset(
     # Step 1: Remove salts
     result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Defragment
-    result2 = defragment_smiles_dataset(input_filename=result1["output_filename_id"], 
+    result2 = defragment_smiles_dataset(input_filename=result1["output_filename"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Disconnect metals
-    result3 = disconnect_metals_smiles_dataset(input_filename=result2["output_filename_id"], 
+    result3 = disconnect_metals_smiles_dataset(input_filename=result2["output_filename"], 
                                                column_name="smiles_after_defragmentation",
                                                drop_inorganics=False)
     # Step 4: Defragment again to remove disconnected metal fragments
-    result4 = defragment_smiles_dataset(input_filename=result3["output_filename_id"], 
+    result4 = defragment_smiles_dataset(input_filename=result3["output_filename"], 
                                         column_name="smiles_after_metal_disconnection")
     # Step 5: Normalize functional groups
-    result5 = normalize_functional_groups_dataset(input_filename=result4["output_filename_id"], 
+    result5 = normalize_functional_groups_dataset(input_filename=result4["output_filename"], 
                                                    column_name="smiles_after_defragmentation")
     
     See Also
@@ -2535,12 +2535,12 @@ def disconnect_metals_smiles_dataset(
     df['smiles_after_metal_disconnection'] = disconnected_smiles
     df['comments_after_metal_disconnection'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     inorganic_note = " Purely inorganic molecules (no carbon) have been dropped." if drop_inorganics else ""
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2678,7 +2678,7 @@ def validate_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with validation results.
         - n_rows : int
             Total number of rows in the dataset.
@@ -2736,14 +2736,14 @@ def validate_smiles_dataset(
     
     # As part of a complete cleaning and validation pipeline
     # Step 1-8: Various cleaning steps...
-    result8 = canonicalize_tautomers_dataset(input_filename=result7["output_filename_id"], 
+    result8 = canonicalize_tautomers_dataset(input_filename=result7["output_filename"], 
                                              column_name="smiles_after_reionization")
     # Step 9: Final validation
-    result9 = validate_smiles_dataset(input_filename=result8["output_filename_id"], 
+    result9 = validate_smiles_dataset(input_filename=result8["output_filename"], 
                                       column_name="smiles_after_tautomer_canonicalization")
     
     # Filter to only valid molecules
-    df = _load_resource(result9["output_filename_id"])
+    df = _load_resource(result9["output_filename"])
     df_valid = df[df["validation_status"] == "Passed"]
     
     See Also
@@ -2762,7 +2762,7 @@ def validate_smiles_dataset(
     df['validated_smiles'] = validated_smiles
     df['validation_status'] = comments
 
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     # Calculate validation statistics
     n_valid = sum(1 for c in comments if c == "Passed")
@@ -2770,7 +2770,7 @@ def validate_smiles_dataset(
     validation_rate = (n_valid / len(comments) * 100) if comments else 0.0
 
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -3054,7 +3054,7 @@ def default_SMILES_standardization_pipeline_dataset(
     -------
     dict
         A dictionary containing:
-        - output_filename_id : str
+        - output_filename : str
             Full filename with unique ID for the new resource with standardized data.
         - n_rows : int
             Total number of rows in the dataset.
@@ -3153,7 +3153,7 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step1_canonicalized", "Step 1: Initial canonicalization"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_canonicalization"
     
     # Step 2: Salt removal
@@ -3162,7 +3162,7 @@ def default_SMILES_standardization_pipeline_dataset(
         f"{output_filename}_step2_desalted", "Step 2: Salt removal",
         salt_smarts=salt_smarts
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_salt_removal"
     
     # Step 3: Solvent removal
@@ -3170,7 +3170,7 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step3_desolvated", "Step 3: Solvent removal"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_solvent_removal"
     
     # Step 4: Defragmentation
@@ -3179,7 +3179,7 @@ def default_SMILES_standardization_pipeline_dataset(
         f"{output_filename}_step4_defragmented", "Step 4: Defragmentation",
         keep_largest_fragment=True
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_defragmentation"
     
     # Step 5: Functional group normalization
@@ -3187,7 +3187,7 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step5_normalized", "Step 5: Functional group normalization"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_functional_group_normalization"
     
     # Step 6: Reionization
@@ -3195,7 +3195,7 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step6_reionized", "Step 6: Reionization"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_reionization"
     
     # Step 7: Neutralization
@@ -3203,7 +3203,7 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step7_neutralized", "Step 7: Neutralization"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_neutralization"
     
     # Step 8 (OPTIONAL): Isotope removal
@@ -3212,7 +3212,7 @@ def default_SMILES_standardization_pipeline_dataset(
             current_filename, current_column, project_manifest_path,
             f"{output_filename}_step8_deisotoped", "Step 8: Isotope removal"
         )
-        current_filename = result["output_filename_id"]
+        current_filename = result["output_filename"]
         current_column = "smiles_after_isotope_removal"
     
     # Step 9 (OPTIONAL): Metal disconnection
@@ -3222,24 +3222,25 @@ def default_SMILES_standardization_pipeline_dataset(
             f"{output_filename}_step9_metals_disconnected", "Step 9: Metal disconnection",
             drop_inorganics=drop_inorganics
         )
-        current_filename = result["output_filename_id"]
+        current_filename = result["output_filename"]
         current_column = "smiles_after_metal_disconnection"
         
         # Step 9b: Re-defragmentation after metal disconnection
+        # Note: defragment_smiles_dataset always outputs 'smiles_after_defragmentation'
         result = defragment_smiles_dataset(
             current_filename, current_column, project_manifest_path,
             f"{output_filename}_step9b_redefragmented", "Step 9b: Re-defragmentation",
             keep_largest_fragment=True
         )
-        current_filename = result["output_filename_id"]
-        current_column = "smiles_after_re_defragmentation"
+        current_filename = result["output_filename"]
+        current_column = "smiles_after_defragmentation"  # Fixed: use actual output column name
     
     # Step 10: Tautomer canonicalization
     result = canonicalize_tautomers_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step10_tautomers", "Step 10: Tautomer canonicalization"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_tautomer_canonicalization"
     
     # Step 11: Stereochemistry standardization
@@ -3253,7 +3254,7 @@ def default_SMILES_standardization_pipeline_dataset(
         only_unassigned=True,
         random_seed=42
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     current_column = "smiles_after_stereo_standardization"
     
     # Step 12: Final validation
@@ -3261,13 +3262,13 @@ def default_SMILES_standardization_pipeline_dataset(
         current_filename, current_column, project_manifest_path,
         f"{output_filename}_step12_validated", "Step 12: Final validation"
     )
-    current_filename = result["output_filename_id"]
+    current_filename = result["output_filename"]
     
     # Add final 'standardized_smiles' column (copy of the last valid SMILES column)
     df_final = _load_resource(project_manifest_path, current_filename)
     df_final['standardized_smiles'] = df_final[current_column]
     
-    output_filename_id = _store_resource(df_final, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_final, project_manifest_path, output_filename, explanation, 'csv')
     
     # Compute validation statistics from the validation result
     n_valid = result.get("n_valid", 0)
@@ -3275,7 +3276,7 @@ def default_SMILES_standardization_pipeline_dataset(
     validation_rate = result.get("validation_rate", 0.0)
     
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df_final),
         "columns": list(df_final.columns),
         "preview": df_final.head(5).to_dict(orient="records"),
@@ -3358,7 +3359,7 @@ def check_smiles_for_pains_dataset(
         explanation: Brief description of the PAINS screening performed
         
     Returns:
-        dict with output_filename_id, n_rows, columns, preview, pains_summary (counts), 
+        dict with output_filename, n_rows, columns, preview, pains_summary (counts), 
         n_clean, n_flagged, n_failed, flagged_rate, note, suggestions
         
     Adds column: pains_screening with results "Passed", "PAINS: <reasons>", or "Failed: <error>"
@@ -3375,7 +3376,7 @@ def check_smiles_for_pains_dataset(
     
     df['pains_screening'] = pains_results
     
-    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
     
     # Calculate screening statistics
     n_clean = sum(1 for r in pains_results if r == "Passed")
@@ -3388,7 +3389,7 @@ def check_smiles_for_pains_dataset(
     pains_summary = dict(Counter(pains_results))
     
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "preview": df.head(5).to_dict(orient="records"),

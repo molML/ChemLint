@@ -34,7 +34,7 @@ def store_csv_as_dataset(file_path: str, project_manifest_path: str, filename: s
     -------
     dict
         {
-            "resource_id": str,     # identifier for the stored dataset
+            "output_filename": str,     # identifier for the stored dataset
             "n_rows": int,          # number of rows in the dataset
             "columns": list[str],   # all column names detected in the CSV
             "preview": list[dict],  # first 5 rows as records (for inspection)
@@ -50,10 +50,10 @@ def store_csv_as_dataset(file_path: str, project_manifest_path: str, filename: s
 
     df = pd.read_csv(file_path)
 
-    rid = _store_resource(df, project_manifest_path, filename, explanation, "csv")
+    output_filename = _store_resource(df, project_manifest_path, filename, explanation, "csv")
 
     return {
-        "resource_id": rid,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "preview": df.head(5).to_dict(orient="records"),
@@ -87,10 +87,10 @@ def store_csv_as_dataset_from_text(csv_content: str, project_manifest_path: str,
     # Read CSV from string content
     df = pd.read_csv(StringIO(csv_content))
     
-    rid = _store_resource(df, project_manifest_path, filename, explanation, "csv")
+    output_filename = _store_resource(df, project_manifest_path, filename, explanation, "csv")
     
     return {
-        "resource_id": rid,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "preview": df.head(5).to_dict(orient="records"),
@@ -594,11 +594,23 @@ def drop_from_dataset(input_filename: str, column_name: str, condition: str, pro
     if condition == 'is None':
         df_cleaned = df[df[column_name].notnull()]
     else:
-        df_cleaned = df[df[column_name] != condition]
+        # Attempt to convert condition to match column dtype for proper comparison
+        col_data = df[column_name]
+        try:
+            # If column is numeric, try to convert condition to numeric
+            if pd.api.types.is_numeric_dtype(col_data):
+                condition_value = pd.to_numeric(condition)
+            else:
+                condition_value = condition
+        except (ValueError, TypeError):
+            # If conversion fails, use as-is
+            condition_value = condition
+        
+        df_cleaned = df[df[column_name] != condition_value]
 
-    output_filename_id = _store_resource(df_cleaned, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_cleaned, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df_cleaned),
         "columns": list(df_cleaned.columns),
         "preview": df_cleaned.head(5).to_dict(orient="records"),
@@ -683,11 +695,23 @@ def keep_from_dataset(input_filename: str, column_name: str, condition: str, pro
     if condition == 'is None':
         df_filtered = df[df[column_name].isnull()]
     else:
-        df_filtered = df[df[column_name] == condition]
+        # Attempt to convert condition to match column dtype for proper comparison
+        col_data = df[column_name]
+        try:
+            # If column is numeric, try to convert condition to numeric
+            if pd.api.types.is_numeric_dtype(col_data):
+                condition_value = pd.to_numeric(condition)
+            else:
+                condition_value = condition
+        except (ValueError, TypeError):
+            # If conversion fails, use as-is
+            condition_value = condition
+        
+        df_filtered = df[df[column_name] == condition_value]
 
-    output_filename_id = _store_resource(df_filtered, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_filtered, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows": len(df_filtered),
         "columns": list(df_filtered.columns),
         "preview": df_filtered.head(5).to_dict(orient="records"),
@@ -727,9 +751,9 @@ def deduplicate_molecules_dataset(input_filename: str, molecule_id_column: str, 
 
     df_deduplicated = df.drop_duplicates(subset=[molecule_id_column])
 
-    output_filename_id = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_deduplicated),
         "columns": list(df_deduplicated.columns),
@@ -773,9 +797,9 @@ def drop_duplicate_rows(input_filename: str, subset_columns: list[str] | None, p
 
     df_deduplicated = df.drop_duplicates(subset=subset_columns)
 
-    output_filename_id = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_deduplicated),
         "columns": list(df_deduplicated.columns),
@@ -811,9 +835,9 @@ def drop_empty_rows(input_filename: str, project_manifest_path: str, output_file
 
     df_non_empty = df.dropna(how='all')
 
-    output_filename_id = _store_resource(df_non_empty, project_manifest_path, output_filename, explanation, 'csv')
+    output_filename = _store_resource(df_non_empty, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "output_filename_id": output_filename_id,
+        "output_filename": output_filename,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_non_empty),
         "columns": list(df_non_empty.columns),

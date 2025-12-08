@@ -196,8 +196,8 @@ def _store_resource(obj: Any, project_manifest_path: str, filename: str, explain
     # Get data directory from manifest path (same directory as manifest)
     data_dir = Path(project_manifest_path).parent
     # Combine user's filename with unique resource ID
-    output_filename_id = f"{filename}{rid}"
-    path = data_dir / output_filename_id
+    output_filename = f"{filename}{rid}"
+    path = data_dir / output_filename
 
     # Get the appropriate save function for this type and save the object
     save_fn: Callable[[Any, Path], None] = TYPE_REGISTRY[type_tag]['save']
@@ -212,7 +212,7 @@ def _store_resource(obj: Any, project_manifest_path: str, filename: str, explain
     # Add entry to project manifest with all metadata
     add_to_project_manifest(
         project_manifest_path=project_manifest_path, 
-        filename=output_filename_id, 
+        filename=output_filename, 
         type_tag=type_tag, 
         explaination=explaination, 
         timestamp=ts, 
@@ -221,7 +221,7 @@ def _store_resource(obj: Any, project_manifest_path: str, filename: str, explain
         module_name=parent_info['module']
     )
 
-    return output_filename_id
+    return output_filename
 
 
 def _load_resource(project_manifest_path: str, filename: str) -> Any:
@@ -288,29 +288,16 @@ def _load_resource(project_manifest_path: str, filename: str) -> Any:
     # Get the data directory (same as manifest directory)
     data_dir = Path(project_manifest_path).parent
     
-    # Find the actual file on disk
-    # Files are stored as: {base_filename}_{random_id}{ext}
-    base_filename = resource_entry["filename"]
-    ext = TYPE_REGISTRY[type_tag]["ext"]
+    # The filename in the manifest is the complete filename with unique ID
+    # (e.g., "cleaned_data_A3F2B1D4.csv")
+    full_filename = resource_entry["filename"]
+    path = data_dir / full_filename
     
-    # Search for files matching the pattern
-    matching_files = list(data_dir.glob(f"{base_filename}_*{ext}"))
-    
-    if not matching_files:
+    # Verify the file exists on disk
+    if not path.exists():
         raise FileNotFoundError(
-            f"Resource file for '{base_filename}' (type: {type_tag}) not found in {data_dir}. "
-            f"Expected pattern: {base_filename}_*{ext}"
+            f"Resource file '{full_filename}' not found at expected location: {path}"
         )
-    
-    if len(matching_files) > 1:
-        # If multiple files match, this shouldn't happen with unique IDs, but handle it
-        raise ValueError(
-            f"Multiple files found for resource '{base_filename}': {[f.name for f in matching_files]}. "
-            f"This indicates a problem with resource management."
-        )
-    
-    # Load the file using the appropriate loader
-    path = matching_files[0]
     load_fn: Callable[[Path], Any] = TYPE_REGISTRY[type_tag]["load"]
     
     return load_fn(path)

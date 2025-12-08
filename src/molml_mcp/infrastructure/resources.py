@@ -16,6 +16,11 @@ from molml_mcp.infrastructure.supported_resource_types import TYPE_REGISTRY
 from molml_mcp.config import DATA_ROOT
 
 
+def get_supported_resource_types() -> list[str]:
+    """Return a list of supported resource types."""
+    return list(TYPE_REGISTRY.keys())
+
+
 def _get_timestamp() -> str:
     """Generate ISO-format timestamp string."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -460,3 +465,14 @@ def list_untracked_resources_in_project(project_manifest_path: str) -> list[str]
     untracked_files = list(all_files - tracked_files)
     return untracked_files
 
+
+def get_all_resources_tools() -> list[Callable]:
+    """Return list of all resource management tools for MCP server."""
+    return [
+        create_project_manifest,
+        read_project_manifest,
+        add_to_project_manifest,
+        remove_from_project_manifest,
+        list_untracked_resources_in_project,
+        get_supported_resource_types
+    ]

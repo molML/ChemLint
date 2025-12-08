@@ -1,5 +1,4 @@
 from collections import Counter
-from rdkit.Chem import MolFromSmiles, MolToSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 from molml_mcp.infrastructure.logging import loggable
 from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles, _normalize_smiles, _reionize_smiles, _disconnect_metals_smiles, _validate_smiles
@@ -72,14 +71,14 @@ PROTOCOL STEPS
 **PHASE 1: INITIAL CANONICALIZATION & STRUCTURAL CLEANUP**
 
 Step 1: Initial Canonicalization
-    Function: canonicalize_smiles_dataset(resource_id, column_name="smiles")
+    Function: canonicalize_smiles_dataset(input_filename, column_name="smiles", project_manifest_path, output_filename)
     Purpose: Establish baseline consistency and enable early detection of 
              invalid structures
     Rationale: Start with canonical form to identify parsing issues immediately
     Output Column: smiles_after_canonicalization
 
 Step 2: Salt Removal
-    Function: remove_salts_dataset(resource_id, column_name, 
+    Function: remove_salts_dataset(input_filename, column_name, project_manifest_path, output_filename, 
                                     salt_smarts=SMARTS_COMMON_SALTS)
     Purpose: Remove common pharmaceutical salt counterions (Cl, Na, Mg, Ca, K, 
              Br, Zn, Ag, Al, Li, I, O, N, H)
@@ -89,7 +88,7 @@ Step 2: Salt Removal
     Output Column: smiles_after_salt_removal
 
 Step 3: Solvent Removal
-    Function: remove_common_solvents_dataset(resource_id, column_name)
+    Function: remove_common_solvents_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Strip 35 common laboratory solvents (water, ethanol, DMF, DMSO, etc.)
     Rationale: Solvents are co-crystallization artifacts, not target molecules
     CRITICAL: Must be done BEFORE defragmentation to prevent accidentally 
@@ -97,7 +96,7 @@ Step 3: Solvent Removal
     Output Column: smiles_after_solvent_removal
 
 Step 4: Defragmentation
-    Function: defragment_smiles_dataset(resource_id, column_name, 
+    Function: defragment_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename, 
                                          keep_largest_fragment=True)
     Purpose: Isolate largest molecular component
     Rationale: After salt/solvent removal, keep the main molecule
@@ -109,7 +108,7 @@ Step 4: Defragmentation
 **PHASE 2: FUNCTIONAL GROUP STANDARDIZATION**
 
 Step 5: Functional Group Normalization
-    Function: normalize_functional_groups_dataset(resource_id, column_name)
+    Function: normalize_functional_groups_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Standardize nitro groups, N-oxides, azides, diazo compounds, 
              sulfoxides, and phosphates to preferred representations
     Rationale: RDKit's Normalizer ensures consistent functional group encoding
@@ -117,7 +116,7 @@ Step 5: Functional Group Normalization
     Output Column: smiles_after_normalization
 
 Step 6: Reionization
-    Function: reionize_smiles_dataset(resource_id, column_name)
+    Function: reionize_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Adjust charge distributions to chemically preferred forms for 
              zwitterions and multi-ionizable compounds
     Rationale: RDKit's Reionizer applies chemical knowledge to set reasonable
@@ -128,7 +127,7 @@ Step 6: Reionization
     Output Column: smiles_after_reionization
 
 Step 7: Charge Neutralization
-    Function: neutralize_smiles_dataset(resource_id, column_name)
+    Function: neutralize_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Convert charged species to neutral forms (protonated amines→amines,
              carboxylates→acids)
     Rationale: Most ML models work better with neutral forms; reduces complexity
@@ -142,7 +141,7 @@ Step 7: Charge Neutralization
 **PHASE 3: OPTIONAL SPECIALIZED CLEANING**
 
 Step 8 (OPTIONAL): Isotope Removal
-    Function: remove_isotopes_dataset(resource_id, column_name)
+    Function: remove_isotopes_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Remove isotopic labels ([2H], [13C], [18F], etc.) to standard isotopes
     Rationale: Isotope labels are typically irrelevant for structure-based ML
     DEFAULT: Included in standard protocol (most use cases don't need isotopes)
@@ -154,7 +153,7 @@ Step 8 (OPTIONAL): Isotope Removal
     Output Column: smiles_after_isotope_removal
 
 Step 9 (OPTIONAL): Metal Disconnection
-    Function: disconnect_metals_smiles_dataset(resource_id, column_name, 
+    Function: disconnect_metals_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename, 
                                                  drop_inorganics=False)
     Purpose: Break metal-ligand coordinate bonds; optionally filter inorganics
     Rationale: Separates organic ligands from metal centers for structure-based ML
@@ -169,7 +168,7 @@ Step 9 (OPTIONAL): Metal Disconnection
     Output Column: smiles_after_metal_disconnection
 
 Step 9b (CONDITIONAL): Re-defragmentation After Metal Disconnection
-    Function: defragment_smiles_dataset(resource_id, column_name, 
+    Function: defragment_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename, 
                                          keep_largest_fragment=True)
     Purpose: Remove disconnected metal fragments after coordinate bond breaking
     Rationale: Keep organic ligand, discard metal center
@@ -179,7 +178,7 @@ Step 9b (CONDITIONAL): Re-defragmentation After Metal Disconnection
 **PHASE 4: CHEMICAL CANONICALIZATION**
 
 Step 10: Tautomer Canonicalization
-    Function: canonicalize_tautomers_dataset(resource_id, column_name)
+    Function: canonicalize_tautomers_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Standardize keto-enol, imine-enamine, and other tautomeric forms
              to RDKit's canonical tautomer
     Rationale: Tautomers are chemically equivalent and should have identical
@@ -190,7 +189,7 @@ Step 10: Tautomer Canonicalization
     Output Column: smiles_after_tautomer_canonicalization
 
 Step 11: Stereochemistry Standardization
-    Function: standardize_stereochemistry_dataset(resource_id, column_name, 
+    Function: standardize_stereochemistry_dataset(input_filename, column_name, project_manifest_path, output_filename, 
                                                     stereo_policy="flatten")
     Purpose: Remove all stereochemical information (chiral centers + E/Z bonds)
              to treat stereoisomers as identical
@@ -210,7 +209,7 @@ Step 11: Stereochemistry Standardization
 **PHASE 5: VALIDATION**
 
 Step 12: Final Validation
-    Function: validate_smiles_dataset(resource_id, column_name)
+    Function: validate_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename)
     Purpose: Verify parseability, sanitization, and compute validation statistics
     Rationale: Final quality control check; flag problematic entries for review
     NOTE: Returns ORIGINAL SMILES unchanged (validation only, not modification)
@@ -434,7 +433,13 @@ def canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 
 @loggable
-def canonicalize_smiles_dataset(resource_id:str, column_name:str, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def canonicalize_smiles_dataset(
+    input_filename: str,
+    column_name: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Canonicalize all SMILES strings"
+) -> dict:
     """
     Canonicalize all SMILES strings in a specified column of a tabular dataset.
     
@@ -445,14 +450,14 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str, project_manife
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., 'dataset_raw_A3F2B1D4').
     column_name : str
         Name of the column containing SMILES strings to be canonicalized.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., 'dataset_cleaned').
     explanation : str
         Brief description of the canonicalization performed.
     
@@ -460,8 +465,8 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str, project_manife
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with canonicalized data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with canonicalized data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -489,7 +494,7 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str, project_manife
     - 'comments_after_canonicalization': Contains any comments or warnings from the 
       canonicalization process.
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -500,10 +505,10 @@ def canonicalize_smiles_dataset(resource_id:str, column_name:str, project_manife
     df['smiles_after_canonicalization'] = canonical_smiles
     df['comments_after_canonicalization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -588,12 +593,12 @@ def remove_salts(smiles: list[str], salt_smarts: str = SMARTS_COMMON_SALTS) -> t
 
 @loggable
 def remove_salts_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    salt_smarts: str = SMARTS_COMMON_SALTS,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Remove salt counterions from molecules",
+    salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> dict:
     """
     Remove common salt ions from SMILES strings in a specified column of a tabular dataset.
@@ -609,8 +614,8 @@ def remove_salts_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be desalted.
     salt_smarts : str, optional
@@ -620,8 +625,8 @@ def remove_salts_dataset(
         Only change this if you have a specific reason.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the salt removal performed.
     
@@ -629,8 +634,8 @@ def remove_salts_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with desalted data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with desalted data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -662,7 +667,7 @@ def remove_salts_dataset(
     Examples
     --------
     # Typical usage with default salt pattern
-    result = remove_salts_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+    result = remove_salts_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                    column_name="smiles")
     
     See Also
@@ -670,7 +675,7 @@ def remove_salts_dataset(
     remove_salts : For processing a list of SMILES strings
     canonicalize_smiles_dataset : For dataset-level canonicalization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -681,10 +686,10 @@ def remove_salts_dataset(
     df['smiles_after_salt_removal'] = desalted_smiles
     df['comments_after_salt_removal'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -764,11 +769,11 @@ def remove_common_solvents(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def remove_common_solvents_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Remove common solvent molecules"
 ) -> dict:
     """
     Remove known common solvent fragments from SMILES strings in a specified column of a tabular dataset.
@@ -780,14 +785,14 @@ def remove_common_solvents_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be processed.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the solvent removal performed.
     
@@ -795,8 +800,8 @@ def remove_common_solvents_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with solvent-free data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with solvent-free data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -828,7 +833,7 @@ def remove_common_solvents_dataset(
     Examples
     --------
     # Typical usage
-    result = remove_common_solvents_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+    result = remove_common_solvents_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                             column_name="smiles")
     
     See Also
@@ -837,7 +842,7 @@ def remove_common_solvents_dataset(
     remove_salts_dataset : For dataset-level salt removal
     canonicalize_smiles_dataset : For dataset-level canonicalization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -848,10 +853,10 @@ def remove_common_solvents_dataset(
     df['smiles_after_solvent_removal'] = cleaned_smiles
     df['comments_after_solvent_removal'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -956,12 +961,12 @@ def defragment_smiles(smiles: list[str], keep_largest_fragment: bool = True) -> 
 
 @loggable
 def defragment_smiles_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    keep_largest_fragment: bool = True,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Remove disconnected fragments from SMILES",
+    keep_largest_fragment: bool = True
 ) -> dict:
     """
     Remove smaller fragments from SMILES strings in a specified column of a tabular dataset.
@@ -981,8 +986,8 @@ def defragment_smiles_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be defragmented.
     keep_largest_fragment : bool, optional
@@ -990,8 +995,8 @@ def defragment_smiles_dataset(
         If False, returns the original SMILES unchanged if fragments are detected.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the defragmentation performed.
     
@@ -999,8 +1004,8 @@ def defragment_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with defragmented data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with defragmented data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -1043,10 +1048,10 @@ def defragment_smiles_dataset(
     --------
     # Typical usage (after removing common solvents)
     # Step 1: Remove solvents first
-    result1 = remove_common_solvents_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+    result1 = remove_common_solvents_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                              column_name="smiles_after_salt_removal")
     # Step 2: Then defragment
-    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
+    result2 = defragment_smiles_dataset(input_filename=result1["output_filename_id"], 
                                         column_name="smiles_after_solvent_removal")
     
     See Also
@@ -1056,7 +1061,7 @@ def defragment_smiles_dataset(
     remove_salts_dataset : For dataset-level salt removal
     canonicalize_smiles_dataset : For dataset-level canonicalization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -1067,10 +1072,10 @@ def defragment_smiles_dataset(
     df['smiles_after_defragmentation'] = defragmented_smiles
     df['comments_after_defragmentation'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1178,11 +1183,11 @@ def neutralize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def neutralize_smiles_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Neutralize charges in molecules"
 ) -> dict:
     """
     Neutralize charged molecules in a specified column of a tabular dataset.
@@ -1204,14 +1209,14 @@ def neutralize_smiles_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be neutralized.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the neutralization performed.
     
@@ -1219,8 +1224,8 @@ def neutralize_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with neutralized data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with neutralized data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -1270,20 +1275,20 @@ def neutralize_smiles_dataset(
     Examples
     --------
     # Typical usage after salt removal and defragmentation
-    result = neutralize_smiles_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+    result = neutralize_smiles_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                        column_name="smiles_after_defragmentation")
     
     # Or as part of a cleaning pipeline
     # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Remove solvents
-    result2 = remove_common_solvents_dataset(resource_id=result1["resource_id"], 
+    result2 = remove_common_solvents_dataset(input_filename=result1["output_filename_id"], 
                                              column_name="smiles_after_salt_removal")
     # Step 3: Defragment
-    result3 = defragment_smiles_dataset(resource_id=result2["resource_id"], 
+    result3 = defragment_smiles_dataset(input_filename=result2["output_filename_id"], 
                                         column_name="smiles_after_solvent_removal")
     # Step 4: Neutralize (already canonicalized, no additional step needed)
-    result4 = neutralize_smiles_dataset(resource_id=result3["resource_id"], 
+    result4 = neutralize_smiles_dataset(input_filename=result3["output_filename_id"], 
                                         column_name="smiles_after_defragmentation")
     
     See Also
@@ -1293,7 +1298,7 @@ def neutralize_smiles_dataset(
     remove_salts_dataset : For dataset-level salt removal
     defragment_smiles_dataset : For dataset-level defragmentation
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -1304,10 +1309,10 @@ def neutralize_smiles_dataset(
     df['smiles_after_neutralization'] = neutralized_smiles
     df['comments_after_neutralization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1443,17 +1448,17 @@ def standardize_stereochemistry(
 
 @loggable
 def standardize_stereochemistry_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Standardize stereochemistry in SMILES strings",
     stereo_policy: str = "keep",
     assign_policy: str = "first",
     max_isomers: int = 32,
     try_embedding: bool = False,
     only_unassigned: bool = True,
-    random_seed: int = 42,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    random_seed: int = 42
 ) -> dict:
     """
     Standardize stereochemistry in SMILES strings in a specified column of a tabular dataset.
@@ -1468,8 +1473,8 @@ def standardize_stereochemistry_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be standardized.
     stereo_policy : str, optional
@@ -1492,8 +1497,8 @@ def standardize_stereochemistry_dataset(
         Random seed for reproducibility (default: 42)
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the stereochemistry standardization performed.
     
@@ -1501,8 +1506,8 @@ def standardize_stereochemistry_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with standardized data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with standardized data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -1546,21 +1551,21 @@ def standardize_stereochemistry_dataset(
     --------
     # Keep existing stereochemistry (default)
     result = standardize_stereochemistry_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles_after_neutralization",
         stereo_policy="keep"
     )
     
     # Flatten all stereochemistry
     result = standardize_stereochemistry_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles_after_neutralization",
         stereo_policy="flatten"
     )
     
     # Assign stereochemistry with random selection
     result = standardize_stereochemistry_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles_after_neutralization",
         stereo_policy="assign",
         assign_policy="random",
@@ -1569,13 +1574,13 @@ def standardize_stereochemistry_dataset(
     
     # As part of a cleaning pipeline
     # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(resource_id=result1["resource_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Standardize stereochemistry
     result3 = standardize_stereochemistry_dataset(
-        resource_id=result2["resource_id"], 
+        input_filename=result2["output_filename_id"], 
         column_name="smiles_after_neutralization",
         stereo_policy="flatten"  # or "keep" or "assign"
     )
@@ -1586,7 +1591,7 @@ def standardize_stereochemistry_dataset(
     canonicalize_smiles_dataset : For canonicalization that preserves stereochemistry
     neutralize_smiles_dataset : For charge neutralization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -1605,7 +1610,7 @@ def standardize_stereochemistry_dataset(
     df['smiles_after_stereo_standardization'] = standardized_smiles
     df['comments_after_stereo_standardization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     policy_notes = {
         "keep": "Existing stereochemistry has been preserved and canonicalized.",
@@ -1614,7 +1619,7 @@ def standardize_stereochemistry_dataset(
     }
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1722,11 +1727,11 @@ def remove_isotopes(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def remove_isotopes_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Remove isotope labels from molecules"
 ) -> dict:
     """
     Remove isotopic labels from SMILES strings in a specified column of a tabular dataset.
@@ -1742,14 +1747,14 @@ def remove_isotopes_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be de-isotoped.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the isotope removal performed.
     
@@ -1757,8 +1762,8 @@ def remove_isotopes_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with de-isotoped data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with de-isotoped data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -1811,17 +1816,17 @@ def remove_isotopes_dataset(
     Examples
     --------
     # Typical usage when isotope labels are not relevant
-    result = remove_isotopes_dataset(resource_id="20251204T120000_csv_ABC123.csv", 
+    result = remove_isotopes_dataset(input_filename="dataset_raw_A3F2B1D4", 
                                      column_name="smiles_after_neutralization")
     
     # As part of a cleaning pipeline
     # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(resource_id=result1["resource_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Remove isotopes if not needed
-    result3 = remove_isotopes_dataset(resource_id=result2["resource_id"], 
+    result3 = remove_isotopes_dataset(input_filename=result2["output_filename_id"], 
                                       column_name="smiles_after_neutralization")
     
     See Also
@@ -1830,7 +1835,7 @@ def remove_isotopes_dataset(
     canonicalize_smiles_dataset : For canonicalization without isotope removal
     neutralize_smiles_dataset : For charge neutralization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -1841,10 +1846,10 @@ def remove_isotopes_dataset(
     df['smiles_after_isotope_removal'] = clean_smiles
     df['comments_after_isotope_removal'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -1951,11 +1956,11 @@ def canonicalize_tautomers(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def canonicalize_tautomers_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Canonicalize tautomers to standard forms"
 ) -> dict:
     """
     Canonicalize tautomeric forms of molecules in a specified column of a tabular dataset.
@@ -1977,14 +1982,14 @@ def canonicalize_tautomers_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to be canonicalized.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the tautomer canonicalization performed.
     
@@ -1992,8 +1997,8 @@ def canonicalize_tautomers_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with tautomer-canonicalized data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with tautomer-canonicalized data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -2043,18 +2048,18 @@ def canonicalize_tautomers_dataset(
     --------
     # Typical usage after basic cleaning steps
     result = canonicalize_tautomers_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
+        input_filename="dataset_raw_A3F2B1D4", 
         column_name="smiles_after_neutralization"
     )
     
     # As part of a cleaning pipeline
     # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(resource_id=result1["resource_id"], 
+    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename_id"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Canonicalize tautomers
-    result3 = canonicalize_tautomers_dataset(resource_id=result2["resource_id"], 
+    result3 = canonicalize_tautomers_dataset(input_filename=result2["output_filename_id"], 
                                              column_name="smiles_after_neutralization")
     
     See Also
@@ -2064,7 +2069,7 @@ def canonicalize_tautomers_dataset(
     neutralize_smiles_dataset : For charge neutralization
     standardize_stereochemistry_dataset : For stereochemistry handling
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -2075,10 +2080,10 @@ def canonicalize_tautomers_dataset(
     df['smiles_after_tautomer_canonicalization'] = canonical_tautomers
     df['comments_after_tautomer_canonicalization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2108,27 +2113,27 @@ def normalize_functional_groups(smiles: list[str]) -> tuple[list[str], list[str]
 
 @loggable
 def normalize_functional_groups_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Normalize functional groups to preferred representations"
 ) -> dict:
     """Normalize functional groups (nitro, N-oxide, azide, etc.) to preferred representations in a dataset column.
     
     Args:
-        resource_id: Dataset identifier
+        input_filename: Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\')
         column_name: Column with SMILES to normalize
         project_manifest_path: Path to the project manifest file for tracking this resource
-        filename: Base filename for the stored resource (without extension)
+        output_filename: Base filename for the stored resource (without extension)
         explanation: Brief description of the normalization performed
         
     Returns:
-        dict with resource_id, n_rows, columns, comments (counts), preview, note, suggestions
+        dict with output_filename_id, n_rows, columns, comments (counts), preview, note, suggestions
         
     Adds columns: smiles_after_functional_group_normalization, comments_after_functional_group_normalization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -2139,10 +2144,10 @@ def normalize_functional_groups_dataset(
     df['smiles_after_functional_group_normalization'] = normalized_smiles
     df['comments_after_functional_group_normalization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2243,28 +2248,28 @@ def reionize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def reionize_smiles_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Reionize molecules to preferred charge distribution"
 ) -> dict:
     """Reionize molecules to preferred charge distribution (zwitterions, multi-ionizable compounds) in a dataset column.
     
     Args:
-        resource_id: Dataset identifier
+        input_filename: Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\')
         column_name: Column with SMILES to reionize
         project_manifest_path: Path to the project manifest file for tracking this resource
-        filename: Base filename for the stored resource (without extension)
+        output_filename: Base filename for the stored resource (without extension)
         explanation: Brief description of the reionization performed
         
     Returns:
-        dict with resource_id, n_rows, columns, comments (counts), preview, note, warning, suggestions
+        dict with output_filename_id, n_rows, columns, comments (counts), preview, note, warning, suggestions
         
     Adds columns: smiles_after_reionization, comments_after_reionization
     Output is reionized AND canonicalized.
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -2275,10 +2280,10 @@ def reionize_smiles_dataset(
     df['smiles_after_reionization'] = reionized_smiles
     df['comments_after_reionization'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2389,12 +2394,12 @@ def disconnect_metals_smiles(smiles: list[str], drop_inorganics: bool = False) -
 
 @loggable
 def disconnect_metals_smiles_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    drop_inorganics: bool = False,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Disconnect metal-ligand coordinate bonds",
+    drop_inorganics: bool = False
 ) -> dict:
     """
     Disconnect metal-ligand coordinate bonds in a specified column of a tabular dataset.
@@ -2415,8 +2420,8 @@ def disconnect_metals_smiles_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to process.
     drop_inorganics : bool, optional
@@ -2424,8 +2429,8 @@ def disconnect_metals_smiles_dataset(
         and returned as None. Default is False.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the metal disconnection performed.
     
@@ -2433,8 +2438,8 @@ def disconnect_metals_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with metal-disconnected data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with metal-disconnected data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -2484,32 +2489,32 @@ def disconnect_metals_smiles_dataset(
     --------
     # Typical usage after defragmentation
     result = disconnect_metals_smiles_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
+        input_filename="dataset_raw_A3F2B1D4", 
         column_name="smiles_after_defragmentation"
     )
     
     # Drop purely inorganic molecules
     result = disconnect_metals_smiles_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
+        input_filename="dataset_raw_A3F2B1D4", 
         column_name="smiles_after_defragmentation",
         drop_inorganics=True
     )
     
     # As part of a cleaning pipeline
     # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
     # Step 2: Defragment
-    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
+    result2 = defragment_smiles_dataset(input_filename=result1["output_filename_id"], 
                                         column_name="smiles_after_salt_removal")
     # Step 3: Disconnect metals
-    result3 = disconnect_metals_smiles_dataset(resource_id=result2["resource_id"], 
+    result3 = disconnect_metals_smiles_dataset(input_filename=result2["output_filename_id"], 
                                                column_name="smiles_after_defragmentation",
                                                drop_inorganics=False)
     # Step 4: Defragment again to remove disconnected metal fragments
-    result4 = defragment_smiles_dataset(resource_id=result3["resource_id"], 
+    result4 = defragment_smiles_dataset(input_filename=result3["output_filename_id"], 
                                         column_name="smiles_after_metal_disconnection")
     # Step 5: Normalize functional groups
-    result5 = normalize_functional_groups_dataset(resource_id=result4["resource_id"], 
+    result5 = normalize_functional_groups_dataset(input_filename=result4["output_filename_id"], 
                                                    column_name="smiles_after_defragmentation")
     
     See Also
@@ -2519,7 +2524,7 @@ def disconnect_metals_smiles_dataset(
     remove_salts_dataset : For removing salt counterions
     normalize_functional_groups_dataset : For functional group standardization
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -2530,12 +2535,12 @@ def disconnect_metals_smiles_dataset(
     df['smiles_after_metal_disconnection'] = disconnected_smiles
     df['comments_after_metal_disconnection'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     inorganic_note = " Purely inorganic molecules (no carbon) have been dropped." if drop_inorganics else ""
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2633,11 +2638,11 @@ def validate_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
 
 @loggable
 def validate_smiles_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Validate SMILES strings for correctness"
 ) -> dict:
     """
     Validate SMILES strings in a specified column of a tabular dataset.
@@ -2658,14 +2663,14 @@ def validate_smiles_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to validate.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the validation performed.
     
@@ -2673,8 +2678,8 @@ def validate_smiles_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with validation results.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with validation results.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -2721,7 +2726,7 @@ def validate_smiles_dataset(
     --------
     # Final validation after cleaning pipeline
     result = validate_smiles_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
+        input_filename="dataset_raw_A3F2B1D4", 
         column_name="smiles_after_tautomer_canonicalization"
     )
     
@@ -2731,14 +2736,14 @@ def validate_smiles_dataset(
     
     # As part of a complete cleaning and validation pipeline
     # Step 1-8: Various cleaning steps...
-    result8 = canonicalize_tautomers_dataset(resource_id=result7["resource_id"], 
+    result8 = canonicalize_tautomers_dataset(input_filename=result7["output_filename_id"], 
                                              column_name="smiles_after_reionization")
     # Step 9: Final validation
-    result9 = validate_smiles_dataset(resource_id=result8["resource_id"], 
+    result9 = validate_smiles_dataset(input_filename=result8["output_filename_id"], 
                                       column_name="smiles_after_tautomer_canonicalization")
     
     # Filter to only valid molecules
-    df = _load_resource(result9["resource_id"])
+    df = _load_resource(result9["output_filename_id"])
     df_valid = df[df["validation_status"] == "Passed"]
     
     See Also
@@ -2746,7 +2751,7 @@ def validate_smiles_dataset(
     validate_smiles : For processing a list of SMILES strings
     canonicalize_smiles_dataset : For standardization with implicit validation
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -2757,7 +2762,7 @@ def validate_smiles_dataset(
     df['validated_smiles'] = validated_smiles
     df['validation_status'] = comments
 
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
 
     # Calculate validation statistics
     n_valid = sum(1 for c in comments if c == "Passed")
@@ -2765,7 +2770,7 @@ def validate_smiles_dataset(
     validation_rate = (n_valid / len(comments) * 100) if comments else 0.0
 
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
@@ -2992,16 +2997,16 @@ def default_SMILES_standardization_pipeline(
 
 @loggable
 def default_SMILES_standardization_pipeline_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Apply default SMILES standardization protocol",
     stereo_policy: str = "flatten",
     skip_isotope_removal: bool = False,
     enable_metal_disconnection: bool = False,
     drop_inorganics: bool = False,
-    salt_smarts: str = SMARTS_COMMON_SALTS,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> dict:
     """
     Apply the default SMILES standardization protocol to a dataset with full audit trail.
@@ -3017,8 +3022,8 @@ def default_SMILES_standardization_pipeline_dataset(
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
+    input_filename : str
+        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
     column_name : str
         Name of the column containing SMILES strings to standardize.
     stereo_policy : str, optional
@@ -3040,8 +3045,8 @@ def default_SMILES_standardization_pipeline_dataset(
         **WARNING**: Only change for specialized datasets (e.g., organometallics).
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
-        Base filename for the stored resource (without extension).
+    output_filename : str
+        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
     explanation : str
         Brief description of the standardization pipeline performed.
     
@@ -3049,8 +3054,8 @@ def default_SMILES_standardization_pipeline_dataset(
     -------
     dict
         A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with standardized data.
+        - output_filename_id : str
+            Full filename with unique ID for the new resource with standardized data.
         - n_rows : int
             Total number of rows in the dataset.
         - columns : list of str
@@ -3074,21 +3079,21 @@ def default_SMILES_standardization_pipeline_dataset(
     --------
     # General ML use case (default settings)
     result = default_SMILES_standardization_pipeline_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles"
     )
     # Returns dataset with all intermediate columns plus 'standardized_smiles'
     
     # Drug discovery (keep stereochemistry)
     result = default_SMILES_standardization_pipeline_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles",
         stereo_policy="keep"
     )
     
     # Coordination chemistry (disconnect metals)
     result = default_SMILES_standardization_pipeline_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles",
         enable_metal_disconnection=True,
         drop_inorganics=True
@@ -3096,7 +3101,7 @@ def default_SMILES_standardization_pipeline_dataset(
     
     # Radiolabeling study (keep isotopes)
     result = default_SMILES_standardization_pipeline_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv",
+        input_filename="dataset_raw_A3F2B1D4",
         column_name="smiles",
         skip_isotope_removal=True
     )
@@ -3135,77 +3140,112 @@ def default_SMILES_standardization_pipeline_dataset(
     default_SMILES_standardization_pipeline : Simpler list-based version
     get_SMILES_standardization_guidelines : Detailed protocol documentation
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column '{column_name}' not found in dataset. Available columns: {list(df.columns)}")
     
-    current_resource_id = resource_id
+    current_filename = input_filename
     current_column = column_name
     
     # Step 1: Initial canonicalization
-    result = canonicalize_smiles_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = canonicalize_smiles_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step1_canonicalized", "Step 1: Initial canonicalization"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_canonicalization"
     
     # Step 2: Salt removal
-    result = remove_salts_dataset(current_resource_id, current_column, salt_smarts=salt_smarts)
-    current_resource_id = result["resource_id"]
+    result = remove_salts_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step2_desalted", "Step 2: Salt removal",
+        salt_smarts=salt_smarts
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_salt_removal"
     
     # Step 3: Solvent removal
-    result = remove_common_solvents_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = remove_common_solvents_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step3_desolvated", "Step 3: Solvent removal"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_solvent_removal"
     
     # Step 4: Defragmentation
-    result = defragment_smiles_dataset(current_resource_id, current_column, keep_largest_fragment=True)
-    current_resource_id = result["resource_id"]
+    result = defragment_smiles_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step4_defragmented", "Step 4: Defragmentation",
+        keep_largest_fragment=True
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_defragmentation"
     
     # Step 5: Functional group normalization
-    result = normalize_functional_groups_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = normalize_functional_groups_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step5_normalized", "Step 5: Functional group normalization"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_functional_group_normalization"
     
     # Step 6: Reionization
-    result = reionize_smiles_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = reionize_smiles_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step6_reionized", "Step 6: Reionization"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_reionization"
     
     # Step 7: Neutralization
-    result = neutralize_smiles_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = neutralize_smiles_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step7_neutralized", "Step 7: Neutralization"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_neutralization"
     
     # Step 8 (OPTIONAL): Isotope removal
     if not skip_isotope_removal:
-        result = remove_isotopes_dataset(current_resource_id, current_column)
-        current_resource_id = result["resource_id"]
+        result = remove_isotopes_dataset(
+            current_filename, current_column, project_manifest_path,
+            f"{output_filename}_step8_deisotoped", "Step 8: Isotope removal"
+        )
+        current_filename = result["output_filename_id"]
         current_column = "smiles_after_isotope_removal"
     
     # Step 9 (OPTIONAL): Metal disconnection
     if enable_metal_disconnection:
         result = disconnect_metals_smiles_dataset(
-            current_resource_id, current_column, drop_inorganics=drop_inorganics
+            current_filename, current_column, project_manifest_path,
+            f"{output_filename}_step9_metals_disconnected", "Step 9: Metal disconnection",
+            drop_inorganics=drop_inorganics
         )
-        current_resource_id = result["resource_id"]
+        current_filename = result["output_filename_id"]
         current_column = "smiles_after_metal_disconnection"
         
         # Step 9b: Re-defragmentation after metal disconnection
-        result = defragment_smiles_dataset(current_resource_id, current_column, keep_largest_fragment=True)
-        current_resource_id = result["resource_id"]
+        result = defragment_smiles_dataset(
+            current_filename, current_column, project_manifest_path,
+            f"{output_filename}_step9b_redefragmented", "Step 9b: Re-defragmentation",
+            keep_largest_fragment=True
+        )
+        current_filename = result["output_filename_id"]
         current_column = "smiles_after_re_defragmentation"
     
     # Step 10: Tautomer canonicalization
-    result = canonicalize_tautomers_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = canonicalize_tautomers_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step10_tautomers", "Step 10: Tautomer canonicalization"
+    )
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_tautomer_canonicalization"
     
     # Step 11: Stereochemistry standardization
     result = standardize_stereochemistry_dataset(
-        current_resource_id,
-        current_column,
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step11_stereo", "Step 11: Stereochemistry standardization",
         stereo_policy=stereo_policy,
         assign_policy="first",
         max_isomers=32,
@@ -3213,18 +3253,21 @@ def default_SMILES_standardization_pipeline_dataset(
         only_unassigned=True,
         random_seed=42
     )
-    current_resource_id = result["resource_id"]
+    current_filename = result["output_filename_id"]
     current_column = "smiles_after_stereo_standardization"
     
     # Step 12: Final validation
-    result = validate_smiles_dataset(current_resource_id, current_column)
-    current_resource_id = result["resource_id"]
+    result = validate_smiles_dataset(
+        current_filename, current_column, project_manifest_path,
+        f"{output_filename}_step12_validated", "Step 12: Final validation"
+    )
+    current_filename = result["output_filename_id"]
     
     # Add final 'standardized_smiles' column (copy of the last valid SMILES column)
-    df_final = _load_resource(current_resource_id)
+    df_final = _load_resource(project_manifest_path, current_filename)
     df_final['standardized_smiles'] = df_final[current_column]
     
-    final_resource_id = _store_resource(df_final, 'csv')
+    output_filename_id = _store_resource(df_final, project_manifest_path, output_filename, explanation, 'csv')
     
     # Compute validation statistics from the validation result
     n_valid = result.get("n_valid", 0)
@@ -3232,7 +3275,7 @@ def default_SMILES_standardization_pipeline_dataset(
     validation_rate = result.get("validation_rate", 0.0)
     
     return {
-        "resource_id": final_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df_final),
         "columns": list(df_final.columns),
         "preview": df_final.head(5).to_dict(orient="records"),
@@ -3299,30 +3342,30 @@ def check_smiles_for_pains(smiles: list[str]) -> list[str]:
 
 @loggable
 def check_smiles_for_pains_dataset(
-    resource_id: str,
+    input_filename: str,
     column_name: str,
-    project_manifest_path: str = None,
-    filename: str = None,
-    explanation: str = None
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Screen molecules for PAINS patterns"
 ) -> dict:
     """Screen molecules for PAINS (Pan-Assay INterference compoundS) patterns in a dataset column.
     
     Args:
-        resource_id: Dataset identifier
+        input_filename: Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\')
         column_name: Column with SMILES to screen
         project_manifest_path: Path to the project manifest file for tracking this resource
-        filename: Base filename for the stored resource (without extension)
+        output_filename: Base filename for the stored resource (without extension)
         explanation: Brief description of the PAINS screening performed
         
     Returns:
-        dict with resource_id, n_rows, columns, preview, pains_summary (counts), 
+        dict with output_filename_id, n_rows, columns, preview, pains_summary (counts), 
         n_clean, n_flagged, n_failed, flagged_rate, note, suggestions
         
     Adds column: pains_screening with results "Passed", "PAINS: <reasons>", or "Failed: <error>"
     PAINS are context-specific; not all flagged molecules are problematic in all assays.
     Reference: Baell & Holloway, J Med Chem 53 (2010) 2719-2740
     """
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column '{column_name}' not found in dataset. Available columns: {list(df.columns)}")
@@ -3332,7 +3375,7 @@ def check_smiles_for_pains_dataset(
     
     df['pains_screening'] = pains_results
     
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
     
     # Calculate screening statistics
     n_clean = sum(1 for r in pains_results if r == "Passed")
@@ -3345,7 +3388,7 @@ def check_smiles_for_pains_dataset(
     pains_summary = dict(Counter(pains_results))
     
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df),
         "columns": list(df.columns),
         "preview": df.head(5).to_dict(orient="records"),

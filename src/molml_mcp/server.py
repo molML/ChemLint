@@ -8,6 +8,7 @@ from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_gri
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
 from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
 from molml_mcp.infrastructure.resources import get_all_resources_tools
+from molml_mcp.tools.core_mol.data_splitting import random_split_dataset
 
 # create an MCP server 
 mcp = FastMCP("molml-mcp") 
@@ -38,4 +39,7 @@ mcp.add_tool(calculate_descriptors)
 # Add visualization tools
 mcp.add_tool(smiles_to_acs1996_png)
 mcp.add_tool(smiles_grid_to_acs1996_png)
+
+# Add data splitting tool
+mcp.add_tool(random_split_dataset)
 

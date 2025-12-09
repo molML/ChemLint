@@ -12,21 +12,77 @@ This is an **MCP (Model Context Protocol) server** that enables LLMs to perform 
 - **`config.py`**: Currently empty - configuration through environment variables
 
 ### Resource Management System
-The project uses a **unique resource ID system** for stateful operations:
+The project uses a **manifest-based resource tracking system** for stateful operations:
 
-- **ID Format**: `YYYYMMDDTHHMMSS_TYPE_RANDOM.ext` (e.g., `20251125T143022_csv_A3F2B1D4.csv`)
-- **Storage**: Resources stored in `~/.molml_mcp/` (or `$MOLML_MCP_DATA_DIR`)
-- **Registry**: `TYPE_REGISTRY` in `supported_resource_types.py` defines save/load handlers for each type (csv, model, json)
-- **Pattern**: Tools return `resource_id` strings; subsequent operations accept them as input
+- **ID Format**: `{filename}_{8_HEX_ID}.{ext}` (e.g., `cleaned_data_A3F2B1D4.csv`)
+  - User provides meaningful `filename` prefix
+  - System appends unique 8-character hex ID
+  - Extension determined by resource type (csv, pkl, json, png)
 
-Example flow:
-```python
-# Store: returns resource_id
-rid = _store_resource(dataframe, "csv")  # → "20251125T143022_csv_A3F2B1D4.csv"
+- **Manifest Tracking**: Each project has a `manifest.json` that tracks all resources
+  - Contains: filename, type, created_at timestamp, created_by function, explanation
+  - Enables resource lookup by filename (no filesystem globbing)
+  - Provides audit trail of all operations
 
-# Load: accepts resource_id
-df = _load_resource(rid)
-```
+- **Storage**: Resources stored in project directory (or `~/.molml_mcp/` default)
+  - User specifies `project_manifest_path` pointing to manifest.json
+  - Resources stored in same directory as manifest
+
+- **Registry**: `TYPE_REGISTRY` in `supported_resource_types.py` defines save/load handlers
+  - `csv`: pandas DataFrames (saved with `to_csv`)
+  - `model`: scikit-learn models (saved with joblib)
+  - `json`: dictionaries/lists (saved with json.dump)
+  - `png`: matplotlib figures (saved with savefig)
+
+- **Core Functions**:
+  ```python
+  # Store: creates resource with unique ID and registers in manifest
+  _store_resource(
+      obj,                      # Object to store (DataFrame, model, dict, etc.)
+      project_manifest_path,    # Path to manifest.json
+      output_filename,          # User-provided filename prefix
+      explanation,              # Human-readable description
+      resource_type            # Type: 'csv', 'model', 'json', 'png'
+  ) -> str  # Returns: "output_filename_A3F2B1D4.ext"
+  
+  # Load: retrieves resource by filename from manifest
+  _load_resource(
+      project_manifest_path,    # Path to manifest.json
+      filename                  # Full filename with unique ID
+  ) -> Any  # Returns: Original object (DataFrame, model, dict, etc.)
+  ```
+
+- **Tool Pattern**: Tools accept `input_filename` and return `output_filename`
+  ```python
+  def process_dataset(
+      input_filename: str,           # Input resource (e.g., "raw_data_12345678.csv")
+      project_manifest_path: str,    # Path to manifest.json
+      output_filename: str,          # Output name (e.g., "processed_data")
+      explanation: str,              # Description of operation
+      # ... other params
+  ) -> dict:
+      # Load input
+      df = _load_resource(project_manifest_path, input_filename)
+      
+      # Process data
+      df_processed = df.copy()
+      # ... processing logic
+      
+      # Store output - returns "processed_data_A3F2B1D4.csv"
+      output_id = _store_resource(
+          df_processed, 
+          project_manifest_path, 
+          output_filename, 
+          explanation, 
+          'csv'
+      )
+      
+      return {
+          "output_filename": output_id,  # Full filename with unique ID
+          "n_rows": len(df_processed),
+          # ... other metadata
+      }
+  ```
 
 ### Tool Organization
 Tools follow a **domain-based namespace pattern**:
@@ -54,17 +110,23 @@ Use the `@loggable` decorator (in `resources/logistics.py`) to automatically log
 Example:
 ```python
 @loggable
-def my_tool(resource_id: str, param: int) -> dict:
+def my_tool(
+    input_filename: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str,
+    param: int
+) -> dict:
     """Process dataset with parameter."""
     # ... implementation
-    return {"resource_id": new_id, "result": value}
+    return {"output_filename": new_filename, "result": value}
 ```
 
 ### 3. Dataset Tool Return Pattern
 Dataset manipulation tools follow a consistent return schema:
 ```python
 return {
-    "resource_id": str,        # New or same resource_id
+    "output_filename": str,    # Full filename with unique ID
     "n_rows": int,             # Row count
     "columns": list[str],      # Column names
     "preview": list[dict],     # First 5 rows as records
@@ -73,8 +135,8 @@ return {
 
 ### 4. Inplace Operations
 Many dataset tools support `inplace: bool = False`:
-- `inplace=False`: Creates new resource, returns new `resource_id`
-- `inplace=True`: Modifies existing resource, returns same `resource_id`
+- `inplace=False`: Creates new resource, returns new `output_filename`
+- `inplace=True`: Modifies existing resource, returns same `output_filename`
 
 ## Development Workflow
 
@@ -93,7 +155,7 @@ This script:
 2. Export from `tools/__init__.py`
 3. Register in `server.py` with `mcp.add_tool()`
 4. Add `@loggable` decorator for automatic logging
-5. Follow resource_id pattern if stateful
+5. Follow manifest-based pattern if stateful (input_filename → output_filename)
 
 ### Adding New Resource Types
 Edit `supported_resource_types.py`:

@@ -39,7 +39,7 @@ def list_rdkit_descriptors() -> list[dict]:
 
 
 @loggable
-def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names: list[str], project_manifest_path: str, filename: str, explanation: str) -> dict:
+def calculate_descriptors(input_filename: str, smiles_column: str, descriptor_names: list[str], project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Calculate RDKit molecular descriptors for molecules in a dataset.
     
@@ -62,8 +62,8 @@ def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names
     
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     smiles_column : str
         Name of the column containing SMILES strings.
     descriptor_names : list[str]
@@ -71,7 +71,7 @@ def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names
         Use list_rdkit_descriptors() to see all 210+ available descriptor names.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of what descriptors were calculated.
@@ -80,7 +80,7 @@ def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names
     -------
     dict
         {
-            "resource_id": str,              # identifier for the new dataset
+            "output_filename": str,          # filename for the new dataset
             "n_rows": int,                   # number of rows
             "columns": list[str],            # all column names including new descriptors
             "descriptors_added": list[str],  # names of descriptors successfully added
@@ -103,7 +103,7 @@ def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     # Validate inputs
     if smiles_column not in df.columns:
@@ -144,10 +144,10 @@ def calculate_descriptors(resource_id: str, smiles_column: str, descriptor_names
         df[desc_name] = values
     
     # Store the updated dataset
-    new_resource_id = _store_resource(df, project_manifest_path, filename, explanation, 'csv')
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
     
     return {
-        "resource_id": new_resource_id,
+        "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
         "descriptors_added": descriptor_names,

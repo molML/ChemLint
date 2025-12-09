@@ -363,7 +363,9 @@ After running the full protocol:
 - Stereoisomers deduplicated (if flattened)
 - Invalid molecules flagged for review
 
-For deduplication, use the final SMILES column to identify duplicates.
+For deduplication, use the final SMILES column to identify duplicates. It is 
+recommended to inspect_duplicates_dataset after standardization to make informed
+decisions on handling duplicates.
 
 ================================================================================
 END OF PROTOCOL
@@ -2743,7 +2745,7 @@ def validate_smiles_dataset(
                                       column_name="smiles_after_tautomer_canonicalization")
     
     # Filter to only valid molecules
-    df = _load_resource(result9["output_filename"])
+    df = _load_resource(project_manifest_path, result9["output_filename"])
     df_valid = df[df["validation_status"] == "Passed"]
     
     See Also

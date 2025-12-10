@@ -81,43 +81,7 @@ def find_duplicates_dataset(
         - n_unique: Number of unique entries (no duplicates)
         - n_duplicate_groups: Number of duplicate groups found
         - strategy_counts: Dict with counts for each merge strategy
-        - preview: First 10 rows with duplicates (if any exist)
-    
-    Examples
-    --------
-    # Inspect duplicates with binary labels, no grouping
-    >>> inspect_duplicates_dataset(
-    ...     "cleaned_data_A3F2B1D4.csv",
-    ...     "/path/to/manifest.json",
-    ...     smiles_col="SMILES",
-    ...     output_filename="inspected_data",
-    ...     explanation="Inspect duplicates with binary activity labels",
-    ...     label_col="activity",
-    ...     is_binary_label=True
-    ... )
-    
-    # Inspect duplicates with continuous labels, grouped by protein
-    >>> inspect_duplicates_dataset(
-    ...     "assay_data_B4C3D2E1.csv",
-    ...     "/path/to/manifest.json",
-    ...     smiles_col="SMILES",
-    ...     output_filename="protein_grouped_inspection",
-    ...     explanation="Inspect duplicates per protein target",
-    ...     label_col="IC50",
-    ...     group_by_cols=["protein_id"],
-    ...     is_binary_label=False,
-    ...     cv_threshold=0.30
-    ... )
-    
-    # Inspect duplicates without labels (mark all as 'drop')
-    >>> inspect_duplicates_dataset(
-    ...     "molecules_only_A1B2C3D4.csv",
-    ...     "/path/to/manifest.json",
-    ...     smiles_col="SMILES",
-    ...     output_filename="structure_deduplication",
-    ...     explanation="Find duplicate structures without label analysis",
-    ...     label_col=None
-    ... )
+        - reason_summary: Dict with counts for each reason for strategy recommendation
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -139,22 +103,50 @@ def find_duplicates_dataset(
     if group_by_cols is not None:
         grouping_cols.extend(group_by_cols)
     
-    # Create a copy to add merge_strategy column
+    # Create a copy to add merge_strategy and reason columns
     df_annotated = df.copy()
     df_annotated['merge_strategy'] = 'unique'  # Default for unique entries
+    df_annotated['strategy_reason'] = ''  # Default empty reason
+    
+    # Handle NaN SMILES first - mark as 'drop' before grouping
+    nan_smiles_mask = df_annotated[smiles_col].isna()
+    if nan_smiles_mask.any():
+        df_annotated.loc[nan_smiles_mask, 'merge_strategy'] = 'drop'
+        df_annotated.loc[nan_smiles_mask, 'strategy_reason'] = 'NaN SMILES, recommend dropping'
     
     # Group by SMILES (and optional additional columns)
-    grouped = df_annotated.groupby(grouping_cols)
+    # Note: NaN values create their own group in pandas groupby
+    grouped = df_annotated.groupby(grouping_cols, dropna=False)
     
     # Track statistics
     strategy_counts = {'unique': 0, 'drop': 0, 'keep_first': 0, 'majority_vote': 0, 'mean': 0, 'median': 0}
     n_duplicate_groups = 0
     duplicate_examples = []
+    reason_counts = []  # Track all reasons for summary
     
     # Process each group
     for group_keys, group_df in grouped:
         group_size = len(group_df)
         indices = group_df.index
+        
+        # Check if this group has NaN SMILES (already handled, just count and skip)
+        if group_df[smiles_col].isna().any():
+            nan_count = group_df[smiles_col].isna().sum()
+            strategy_counts['drop'] += nan_count
+            reason_counts.append('NaN SMILES, recommend dropping')
+            
+            # If there are non-NaN entries in mixed group, process them separately
+            non_nan_indices = group_df[~group_df[smiles_col].isna()].index
+            if len(non_nan_indices) == 0:
+                # All NaN in this group
+                if len(duplicate_examples) < 10:
+                    duplicate_examples.extend(df_annotated.loc[indices].head(3).to_dict('records'))
+                continue
+            # If mixed, the non-NaN entries would have been in a different group
+            # So we can continue here
+            if len(duplicate_examples) < 10:
+                duplicate_examples.extend(df_annotated.loc[indices].head(3).to_dict('records'))
+            continue
         
         # Single entry - mark as unique
         if group_size == 1:
@@ -174,19 +166,28 @@ def find_duplicates_dataset(
                 duplicate_examples.extend(df_annotated.loc[indices].head(3).to_dict('records'))
             continue
         
-        # Labels provided - analyze conflicts
+        # Labels provided - separate NaN and valid labels
+        nan_mask = group_df[label_col].isna()
+        nan_indices = group_df[nan_mask].index
+        valid_indices = group_df[~nan_mask].index
+        
+        # Handle NaN labels first - always drop with specific reason
+        if len(nan_indices) > 0:
+            df_annotated.loc[nan_indices, 'merge_strategy'] = 'drop'
+            df_annotated.loc[nan_indices, 'strategy_reason'] = 'NaN label, recommend dropping'
+            strategy_counts['drop'] += len(nan_indices)
+            reason_counts.append('NaN label, recommend dropping')
+        
+        # Get valid (non-NaN) labels for analysis
         labels = group_df[label_col].dropna().tolist()
         
-        # No valid labels in this group - mark as 'drop'
+        # No valid labels in this group - all were NaN, already handled above
         if len(labels) == 0:
-            df_annotated.loc[indices, 'merge_strategy'] = 'drop'
-            strategy_counts['drop'] += group_size
-            
             if len(duplicate_examples) < 10:
                 duplicate_examples.extend(df_annotated.loc[indices].head(3).to_dict('records'))
             continue
         
-        # Analyze label conflicts using appropriate statistical test
+        # Analyze label conflicts using appropriate statistical test (only on valid labels)
         if is_binary_label:
             # Convert to int if needed (handles both int and float representations)
             labels_int = [int(label) for label in labels]
@@ -196,9 +197,13 @@ def find_duplicates_dataset(
             labels_float = [float(label) for label in labels]
             method, reason = should_merge_continuous(labels_float, cv_threshold=cv_threshold, alpha=alpha)
         
-        # Apply recommended strategy to all entries in this group
-        df_annotated.loc[indices, 'merge_strategy'] = method
-        strategy_counts[method] += group_size
+        # Apply recommended strategy and reason to entries with valid labels
+        df_annotated.loc[valid_indices, 'merge_strategy'] = method
+        df_annotated.loc[valid_indices, 'strategy_reason'] = reason
+        strategy_counts[method] += len(valid_indices)
+        
+        # Track reason for summary
+        reason_counts.append(reason)
         
         # Store example with the reason (read updated data from df_annotated)
         if len(duplicate_examples) < 10:
@@ -216,6 +221,10 @@ def find_duplicates_dataset(
         'csv'
     )
     
+    # Create reason summary using Counter
+    from collections import Counter
+    reason_summary = dict(Counter(reason_counts))
+    
     # Return summary
     return {
         "output_filename": output_id,
@@ -223,7 +232,7 @@ def find_duplicates_dataset(
         "n_unique": strategy_counts['unique'],
         "n_duplicate_groups": n_duplicate_groups,
         "strategy_counts": strategy_counts,
-        "preview": duplicate_examples[:10] if duplicate_examples else [],
+        "reason_summary": reason_summary
     }
 
 
@@ -298,14 +307,13 @@ def should_merge_binary(labels, alpha=0.05):
     n_zeros = n - n_ones
 
     if n == 1:
-        reason = f"Single label"
+        reason = f"Single value, no action needed"
         return 'keep_first', reason
     
     
     # Check if all labels are identical
-    if n_ones == 0 or n_zeros == 0:
-        label_val = 1 if n_ones == n else 0
-        reason = f"All labels identical"
+    if len(set(labels)) == 1:
+        reason = f"All values identical, recommend keeping first"
         return 'keep_first', reason
     
     n_majority = max(n_ones, n_zeros)
@@ -318,11 +326,11 @@ def should_merge_binary(labels, alpha=0.05):
     
     if p_value < alpha:
         # Significant agreement - recommend majority vote
-        reason = f"{n_majority}/{n} agree on {majority_label} ({agreement_pct:.0f}%), p={p_value:.3f}"
+        reason = f"Significant agreement (p<{alpha}), recommend majority vote"
         return 'majority_vote', reason
     else:
         # No significant agreement - recommend dropping
-        reason = f"{n_majority}/{n} agree on {majority_label} ({agreement_pct:.0f}%), p={p_value:.3f} (not significant)"
+        reason = f"No significant agreement (p>{alpha}), recommend dropping"
         return 'drop', reason
     
 
@@ -368,7 +376,7 @@ def should_merge_continuous(values, cv_threshold=0.30, alpha=0.05):
     n = len(values)
     
     if n == 1:
-        reason = f"Single value"
+        reason = f"Single value, no action needed"
         return 'keep_first', reason
     
     # Compute CV and basic statistics
@@ -379,8 +387,8 @@ def should_merge_continuous(values, cv_threshold=0.30, alpha=0.05):
     max_val = np.max(values)
     
     # Check if all values are identical (or nearly identical)
-    if std_val == 0 or (std_val / abs(mean_val) < 1e-10 if mean_val != 0 else std_val < 1e-10):
-        reason = f"All values identical"
+    if std_val == 0 or (std_val / abs(mean_val) < 1e-12 if mean_val != 0 else std_val < 1e-12):
+        reason = f"All values (nearly) identical, recommend keeping first"
         return 'keep_first', reason
     value_range = max_val - min_val
     cv = std_val / abs(mean_val) if mean_val != 0 else float('inf')
@@ -411,15 +419,15 @@ def should_merge_continuous(values, cv_threshold=0.30, alpha=0.05):
     if cv_upper <= cv_threshold:
         # Acceptable variation - can merge
         if has_outliers:
-            reason = f"CV={cv:.3f} (CI: {cv_lower:.3f}-{cv_upper:.3f}), {n_outliers} outlier(s), use median"
+            reason = f"CV lower than threshold (<={cv_threshold:.2f}), found outlier(s), recommend median"
             return 'median', reason
         else:
-            reason = f"CV={cv:.3f} (CI: {cv_lower:.3f}-{cv_upper:.3f}), no outliers, use mean"
+            reason = f"CV lower than threshold (<={cv_threshold:.2f}), no outliers, recommend mean"
             return 'mean', reason
     else:
         # Excessive variation - recommend dropping
         outlier_note = f", {n_outliers} outlier(s)" if has_outliers else ""
-        reason = f"CV={cv:.3f} (CI: {cv_lower:.3f}-{cv_upper:.3f}) exceeds {cv_threshold:.2f}{outlier_note}"
+        reason = f"CV exceeds threshold (>{cv_threshold:.2f}), excessive uncertainty, recommend dropping"
         return 'drop', reason
 
 

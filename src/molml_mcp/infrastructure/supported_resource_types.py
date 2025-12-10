@@ -9,7 +9,7 @@ TYPE_REGISTRY: dict[str, dict[str, Any]] = {}
 # json
 # png
 # joblib
-
+# feature_vectors (joblib format)
 
 
 # csv
@@ -97,4 +97,21 @@ TYPE_REGISTRY["joblib"] = {
     "ext": ".joblib",
     "save": _save_joblib,
     "load": _load_joblib,
+}
+
+
+def _save_feature_vectors(obj, path: Path):
+    """Save feature_vectors {id: np.ndarray} using joblib."""
+    import joblib
+    joblib.dump(obj, path, compress=3)
+
+def _load_feature_vectors(path: Path):
+    """Load feature_vectors {id: np.ndarray} using joblib."""
+    import joblib
+    return joblib.load(path)
+
+TYPE_REGISTRY["feature_vectors"] = {
+    "ext": ".joblib",
+    "save": _save_feature_vectors,
+    "load": _load_feature_vectors,
 }

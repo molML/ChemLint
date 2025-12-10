@@ -4,7 +4,8 @@ from mcp.server.fastmcp import FastMCP
 from molml_mcp.infrastructure.resources import get_all_resources_tools
 
 from molml_mcp.tools.core import get_all_dataset_tools
-from molml_mcp.tools.core_mol import get_all_cleaning_tools, get_all_scaffold_tools
+from molml_mcp.tools.cleaning import get_all_cleaning_tools
+from molml_mcp.tools.core_mol import get_all_scaffold_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
 from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools

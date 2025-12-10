@@ -7,7 +7,7 @@ This is an **MCP (Model Context Protocol) server** that enables LLMs to perform 
 
 ### Core Components
 - **`server.py`**: FastMCP server registration point - tools added via `mcp.add_tool()`
-- **`tools/`**: Domain-organized tool modules (core_mol, ml, protein)
+- **`tools/`**: Domain-organized tool modules (cleaning, core_mol, ml, protein)
 - **`resources/`**: Persistent resource management with unique ID system
 - **`config.py`**: Currently empty - configuration through environment variables
 
@@ -86,7 +86,11 @@ The project uses a **manifest-based resource tracking system** for stateful oper
 
 ### Tool Organization
 Tools follow a **domain-based namespace pattern**:
-- `tools/core_mol/`: Molecular operations (SMILES canonicalization, cleaning, descriptors, scaffolds)
+- `tools/cleaning/`: Cleaning operations (SMILES cleaning, label processing, deduplication)
+  - `mol_cleaning.py`: SMILES standardization, validation, salt/solvent removal
+  - `label_cleaning.py`: Label conversion (continuous to binary)
+  - `deduplication.py`: Entry deduplication (planned)
+- `tools/core_mol/`: Molecular operations (descriptors, scaffolds, visualization, data splitting)
 - `tools/ml/`: Machine learning (training, evaluation)
 - `tools/protein/`: Protein-related operations
 - Individual tools registered in `server.py` and exported through `tools/__init__.py`
@@ -96,8 +100,9 @@ Tools follow a **domain-based namespace pattern**:
 ### 1. MCP Tool Registration
 Tools must be explicitly added to FastMCP in `server.py`:
 ```python
-from molml_mcp.tools.core_mol.smiles_ops import canonicalize_smiles
-mcp.add_tool(canonicalize_smiles)
+from molml_mcp.tools.cleaning import get_all_cleaning_tools
+for tool_func in get_all_cleaning_tools():
+    mcp.add_tool(tool_func)
 ```
 
 ### 2. Dataset Tool Return Pattern

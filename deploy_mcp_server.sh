@@ -20,7 +20,29 @@ echo "[deploy] Ensuring dependencies are synced with uv..."
 "$UV_BIN" sync
 
 ##############################################
-# 2. Patch Claude Desktop config JSON
+# 2. Test server imports and startup
+##############################################
+
+echo "[deploy] Testing server.py for import errors..."
+
+# Run server.py with a 2-second timeout to check for import/startup errors
+if ! PYTHONPATH="$PROJECT_DIR/src" "$UV_BIN" run --directory "$PROJECT_DIR" timeout 2s python "$PROJECT_DIR/src/molml_mcp/server.py" 2>&1 | head -20 > /tmp/mcp_test.log; then
+  # Check if it was a timeout (expected) or a real error
+  if grep -q "Traceback\|Error\|ImportError\|ModuleNotFoundError" /tmp/mcp_test.log; then
+    echo "[deploy] ERROR: Server startup failed with errors:"
+    cat /tmp/mcp_test.log
+    echo ""
+    echo "[deploy] Fix the errors above before deploying."
+    rm -f /tmp/mcp_test.log
+    exit 1
+  fi
+fi
+
+echo "[deploy] Server imports validated successfully."
+rm -f /tmp/mcp_test.log
+
+##############################################
+# 3. Patch Claude Desktop config JSON
 ##############################################
 
 # Require jq for safe JSON editing
@@ -73,7 +95,7 @@ mv "$tmpfile" "$CLAUDE_CONFIG"
 echo "[deploy] Claude config updated."
 
 ##############################################
-# 3. Restart Claude Desktop
+# 4. Restart Claude Desktop
 ##############################################
 
 echo "[deploy] Restarting Claude Desktop..."

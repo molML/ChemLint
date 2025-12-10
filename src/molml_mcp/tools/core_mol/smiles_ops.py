@@ -2,7 +2,6 @@ from __future__ import annotations
 from rdkit.Chem import MolFromSmiles, MolToSmiles, MolFromSmarts, RemoveStereochemistry
 from rdkit.Chem.AllChem import ReplaceSubstructs
 from rdkit.Chem.rdchem import Mol
-from molml_mcp.infrastructure.logging import loggable
 from molml_mcp.constants import COMMON_SOLVENTS, SMARTS_NEUTRALIZATION_PATTERNS
 
 from typing import List, Optional

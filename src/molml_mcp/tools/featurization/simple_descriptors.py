@@ -1,6 +1,5 @@
 from rdkit.Chem import Descriptors, MolFromSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
-from molml_mcp.infrastructure.logging import loggable
 
 
 
@@ -38,7 +37,6 @@ def list_rdkit_descriptors() -> list[dict]:
     return out
 
 
-@loggable
 def calculate_simple_descriptors(input_filename: str, smiles_column: str, descriptor_names: list[str], project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Calculate RDKit molecular descriptors for molecules in a dataset.

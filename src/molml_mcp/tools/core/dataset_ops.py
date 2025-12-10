@@ -6,12 +6,10 @@ including loading, inspecting, filtering, and manipulating dataset rows and colu
 """
 
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
-from molml_mcp.infrastructure.logging import loggable
 from typing import Any, Dict, List, Optional
 
 
 
-@loggable
 def store_csv_as_dataset(file_path: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
     """
     Store a CSV file from a local file path provided by the MCP client.
@@ -62,7 +60,6 @@ def store_csv_as_dataset(file_path: str, project_manifest_path: str, filename: s
     }
 
 
-@loggable
 def store_csv_as_dataset_from_text(csv_content: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
     """
     Store CSV data from content provided by the MCP client.
@@ -518,7 +515,6 @@ def inspect_dataset_rows(project_manifest_path: str, input_filename: str, row_in
     }
 
 
-@loggable
 def drop_from_dataset(input_filename: str, column_name: str, condition: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Drop rows from a dataset based on SIMPLE conditions (exact match or null check).
@@ -619,7 +615,6 @@ def drop_from_dataset(input_filename: str, column_name: str, condition: str, pro
     }
 
 
-@loggable
 def keep_from_dataset(input_filename: str, column_name: str, condition: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Keep only rows from a dataset based on SIMPLE conditions (exact match or null check).
@@ -720,7 +715,6 @@ def keep_from_dataset(input_filename: str, column_name: str, condition: str, pro
     }
 
 
-@loggable
 def deduplicate_molecules_dataset(input_filename: str, molecule_id_column: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule, 
@@ -766,7 +760,6 @@ def deduplicate_molecules_dataset(input_filename: str, molecule_id_column: str, 
     }
 
 
-@loggable
 def drop_duplicate_rows(input_filename: str, subset_columns: list[str] | None, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove duplicate rows from a dataset based on specified subset of columns.
@@ -812,7 +805,6 @@ def drop_duplicate_rows(input_filename: str, subset_columns: list[str] | None, p
     }
 
 
-@loggable
 def drop_empty_rows(input_filename: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove rows from a dataset that are completely empty (all columns are null).
@@ -850,7 +842,6 @@ def drop_empty_rows(input_filename: str, project_manifest_path: str, output_file
     }
 
 
-@loggable
 def drop_columns(
     input_filename: str,
     columns_to_drop: list[str],
@@ -971,7 +962,6 @@ def drop_columns(
     }
 
 
-@loggable
 def keep_columns(
     input_filename: str,
     columns_to_keep: list[str],

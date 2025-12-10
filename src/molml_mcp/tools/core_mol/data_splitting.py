@@ -1,10 +1,8 @@
 
 from sklearn.model_selection import train_test_split
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
-from molml_mcp.infrastructure.logging import loggable
 
 
-@loggable
 def random_split_dataset(
     project_manifest_path: str,
     input_filename: str,

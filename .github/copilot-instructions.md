@@ -100,29 +100,7 @@ from molml_mcp.tools.core_mol.smiles_ops import canonicalize_smiles
 mcp.add_tool(canonicalize_smiles)
 ```
 
-### 2. Function Logging with @loggable
-Use the `@loggable` decorator (in `resources/logistics.py`) to automatically log:
-- Function name and first line of docstring
-- **Original** input arguments (before any mutation)
-- Full return values
-- Writes to `~/.molml_mcp/history.log`
-
-Example:
-```python
-@loggable
-def my_tool(
-    input_filename: str,
-    project_manifest_path: str,
-    output_filename: str,
-    explanation: str,
-    param: int
-) -> dict:
-    """Process dataset with parameter."""
-    # ... implementation
-    return {"output_filename": new_filename, "result": value}
-```
-
-### 3. Dataset Tool Return Pattern
+### 2. Dataset Tool Return Pattern
 Dataset manipulation tools follow a consistent return schema:
 ```python
 return {
@@ -133,7 +111,7 @@ return {
 }
 ```
 
-### 4. Inplace Operations
+### 3. Inplace Operations
 Many dataset tools support `inplace: bool = False`:
 - `inplace=False`: Creates new resource, returns new `output_filename`
 - `inplace=True`: Modifies existing resource, returns same `output_filename`
@@ -154,8 +132,7 @@ This script:
 1. Create function in appropriate `tools/` subdirectory
 2. Export from `tools/__init__.py`
 3. Register in `server.py` with `mcp.add_tool()`
-4. Add `@loggable` decorator for automatic logging
-5. Follow manifest-based pattern if stateful (input_filename → output_filename)
+4. Follow manifest-based pattern if stateful (input_filename → output_filename)
 
 ### Adding New Resource Types
 Edit `supported_resource_types.py`:

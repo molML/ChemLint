@@ -3,7 +3,6 @@ from typing import Dict, Mapping
 from rdkit.Chem.rdchem import Mol
 from molml_mcp.constants import STRUCTURAL_PATTERNS, FUNCTIONAL_GROUP_PATTERNS
 from rdkit.Chem import MolFromSmiles, MolFromSmarts
-from molml_mcp.infrastructure.logging import loggable
 
 
 def get_available_structural_patterns() -> Mapping[str, Dict[str, str]]:
@@ -339,7 +338,6 @@ def _find_all_patterns_in_smiles(smi: str, smarts_dict: dict) -> list[str]:
     return matched_patterns
 
 
-@loggable
 def smiles_has_structural_pattern(smiles: str, smarts_pattern: str) -> bool:
     """Check if a molecule contains a specific SMARTS structural pattern.
 
@@ -360,7 +358,6 @@ def smiles_has_structural_pattern(smiles: str, smarts_pattern: str) -> bool:
     return _mol_has_pattern(mol, smarts_pattern)
 
 
-@loggable
 def find_structural_patterns_in_smiles(smiles: str) -> str:
     """Identify all structural features present in a molecule.
     
@@ -385,7 +382,6 @@ def find_structural_patterns_in_smiles(smiles: str) -> str:
         return ''
 
 
-@loggable
 def find_functional_group_patterns_in_smiles(smiles: str) -> str:
     """Identify all functional groups present in a molecule.
     
@@ -410,7 +406,6 @@ def find_functional_group_patterns_in_smiles(smiles: str) -> str:
         return ''   
     
 
-@loggable
 def find_functional_group_patterns_in_list_of_smiles(smiles_list: list[str]) -> list[str]:
     """Identify functional groups in multiple molecules at once.
     
@@ -435,7 +430,6 @@ def find_functional_group_patterns_in_list_of_smiles(smiles_list: list[str]) -> 
     return results
 
 
-@loggable
 def find_structural_patterns_in_list_of_smiles(smiles_list: list[str]) -> list[str]:
     """Identify structural features in multiple molecules at once.
     

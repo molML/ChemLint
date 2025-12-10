@@ -6,7 +6,6 @@ from rdkit.Chem import Draw, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
 from molml_mcp.infrastructure.resources import _store_resource, _generate_id
-from molml_mcp.infrastructure.logging import loggable
 
 # FastMCP (comes from mcp[cli])
 from mcp.server.fastmcp import FastMCP, Image
@@ -22,7 +21,6 @@ except Exception:  # ImportError + any cairo dlopen issues
     HAS_CAIROSVG = False
 
 
-@loggable
 def smiles_to_acs1996_png(
     smiles: str,
     project_manifest_path: str,
@@ -134,7 +132,6 @@ def smiles_to_acs1996_png(
     return [img, path]
 
 
-@loggable
 def smiles_grid_to_acs1996_png(
     smiles_list: list[str],
     project_manifest_path: str,

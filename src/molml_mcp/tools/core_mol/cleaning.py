@@ -1,6 +1,5 @@
 from collections import Counter
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
-from molml_mcp.infrastructure.logging import loggable
 from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles, _normalize_smiles, _reionize_smiles, _disconnect_metals_smiles, _validate_smiles
 
 from molml_mcp.constants import SMARTS_COMMON_SALTS
@@ -345,7 +344,6 @@ IMPLEMENTATION NOTES
 - Comments columns track processing status for each molecule
 - Failed operations preserve original values with failure reasons
 - Resource IDs are chained: output of step N becomes input of step N+1
-- All steps use @loggable decorator for automatic operation history logging
 - Preview shows first 5 rows after each step for visual inspection
 
 --------------------------------------------------------------------------------
@@ -375,7 +373,6 @@ END OF PROTOCOL
 
 
 
-@loggable
 def canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Convert SMILES strings to their canonical form.
@@ -434,7 +431,6 @@ def canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     return canonic, comment
 
 
-@loggable
 def canonicalize_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -521,7 +517,6 @@ def canonicalize_smiles_dataset(
     }
 
 
-@loggable
 def remove_salts(smiles: list[str], salt_smarts: str = SMARTS_COMMON_SALTS) -> tuple[list[str], list[str]]:
     """
     Remove common salt ions from a list of SMILES strings.
@@ -593,7 +588,6 @@ def remove_salts(smiles: list[str], salt_smarts: str = SMARTS_COMMON_SALTS) -> t
     return new_smiles, comments
 
 
-@loggable
 def remove_salts_dataset(
     input_filename: str,
     column_name: str,
@@ -702,7 +696,6 @@ def remove_salts_dataset(
     }
 
 
-@loggable
 def remove_common_solvents(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Remove known common solvent fragments from a list of SMILES strings.
@@ -769,7 +762,6 @@ def remove_common_solvents(smiles: list[str]) -> tuple[list[str], list[str]]:
     return new_smiles, comments
 
 
-@loggable
 def remove_common_solvents_dataset(
     input_filename: str,
     column_name: str,
@@ -869,7 +861,6 @@ def remove_common_solvents_dataset(
     }
 
 
-@loggable
 def defragment_smiles(smiles: list[str], keep_largest_fragment: bool = True) -> tuple[list[str], list[str]]:
     """
     Remove smaller fragments from a list of SMILES strings by keeping only the largest component or unrepeating fragments.
@@ -961,7 +952,6 @@ def defragment_smiles(smiles: list[str], keep_largest_fragment: bool = True) -> 
     return new_smiles, comments
 
 
-@loggable
 def defragment_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -1089,7 +1079,6 @@ def defragment_smiles_dataset(
     }
 
 
-@loggable
 def neutralize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Neutralize charged molecules by converting them to their neutral forms.
@@ -1183,7 +1172,6 @@ def neutralize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     return neutralized_smiles, comments
 
 
-@loggable
 def neutralize_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -1326,7 +1314,6 @@ def neutralize_smiles_dataset(
     }
 
 
-@loggable
 def standardize_stereochemistry(
     smiles: list[str],
     stereo_policy: str = "keep",
@@ -1448,7 +1435,6 @@ def standardize_stereochemistry(
     return standardized_smiles, comments
 
 
-@loggable
 def standardize_stereochemistry_dataset(
     input_filename: str,
     column_name: str,
@@ -1632,7 +1618,6 @@ def standardize_stereochemistry_dataset(
     }
 
 
-@loggable
 def remove_isotopes(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Remove isotopic labels from a list of SMILES strings.
@@ -1727,7 +1712,6 @@ def remove_isotopes(smiles: list[str]) -> tuple[list[str], list[str]]:
     return clean_smiles, comments
 
 
-@loggable
 def remove_isotopes_dataset(
     input_filename: str,
     column_name: str,
@@ -1863,7 +1847,6 @@ def remove_isotopes_dataset(
     }
 
 
-@loggable
 def canonicalize_tautomers(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Canonicalize tautomeric forms of molecules in a list of SMILES strings.
@@ -1956,7 +1939,6 @@ def canonicalize_tautomers(smiles: list[str]) -> tuple[list[str], list[str]]:
     return canonical_tautomers, comments
 
 
-@loggable
 def canonicalize_tautomers_dataset(
     input_filename: str,
     column_name: str,
@@ -2097,7 +2079,6 @@ def canonicalize_tautomers_dataset(
     }
 
 
-@loggable
 def normalize_functional_groups(smiles: list[str]) -> tuple[list[str], list[str]]:
     """Normalize functional groups (nitro, N-oxide, azide, diazo, sulfoxide, phosphate) to preferred representations.
     
@@ -2113,7 +2094,6 @@ def normalize_functional_groups(smiles: list[str]) -> tuple[list[str], list[str]
     return normalized_smiles, comments
 
 
-@loggable
 def normalize_functional_groups_dataset(
     input_filename: str,
     column_name: str,
@@ -2159,7 +2139,6 @@ def normalize_functional_groups_dataset(
     }
 
 
-@loggable
 def reionize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Reionize molecules to their preferred charge distribution using RDKit's Reionizer.
@@ -2248,7 +2227,6 @@ def reionize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     return reionized_smiles, comments
 
 
-@loggable
 def reionize_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -2296,7 +2274,6 @@ def reionize_smiles_dataset(
     }
 
 
-@loggable
 def disconnect_metals_smiles(smiles: list[str], drop_inorganics: bool = False) -> tuple[list[str], list[str]]:
     """
     Disconnect metal-ligand coordinate bonds in a list of SMILES strings.
@@ -2394,7 +2371,6 @@ def disconnect_metals_smiles(smiles: list[str], drop_inorganics: bool = False) -
     return disconnected_smiles, comments
 
 
-@loggable
 def disconnect_metals_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -2553,7 +2529,6 @@ def disconnect_metals_smiles_dataset(
     }
 
 
-@loggable
 def validate_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     """
     Validate a list of SMILES strings for correctness and chemical sanity.
@@ -2638,7 +2613,6 @@ def validate_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
     return validated_smiles, comments
 
 
-@loggable
 def validate_smiles_dataset(
     input_filename: str,
     column_name: str,
@@ -2786,7 +2760,6 @@ def validate_smiles_dataset(
 
 
 
-@loggable
 def default_SMILES_standardization_pipeline(
     smiles: list[str],
     stereo_policy: str = "flatten",
@@ -2997,7 +2970,6 @@ def default_SMILES_standardization_pipeline(
     return validated_smiles, final_comments
 
 
-@loggable
 def default_SMILES_standardization_pipeline_dataset(
     input_filename: str,
     column_name: str,
@@ -3307,7 +3279,6 @@ def default_SMILES_standardization_pipeline_dataset(
 
 from molml_mcp.tools.core_mol.pains import _check_smiles_for_pains
 
-@loggable
 def check_smiles_for_pains(smiles: list[str]) -> list[str]:
     """Screen multiple molecules for PAINS (Pan-Assay INterference compoundS) substructures.
     
@@ -3344,7 +3315,6 @@ def check_smiles_for_pains(smiles: list[str]) -> list[str]:
     return pains_hits
 
 
-@loggable
 def check_smiles_for_pains_dataset(
     input_filename: str,
     column_name: str,

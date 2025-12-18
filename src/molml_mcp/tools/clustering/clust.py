@@ -1,8 +1,4 @@
 # different clustering methods:
-# DBSCAN
-# k-means
-# Spectral
-# Hierarchical
 # Butina
 
 # Cluster on Tanimoto similarity matrix with DBSCAN. The cluster should be added as a column to a dataset. If there already exists
@@ -705,22 +701,27 @@ def cluster_kmeans_on_features(
         used_precomputed = True
     else:
         # Compute Morgan fingerprints on-the-fly
-        from molml_mcp.tools.core_mol.descriptors import compute_morgan_fingerprints
+        from molml_mcp.tools.featurization.supported.ecfps import smiles_to_ecfp_dataset
         
-        fp_result = compute_morgan_fingerprints(
+        fp_result = smiles_to_ecfp_dataset(
             input_filename=input_filename,
             project_manifest_path=project_manifest_path,
             smiles_column=smiles_column,
             output_filename=f"temp_fps_for_{output_filename}",
             explanation=f"Temporary Morgan fingerprints for k-means clustering",
             radius=2,
-            n_bits=2048,
-            use_features=False,
-            use_chirality=False
+            nbits=2048
         )
         
         # Load the computed fingerprints
         feature_vectors = _load_resource(project_manifest_path, fp_result['output_filename'])
+    
+    # Convert dictionary to matrix (if needed)
+    if isinstance(feature_vectors, dict):
+        # Feature vectors are stored as {smiles: array}
+        # Convert to matrix in same order as dataframe
+        smiles_list = df[smiles_column].tolist()
+        feature_vectors = np.array([feature_vectors[smi] for smi in smiles_list])
     
     # Ensure feature vectors are 2D
     if len(feature_vectors.shape) == 1:
@@ -798,14 +799,218 @@ def cluster_kmeans_on_features(
     }
 
 
+def cluster_butina_on_similarity(
+    input_filename: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Butina clustering on similarity matrix",
+    similarity_matrix_filename: str | None = None,
+    feature_vectors_filename: str | None = None,
+    smiles_column: str = "smiles",
+    distance_threshold: float = 0.35,
+    similarity_metric: str = "tanimoto",
+    cluster_column_name: str = "cluster"
+) -> dict:
+    """
+    Perform Butina clustering on molecules using similarity matrix.
+    
+    Butina clustering is a deterministic, greedy algorithm that creates 
+    non-overlapping spherical clusters. It iteratively:
+    1. Finds the molecule with the most neighbors within distance_threshold
+    2. Forms a cluster with that molecule and all its neighbors
+    3. Removes those molecules from consideration
+    4. Repeats until all molecules are assigned
+    
+    Results are deterministic (same input always produces same output) and
+    all molecules are assigned to exactly one cluster. Particularly useful
+    for diverse compound selection in drug discovery.
+    
+    Automatically uses precomputed similarity matrix if available, otherwise
+    computes it on-the-fly from feature vectors.
+    
+    Args:
+        input_filename: Input dataset filename
+        project_manifest_path: Path to manifest.json
+        output_filename: Output dataset name (with cluster assignments)
+        explanation: Description of clustering operation
+        similarity_matrix_filename: Optional precomputed similarity matrix
+                                   (if None, will be computed from feature_vectors)
+        feature_vectors_filename: Required if similarity_matrix_filename is None
+                                 (fingerprints/descriptors for computing similarity)
+        smiles_column: Column name containing SMILES strings (default: "smiles")
+        distance_threshold: Maximum distance (1-similarity) for neighbors
+                           - Lower values = smaller, more clusters
+                           - For Tanimoto: 0.35 means 0.65 similarity threshold
+                           - Range: 0.0 to 1.0 (default: 0.35)
+        similarity_metric: Metric for computing similarity if needed
+                          ('tanimoto', 'dice', 'cosine', etc.)
+        cluster_column_name: Name for cluster assignment column (default: "cluster")
+    
+    Returns:
+        dict with:
+            - output_filename: Output dataset with clusters
+            - n_rows: Number of molecules
+            - n_clusters: Number of clusters found
+            - cluster_sizes: Dictionary of cluster sizes
+            - largest_cluster: Size of largest cluster
+            - smallest_cluster: Size of smallest cluster
+            - singleton_clusters: Number of single-molecule clusters
+            - silhouette_score: Clustering quality metric (-1 to 1, higher is better)
+            - used_precomputed_matrix: Whether precomputed matrix was used
+            - distance_threshold: Distance threshold used
+    
+    Examples:
+        # With precomputed similarity matrix
+        result = cluster_butina_on_similarity(
+            input_filename="molecules_A1B2C3D4.csv",
+            project_manifest_path="/path/to/manifest.json",
+            output_filename="molecules_clustered",
+            similarity_matrix_filename="similarity_E5F6G7H8.joblib",
+            distance_threshold=0.3
+        )
+        
+        # Compute similarity on-the-fly with tighter threshold
+        result = cluster_butina_on_similarity(
+            input_filename="molecules_A1B2C3D4.csv",
+            project_manifest_path="/path/to/manifest.json",
+            output_filename="molecules_clustered",
+            feature_vectors_filename="morgan_fps_E5F6G7H8.joblib",
+            distance_threshold=0.25
+        )
+    """
+    from sklearn.metrics import silhouette_score
+    
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    n_total = len(df)
+    
+    if smiles_column not in df.columns:
+        raise ValueError(f"Column '{smiles_column}' not found. Available: {list(df.columns)}")
+    
+    # Get or compute similarity matrix
+    used_precomputed = False
+    if similarity_matrix_filename is not None:
+        # Use precomputed matrix
+        similarity_matrix = _load_resource(project_manifest_path, similarity_matrix_filename)
+        used_precomputed = True
+    else:
+        # Compute on-the-fly
+        if feature_vectors_filename is None:
+            raise ValueError(
+                "Either similarity_matrix_filename or feature_vectors_filename must be provided"
+            )
+        
+        # Compute similarity matrix
+        sim_result = compute_similarity_matrix(
+            input_filename=input_filename,
+            project_manifest_path=project_manifest_path,
+            smiles_column=smiles_column,
+            feature_vectors_filename=feature_vectors_filename,
+            output_filename=f"temp_similarity_for_{output_filename}",
+            explanation=f"Temporary similarity matrix for Butina clustering",
+            similarity_metric=similarity_metric
+        )
+        
+        # Load the computed matrix
+        similarity_matrix = _load_resource(project_manifest_path, sim_result['output_filename'])
+    
+    # Convert similarity to distance matrix
+    distance_matrix = 1.0 - similarity_matrix
+    
+    # Butina clustering algorithm
+    n_mols = distance_matrix.shape[0]
+    
+    # Track which molecules are still available for clustering
+    available = set(range(n_mols))
+    
+    # Store cluster assignments (-1 means unassigned)
+    cluster_labels = np.full(n_mols, -1, dtype=int)
+    
+    cluster_id = 0
+    
+    while available:
+        # For each available molecule, count neighbors within threshold
+        neighbor_counts = []
+        for mol_idx in available:
+            # Count how many available molecules are within distance threshold
+            neighbors = [
+                j for j in available 
+                if distance_matrix[mol_idx, j] <= distance_threshold
+            ]
+            neighbor_counts.append((len(neighbors), mol_idx, neighbors))
+        
+        # Sort by neighbor count (descending) to get molecule with most neighbors
+        neighbor_counts.sort(reverse=True, key=lambda x: x[0])
+        
+        # Create cluster with the molecule that has most neighbors
+        _, center_mol, neighbors = neighbor_counts[0]
+        
+        # Assign cluster ID to center and all its neighbors
+        for mol_idx in neighbors:
+            cluster_labels[mol_idx] = cluster_id
+            available.remove(mol_idx)
+        
+        cluster_id += 1
+    
+    # Add cluster assignments to dataframe
+    df[cluster_column_name] = cluster_labels
+    
+    # Calculate statistics
+    n_clusters = len(set(cluster_labels))
+    
+    cluster_sizes = {}
+    for label in set(cluster_labels):
+        cluster_sizes[f"cluster_{label}"] = int(np.sum(cluster_labels == label))
+    
+    largest_cluster = max(cluster_sizes.values())
+    smallest_cluster = min(cluster_sizes.values())
+    singleton_clusters = sum(1 for size in cluster_sizes.values() if size == 1)
+    
+    # Calculate silhouette score (only if we have at least 2 clusters)
+    silhouette = None
+    if n_clusters >= 2:
+        try:
+            silhouette = float(silhouette_score(
+                distance_matrix,
+                cluster_labels,
+                metric='precomputed'
+            ))
+        except:
+            silhouette = None
+    
+    # Store output
+    output_file = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_file,
+        "n_rows": n_total,
+        "n_clusters": n_clusters,
+        "cluster_sizes": cluster_sizes,
+        "largest_cluster": largest_cluster,
+        "smallest_cluster": smallest_cluster,
+        "singleton_clusters": singleton_clusters,
+        "balance_ratio": f"{smallest_cluster/largest_cluster:.2f}",
+        "silhouette_score": silhouette,
+        "used_precomputed_matrix": used_precomputed,
+        "distance_threshold": distance_threshold,
+        "similarity_threshold": f"{1.0 - distance_threshold:.2f}",
+        "similarity_metric": similarity_metric if not used_precomputed else "precomputed",
+        "note": (
+            f"Butina clustering: {n_total} molecules → {n_clusters} clusters. "
+            f"Largest: {largest_cluster}, smallest: {smallest_cluster} molecules. "
+            f"Singletons: {singleton_clusters}. "
+            f"Distance threshold={distance_threshold} (similarity ≥ {1.0-distance_threshold:.2f}). "
+            + (f"Silhouette score: {silhouette:.3f}." if silhouette else "")
+        )
+    }
+
+
 def get_all_clustering_tools():
     """Return all clustering tools."""
     return [
         cluster_dbscan_on_similarity,
         cluster_hierarchical_on_similarity,
         cluster_spectral_on_similarity,
-        cluster_kmeans_on_features
+        cluster_kmeans_on_features,
+        cluster_butina_on_similarity
     ]
-
-
-

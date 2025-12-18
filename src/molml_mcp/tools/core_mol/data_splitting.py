@@ -108,13 +108,66 @@ def stratified_split_dataset(
     random_state: int = 42
 ) -> dict:
     """
-    Split dataset while preserving label distribution (stratified split).
+    Split dataset while preserving label distribution across train/test/val sets.
     
-    Auto-detects classification vs regression. For regression, bins continuous
-    values before stratifying. Ensures each split has similar label distributions. 
-
-    This function could also be used to balance based on a molecular property
-    (e.g., molecular weight) by specifying that property column as label_column.
+    Automatically detects whether the task is classification or regression:
+    - Classification: Stratifies by class labels directly (e.g., 'active'/'inactive')
+    - Regression: Bins continuous values into quantiles, then stratifies (e.g., IC50, pKi)
+    
+    This ensures each split has similar label distributions, which is critical for:
+    - Imbalanced datasets (prevents train/test distribution mismatch)
+    - Small datasets (ensures representative sampling)
+    - Fair model evaluation (test set reflects real-world distribution)
+    
+    Can also stratify by molecular properties (e.g., molecular weight) by using
+    that property column as label_column.
+    
+    Args:
+        input_filename: Input CSV filename from manifest
+        label_column: Column name to stratify by (labels or properties)
+        project_manifest_path: Path to manifest.json
+        train_output_filename: Output name for training set
+        test_output_filename: Output name for test set
+        val_output_filename: Output name for validation set (if val_ratio > 0)
+        explanation: Description of the split operation
+        train_ratio: Training set fraction (default: 0.8)
+        test_ratio: Test set fraction (default: 0.2)
+        val_ratio: Validation set fraction (default: 0.0)
+        n_bins: Number of bins for regression stratification (default: 5)
+        random_state: Random seed for reproducibility (default: 42)
+    
+    Returns:
+        dict with keys:
+            - train/test/val_output_filename: Output filenames
+            - n_train/test/val_rows: Row counts
+            - train/test/val_label_distribution: Label distributions (as percentages)
+            - is_regression: Whether regression binning was applied
+            - bin_edges: Bin boundaries (for regression only)
+            - note: Summary of the split
+    
+    Examples:
+        # Binary classification (80/20 split)
+        result = stratified_split_dataset(
+            input_filename="data_A1B2C3D4.csv",
+            label_column="active",
+            project_manifest_path="/path/to/manifest.json",
+            train_output_filename="train",
+            test_output_filename="test"
+        )
+        
+        # Regression with 3-way split (70/20/10)
+        result = stratified_split_dataset(
+            input_filename="data_A1B2C3D4.csv",
+            label_column="ic50_nm",
+            project_manifest_path="/path/to/manifest.json",
+            train_output_filename="train",
+            test_output_filename="test",
+            val_output_filename="val",
+            train_ratio=0.7,
+            test_ratio=0.2,
+            val_ratio=0.1,
+            n_bins=5
+        )
     """
     from sklearn.model_selection import train_test_split
     

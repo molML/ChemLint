@@ -1,10 +1,3 @@
-# different clustering methods:
-# Butina
-
-# Cluster on Tanimoto similarity matrix with DBSCAN. The cluster should be added as a column to a dataset. If there already exists
-# a precomputed similarity matrix thats tied to this dataset, it should be used directly, otherwise it will be computed
-# on the fly using compute_similarity_matrix (which would require feature_vectors_filename to be provided).
-
 # Clustering tools for molecular datasets
 
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
@@ -207,6 +200,7 @@ def cluster_dbscan_on_similarity(
     return {
         "output_filename": output_file,
         "n_rows": n_total,
+        "columns": list(df.columns),
         "n_clusters": n_clusters,
         "n_noise": n_noise,
         "noise_percentage": f"{n_noise/n_total*100:.1f}%",
@@ -390,6 +384,7 @@ def cluster_hierarchical_on_similarity(
     return {
         "output_filename": output_file,
         "n_rows": n_total,
+        "columns": list(df.columns),
         "n_clusters": n_clusters,
         "cluster_sizes": cluster_sizes,
         "largest_cluster": largest_cluster,
@@ -584,6 +579,7 @@ def cluster_spectral_on_similarity(
     return {
         "output_filename": output_file,
         "n_rows": n_total,
+        "columns": list(df.columns),
         "n_clusters": n_clusters,
         "n_clusters_estimated": n_clusters_estimated,
         "cluster_sizes": cluster_sizes,
@@ -778,6 +774,7 @@ def cluster_kmeans_on_features(
     return {
         "output_filename": output_file,
         "n_rows": n_total,
+        "columns": list(df.columns),
         "n_clusters": n_clusters,
         "cluster_sizes": cluster_sizes,
         "largest_cluster": largest_cluster,
@@ -984,6 +981,7 @@ def cluster_butina_on_similarity(
     return {
         "output_filename": output_file,
         "n_rows": n_total,
+        "columns": list(df.columns),
         "n_clusters": n_clusters,
         "cluster_sizes": cluster_sizes,
         "largest_cluster": largest_cluster,

@@ -607,12 +607,204 @@ def cluster_spectral_on_similarity(
     }
 
 
+def cluster_kmeans_on_features(
+    input_filename: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "K-means clustering on feature vectors",
+    feature_vectors_filename: str | None = None,
+    smiles_column: str = "smiles",
+    n_clusters: int = 5,
+    n_init: int = 10,
+    max_iter: int = 300,
+    random_state: int = 42,
+    cluster_column_name: str = "cluster"
+) -> dict:
+    """
+    Perform k-means clustering on molecules using feature vectors.
+    
+    K-means clustering partitions molecules into k clusters by minimizing
+    within-cluster variance. Works directly on feature vectors (fingerprints
+    or descriptors) rather than similarity matrices.
+    
+    Fast and scalable for large datasets, but assumes spherical clusters
+    and requires specifying the number of clusters in advance.
+    
+    Uses precomputed feature vectors if available, otherwise computes them
+    on-the-fly using Morgan fingerprints.
+    
+    Args:
+        input_filename: Input dataset filename
+        project_manifest_path: Path to manifest.json
+        output_filename: Output dataset name (with cluster assignments)
+        explanation: Description of clustering operation
+        feature_vectors_filename: Optional precomputed feature vectors
+                                 (fingerprints/descriptors as numpy array)
+                                 - If None, will compute Morgan fingerprints
+        smiles_column: Column name containing SMILES strings (default: "smiles")
+        n_clusters: Number of clusters to create (default: 5)
+                   - Must be between 2 and n_molecules
+                   - All molecules will be assigned to a cluster
+        n_init: Number of times k-means runs with different centroid seeds
+               - Higher values = more stable results but slower
+               - Default: 10
+        max_iter: Maximum iterations for convergence (default: 300)
+        random_state: Random seed for reproducibility (default: 42)
+        cluster_column_name: Name for cluster assignment column (default: "cluster")
+    
+    Returns:
+        dict with:
+            - output_filename: Output dataset with clusters
+            - n_rows: Number of molecules
+            - n_clusters: Number of clusters created
+            - cluster_sizes: Dictionary of cluster sizes
+            - largest_cluster: Size of largest cluster
+            - smallest_cluster: Size of smallest cluster
+            - silhouette_score: Clustering quality metric (-1 to 1, higher is better)
+            - inertia: Sum of squared distances to nearest cluster center (lower is better)
+            - n_iterations: Number of iterations until convergence
+            - used_precomputed_features: Whether precomputed features were used
+    
+    Examples:
+        # With precomputed feature vectors
+        result = cluster_kmeans_on_features(
+            input_filename="molecules_A1B2C3D4.csv",
+            project_manifest_path="/path/to/manifest.json",
+            output_filename="molecules_clustered",
+            feature_vectors_filename="morgan_fps_E5F6G7H8.joblib",
+            n_clusters=10
+        )
+        
+        # Compute Morgan fingerprints on-the-fly
+        result = cluster_kmeans_on_features(
+            input_filename="molecules_A1B2C3D4.csv",
+            project_manifest_path="/path/to/manifest.json",
+            output_filename="molecules_clustered",
+            n_clusters=8,
+            n_init=20  # More runs for stability
+        )
+    """
+    from sklearn.cluster import KMeans
+    from sklearn.metrics import silhouette_score
+    
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    n_total = len(df)
+    
+    if smiles_column not in df.columns:
+        raise ValueError(f"Column '{smiles_column}' not found. Available: {list(df.columns)}")
+    
+    if n_clusters < 2 or n_clusters > n_total:
+        raise ValueError(f"n_clusters must be between 2 and {n_total}, got {n_clusters}")
+    
+    # Get or compute feature vectors
+    used_precomputed = False
+    if feature_vectors_filename is not None:
+        # Use precomputed feature vectors
+        feature_vectors = _load_resource(project_manifest_path, feature_vectors_filename)
+        used_precomputed = True
+    else:
+        # Compute Morgan fingerprints on-the-fly
+        from molml_mcp.tools.core_mol.descriptors import compute_morgan_fingerprints
+        
+        fp_result = compute_morgan_fingerprints(
+            input_filename=input_filename,
+            project_manifest_path=project_manifest_path,
+            smiles_column=smiles_column,
+            output_filename=f"temp_fps_for_{output_filename}",
+            explanation=f"Temporary Morgan fingerprints for k-means clustering",
+            radius=2,
+            n_bits=2048,
+            use_features=False,
+            use_chirality=False
+        )
+        
+        # Load the computed fingerprints
+        feature_vectors = _load_resource(project_manifest_path, fp_result['output_filename'])
+    
+    # Ensure feature vectors are 2D
+    if len(feature_vectors.shape) == 1:
+        feature_vectors = feature_vectors.reshape(-1, 1)
+    
+    if feature_vectors.shape[0] != n_total:
+        raise ValueError(
+            f"Feature vector count ({feature_vectors.shape[0]}) doesn't match "
+            f"dataset size ({n_total})"
+        )
+    
+    # Perform k-means clustering
+    kmeans = KMeans(
+        n_clusters=n_clusters,
+        n_init=n_init,
+        max_iter=max_iter,
+        random_state=random_state
+    )
+    
+    cluster_labels = kmeans.fit_predict(feature_vectors)
+    
+    # Add cluster assignments to dataframe
+    df[cluster_column_name] = cluster_labels
+    
+    # Calculate statistics
+    cluster_sizes = {}
+    for label in set(cluster_labels):
+        cluster_sizes[f"cluster_{label}"] = int(np.sum(cluster_labels == label))
+    
+    largest_cluster = max(cluster_sizes.values())
+    smallest_cluster = min(cluster_sizes.values())
+    
+    # Calculate silhouette score
+    silhouette = None
+    if n_clusters >= 2:
+        try:
+            silhouette = float(silhouette_score(
+                feature_vectors,
+                cluster_labels,
+                metric='euclidean'
+            ))
+        except:
+            silhouette = None
+    
+    # Get inertia (sum of squared distances to centers)
+    inertia = float(kmeans.inertia_)
+    
+    # Get number of iterations
+    n_iterations = int(kmeans.n_iter_)
+    
+    # Store output
+    output_file = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_file,
+        "n_rows": n_total,
+        "n_clusters": n_clusters,
+        "cluster_sizes": cluster_sizes,
+        "largest_cluster": largest_cluster,
+        "smallest_cluster": smallest_cluster,
+        "balance_ratio": f"{smallest_cluster/largest_cluster:.2f}",
+        "silhouette_score": silhouette,
+        "inertia": inertia,
+        "n_iterations": n_iterations,
+        "converged": n_iterations < max_iter,
+        "used_precomputed_features": used_precomputed,
+        "feature_dim": feature_vectors.shape[1],
+        "note": (
+            f"K-means clustering: {n_total} molecules → {n_clusters} clusters. "
+            f"Largest: {largest_cluster}, smallest: {smallest_cluster} molecules. "
+            f"Converged in {n_iterations} iterations. "
+            + (f"Silhouette score: {silhouette:.3f}. " if silhouette else "")
+            + f"Inertia: {inertia:.2f}."
+        )
+    }
+
+
 def get_all_clustering_tools():
     """Return all clustering tools."""
     return [
         cluster_dbscan_on_similarity,
         cluster_hierarchical_on_similarity,
-        cluster_spectral_on_similarity
+        cluster_spectral_on_similarity,
+        cluster_kmeans_on_features
     ]
 
 

@@ -411,7 +411,6 @@ def cluster_spectral_on_similarity(
     feature_vectors_filename: str | None = None,
     smiles_column: str = "smiles",
     n_clusters: int | None = None,
-    auto_estimate_clusters: bool = True,
     assign_labels: str = "kmeans",
     similarity_metric: str = "tanimoto",
     cluster_column_name: str = "cluster"
@@ -440,11 +439,8 @@ def cluster_spectral_on_similarity(
                                  (fingerprints/descriptors for computing similarity)
         smiles_column: Column name containing SMILES strings (default: "smiles")
         n_clusters: Number of clusters to create (optional)
-                   - If None and auto_estimate_clusters=True, will be estimated
-                   - If provided, overrides auto-estimation
-        auto_estimate_clusters: Automatically estimate n_clusters from eigenvalues
-                               using Kneedle algorithm (default: True)
-                               - Ignored if n_clusters is explicitly provided
+                   - If None, will be estimated from eigenvalues using Kneedle algorithm
+                   - If provided, uses the specified number (no estimation)
         assign_labels: Strategy for assigning labels from eigenvectors
                       - 'kmeans': k-means on eigenvectors (default, more stable)
                       - 'discretize': discretization (faster but less stable)
@@ -466,13 +462,12 @@ def cluster_spectral_on_similarity(
             - assign_labels: Label assignment method used
     
     Examples:
-        # Auto-estimate clusters from eigenvalues
+        # Auto-estimate clusters from eigenvalues (n_clusters=None)
         result = cluster_spectral_on_similarity(
             input_filename="molecules_A1B2C3D4.csv",
             project_manifest_path="/path/to/manifest.json",
             output_filename="molecules_clustered",
-            similarity_matrix_filename="similarity_E5F6G7H8.joblib",
-            auto_estimate_clusters=True
+            similarity_matrix_filename="similarity_E5F6G7H8.joblib"
         )
         
         # Specify exact number of clusters
@@ -481,8 +476,7 @@ def cluster_spectral_on_similarity(
             project_manifest_path="/path/to/manifest.json",
             output_filename="molecules_clustered",
             feature_vectors_filename="morgan_fps_E5F6G7H8.joblib",
-            n_clusters=8,
-            auto_estimate_clusters=False
+            n_clusters=8
         )
     """
     from sklearn.cluster import SpectralClustering
@@ -525,15 +519,12 @@ def cluster_spectral_on_similarity(
     # Estimate or validate n_clusters
     n_clusters_estimated = False
     if n_clusters is None:
-        if auto_estimate_clusters:
-            # Estimate number of clusters from eigenvalues
-            n_clusters = eigenvalue_cluster_approx(similarity_matrix)
-            n_clusters_estimated = True
-            if n_clusters is None or n_clusters < 2:
-                # Fallback if estimation fails
-                n_clusters = min(10, max(2, n_total // 20))
-        else:
-            raise ValueError("n_clusters must be provided if auto_estimate_clusters=False")
+        # Estimate number of clusters from eigenvalues
+        n_clusters = eigenvalue_cluster_approx(similarity_matrix)
+        n_clusters_estimated = True
+        if n_clusters is None or n_clusters < 2:
+            # Fallback if estimation fails
+            n_clusters = min(10, max(2, n_total // 20))
     
     if n_clusters < 2 or n_clusters > n_total:
         raise ValueError(f"n_clusters must be between 2 and {n_total}, got {n_clusters}")

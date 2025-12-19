@@ -98,7 +98,7 @@ for tool_func in get_all_clustering_tools():
     mcp.add_tool(tool_func)
 
 # Add plotting tools
-from molml_mcp.tools.plotting import plot_histogram, plot_scatter
+from molml_mcp.tools.core.plotting import plot_histogram, plot_scatter
 mcp.add_tool(plot_histogram)
 mcp.add_tool(plot_scatter)
 

@@ -6,7 +6,7 @@ organized by task type (classification/regression).
 """
 
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from sklearn.ensemble import (
     RandomForestClassifier,
     RandomForestRegressor,
@@ -35,6 +35,17 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 # ============================================================================
 # Classification Models
 # ============================================================================
+
+def _get_random_forest_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Random Forest Classifier."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 500], "log_scale": False, "description": "Number of trees in the forest"},
+        "max_depth": {"type": "int_or_none", "range": [3, 50], "log_scale": False, "description": "Maximum depth of trees (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "max_features": {"type": "categorical", "choices": ["sqrt", "log2", None], "description": "Number of features to consider for splits"}
+    }
+
 
 def _train_random_forest_classifier(
     X_train: np.ndarray,
@@ -66,6 +77,18 @@ def _train_random_forest_classifier(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_gradient_boosting_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Gradient Boosting Classifier."""
+    return {
+        "n_estimators": {"type": "int", "range": [50, 500], "log_scale": False, "description": "Number of boosting stages"},
+        "learning_rate": {"type": "float", "range": [0.001, 0.3], "log_scale": True, "description": "Shrinks the contribution of each tree"},
+        "max_depth": {"type": "int", "range": [3, 10], "log_scale": False, "description": "Maximum depth of trees"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "subsample": {"type": "float", "range": [0.5, 1.0], "log_scale": False, "description": "Fraction of samples for fitting trees"}
+    }
 
 
 def _train_gradient_boosting_classifier(
@@ -100,6 +123,16 @@ def _train_gradient_boosting_classifier(
     return model
 
 
+def _get_logistic_regression_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Logistic Regression."""
+    return {
+        "penalty": {"type": "categorical", "choices": ["l1", "l2", "elasticnet", "none"], "description": "Regularization type"},
+        "C": {"type": "float", "range": [0.001, 100], "log_scale": True, "description": "Inverse of regularization strength"},
+        "solver": {"type": "categorical", "choices": ["lbfgs", "liblinear", "saga"], "description": "Optimization algorithm"},
+        "max_iter": {"type": "int", "range": [100, 5000], "log_scale": False, "description": "Maximum iterations for convergence"}
+    }
+
+
 def _train_logistic_regression(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -126,6 +159,16 @@ def _train_logistic_regression(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_svc_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Support Vector Classifier."""
+    return {
+        "C": {"type": "float", "range": [0.001, 100], "log_scale": True, "description": "Regularization parameter"},
+        "kernel": {"type": "categorical", "choices": ["linear", "poly", "rbf", "sigmoid"], "description": "Kernel type"},
+        "gamma": {"type": "categorical_or_float", "choices": ["scale", "auto"], "range": [0.0001, 1.0], "log_scale": True, "description": "Kernel coefficient"},
+        "degree": {"type": "int", "range": [2, 5], "log_scale": False, "description": "Degree for polynomial kernel"}
+    }
 
 
 def _train_svc(
@@ -156,6 +199,16 @@ def _train_svc(
     return model
 
 
+def _get_knn_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for K-Nearest Neighbors Classifier."""
+    return {
+        "n_neighbors": {"type": "int", "range": [1, 50], "log_scale": False, "description": "Number of neighbors"},
+        "weights": {"type": "categorical", "choices": ["uniform", "distance"], "description": "Weight function for prediction"},
+        "metric": {"type": "categorical", "choices": ["minkowski", "euclidean", "manhattan", "chebyshev"], "description": "Distance metric"},
+        "p": {"type": "int", "range": [1, 3], "log_scale": False, "description": "Power parameter for Minkowski metric"}
+    }
+
+
 def _train_knn_classifier(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -180,6 +233,16 @@ def _train_knn_classifier(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_decision_tree_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Decision Tree Classifier."""
+    return {
+        "max_depth": {"type": "int_or_none", "range": [3, 30], "log_scale": False, "description": "Maximum depth of tree (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "criterion": {"type": "categorical", "choices": ["gini", "entropy"], "description": "Split quality measure"}
+    }
 
 
 def _train_decision_tree_classifier(
@@ -210,6 +273,14 @@ def _train_decision_tree_classifier(
     return model
 
 
+def _get_adaboost_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for AdaBoost Classifier."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 200], "log_scale": False, "description": "Maximum number of estimators"},
+        "learning_rate": {"type": "float", "range": [0.01, 2.0], "log_scale": True, "description": "Weight applied to each classifier"}
+    }
+
+
 def _train_adaboost_classifier(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -232,6 +303,17 @@ def _train_adaboost_classifier(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_extra_trees_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Extra Trees Classifier."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 500], "log_scale": False, "description": "Number of trees in the forest"},
+        "max_depth": {"type": "int_or_none", "range": [3, 50], "log_scale": False, "description": "Maximum depth of trees (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "max_features": {"type": "categorical", "choices": ["sqrt", "log2", None], "description": "Number of features to consider for splits"}
+    }
 
 
 def _train_extra_trees_classifier(
@@ -266,6 +348,13 @@ def _train_extra_trees_classifier(
     return model
 
 
+def _get_naive_bayes_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Gaussian Naive Bayes."""
+    return {
+        "var_smoothing": {"type": "float", "range": [1e-10, 1e-5], "log_scale": True, "description": "Portion of largest variance added to variances for stability"}
+    }
+
+
 def _train_naive_bayes(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -280,6 +369,14 @@ def _train_naive_bayes(
     model = GaussianNB(**kwargs)
     model.fit(X_train, y_train)
     return model
+
+
+def _get_lda_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Linear Discriminant Analysis."""
+    return {
+        "solver": {"type": "categorical", "choices": ["svd", "lsqr", "eigen"], "description": "Solver to use"},
+        "shrinkage": {"type": "float_or_none", "range": [0.0, 1.0], "log_scale": False, "description": "Shrinkage parameter (None for no shrinkage)"}
+    }
 
 
 def _train_lda(
@@ -327,9 +424,30 @@ def _train_sgd_classifier(
     return model
 
 
+def _get_sgd_classifier_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for SGD Classifier."""
+    return {
+        "loss": {"type": "categorical", "choices": ["hinge", "log_loss", "modified_huber", "perceptron"], "description": "Loss function"},
+        "penalty": {"type": "categorical", "choices": ["l1", "l2", "elasticnet"], "description": "Regularization type"},
+        "alpha": {"type": "float", "range": [1e-6, 0.01], "log_scale": True, "description": "Regularization term"},
+        "max_iter": {"type": "int", "range": [100, 5000], "log_scale": False, "description": "Maximum iterations"}
+    }
+
+
 # ============================================================================
 # Regression Models
 # ============================================================================
+
+def _get_random_forest_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Random Forest Regressor."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 500], "log_scale": False, "description": "Number of trees in the forest"},
+        "max_depth": {"type": "int_or_none", "range": [3, 50], "log_scale": False, "description": "Maximum depth of trees (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "max_features": {"type": "categorical", "choices": ["sqrt", "log2", None], "description": "Number of features to consider for splits"}
+    }
+
 
 def _train_random_forest_regressor(
     X_train: np.ndarray,
@@ -361,6 +479,18 @@ def _train_random_forest_regressor(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_gradient_boosting_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Gradient Boosting Regressor."""
+    return {
+        "n_estimators": {"type": "int", "range": [50, 500], "log_scale": False, "description": "Number of boosting stages"},
+        "learning_rate": {"type": "float", "range": [0.001, 0.3], "log_scale": True, "description": "Shrinks the contribution of each tree"},
+        "max_depth": {"type": "int", "range": [3, 10], "log_scale": False, "description": "Maximum depth of trees"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "subsample": {"type": "float", "range": [0.5, 1.0], "log_scale": False, "description": "Fraction of samples for fitting trees"}
+    }
 
 
 def _train_gradient_boosting_regressor(
@@ -395,6 +525,14 @@ def _train_gradient_boosting_regressor(
     return model
 
 
+def _get_ridge_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Ridge Regression."""
+    return {
+        "alpha": {"type": "float", "range": [0.001, 100], "log_scale": True, "description": "Regularization strength"},
+        "solver": {"type": "categorical", "choices": ["auto", "svd", "cholesky", "lsqr", "saga"], "description": "Solver to use"}
+    }
+
+
 def _train_ridge(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -411,6 +549,14 @@ def _train_ridge(
     model = Ridge(alpha=alpha, solver=solver, **kwargs)
     model.fit(X_train, y_train)
     return model
+
+
+def _get_lasso_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Lasso Regression."""
+    return {
+        "alpha": {"type": "float", "range": [0.001, 10], "log_scale": True, "description": "Regularization strength"},
+        "max_iter": {"type": "int", "range": [100, 5000], "log_scale": False, "description": "Maximum iterations for convergence"}
+    }
 
 
 def _train_lasso(
@@ -431,6 +577,15 @@ def _train_lasso(
     return model
 
 
+def _get_elastic_net_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Elastic Net."""
+    return {
+        "alpha": {"type": "float", "range": [0.001, 10], "log_scale": True, "description": "Regularization strength"},
+        "l1_ratio": {"type": "float", "range": [0.0, 1.0], "log_scale": False, "description": "L1 penalty mixing parameter"},
+        "max_iter": {"type": "int", "range": [100, 5000], "log_scale": False, "description": "Maximum iterations for convergence"}
+    }
+
+
 def _train_elastic_net(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -448,6 +603,16 @@ def _train_elastic_net(
     model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, max_iter=max_iter, **kwargs)
     model.fit(X_train, y_train)
     return model
+
+
+def _get_svr_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Support Vector Regressor."""
+    return {
+        "C": {"type": "float", "range": [0.001, 100], "log_scale": True, "description": "Regularization parameter"},
+        "kernel": {"type": "categorical", "choices": ["linear", "poly", "rbf", "sigmoid"], "description": "Kernel type"},
+        "gamma": {"type": "categorical_or_float", "choices": ["scale", "auto"], "range": [0.0001, 1.0], "log_scale": True, "description": "Kernel coefficient"},
+        "epsilon": {"type": "float", "range": [0.01, 1.0], "log_scale": True, "description": "Epsilon in epsilon-SVR model"}
+    }
 
 
 def _train_svr(
@@ -476,6 +641,16 @@ def _train_svr(
     return model
 
 
+def _get_knn_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for K-Nearest Neighbors Regressor."""
+    return {
+        "n_neighbors": {"type": "int", "range": [1, 50], "log_scale": False, "description": "Number of neighbors"},
+        "weights": {"type": "categorical", "choices": ["uniform", "distance"], "description": "Weight function for prediction"},
+        "metric": {"type": "categorical", "choices": ["minkowski", "euclidean", "manhattan", "chebyshev"], "description": "Distance metric"},
+        "p": {"type": "int", "range": [1, 3], "log_scale": False, "description": "Power parameter for Minkowski metric"}
+    }
+
+
 def _train_knn_regressor(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -500,6 +675,16 @@ def _train_knn_regressor(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_decision_tree_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Decision Tree Regressor."""
+    return {
+        "max_depth": {"type": "int_or_none", "range": [3, 30], "log_scale": False, "description": "Maximum depth of tree (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "criterion": {"type": "categorical", "choices": ["squared_error", "friedman_mse", "absolute_error"], "description": "Split quality measure"}
+    }
 
 
 def _train_decision_tree_regressor(
@@ -530,6 +715,15 @@ def _train_decision_tree_regressor(
     return model
 
 
+def _get_adaboost_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for AdaBoost Regressor."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 200], "log_scale": False, "description": "Maximum number of estimators"},
+        "learning_rate": {"type": "float", "range": [0.01, 2.0], "log_scale": True, "description": "Weight applied to each estimator"},
+        "loss": {"type": "categorical", "choices": ["linear", "square", "exponential"], "description": "Loss function"}
+    }
+
+
 def _train_adaboost_regressor(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -554,6 +748,17 @@ def _train_adaboost_regressor(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def _get_extra_trees_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for Extra Trees Regressor."""
+    return {
+        "n_estimators": {"type": "int", "range": [10, 500], "log_scale": False, "description": "Number of trees in the forest"},
+        "max_depth": {"type": "int_or_none", "range": [3, 50], "log_scale": False, "description": "Maximum depth of trees (None for unlimited)"},
+        "min_samples_split": {"type": "int", "range": [2, 20], "log_scale": False, "description": "Minimum samples required to split a node"},
+        "min_samples_leaf": {"type": "int", "range": [1, 20], "log_scale": False, "description": "Minimum samples required at a leaf node"},
+        "max_features": {"type": "categorical", "choices": ["sqrt", "log2", None], "description": "Number of features to consider for splits"}
+    }
 
 
 def _train_extra_trees_regressor(
@@ -616,6 +821,16 @@ def _train_sgd_regressor(
     return model
 
 
+def _get_sgd_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
+    """Get hyperparameter space for SGD Regressor."""
+    return {
+        "loss": {"type": "categorical", "choices": ["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"], "description": "Loss function"},
+        "penalty": {"type": "categorical", "choices": ["l1", "l2", "elasticnet"], "description": "Regularization type"},
+        "alpha": {"type": "float", "range": [1e-6, 0.01], "log_scale": True, "description": "Regularization term"},
+        "max_iter": {"type": "int", "range": [100, 5000], "log_scale": False, "description": "Maximum iterations"}
+    }
+
+
 # ============================================================================
 # Model Registry
 # ============================================================================
@@ -624,6 +839,7 @@ CLASSIFICATION_MODELS = {
     "random_forest": {
         "name": "Random Forest Classifier",
         "function": _train_random_forest_classifier,
+        "hyperparams_function": _get_random_forest_classifier_hyperparams,
         "description": "Ensemble of decision trees using bagging. Good for most tasks, handles non-linear relationships.",
         "default_params": {
             "n_estimators": 100,
@@ -636,6 +852,7 @@ CLASSIFICATION_MODELS = {
     "gradient_boosting": {
         "name": "Gradient Boosting Classifier",
         "function": _train_gradient_boosting_classifier,
+        "hyperparams_function": _get_gradient_boosting_classifier_hyperparams,
         "description": "Sequential ensemble that corrects previous errors. Often highest accuracy but slower.",
         "default_params": {
             "n_estimators": 100,
@@ -647,6 +864,7 @@ CLASSIFICATION_MODELS = {
     "logistic_regression": {
         "name": "Logistic Regression",
         "function": _train_logistic_regression,
+        "hyperparams_function": _get_logistic_regression_hyperparams,
         "description": "Linear classifier. Fast, interpretable, works well with high-dimensional sparse data.",
         "default_params": {
             "penalty": "l2",
@@ -658,6 +876,7 @@ CLASSIFICATION_MODELS = {
     "svc": {
         "name": "Support Vector Classifier",
         "function": _train_svc,
+        "hyperparams_function": _get_svc_hyperparams,
         "description": "Finds optimal separating hyperplane. Works well for high-dimensional data.",
         "default_params": {
             "C": 1.0,
@@ -669,6 +888,7 @@ CLASSIFICATION_MODELS = {
     "knn": {
         "name": "K-Nearest Neighbors Classifier",
         "function": _train_knn_classifier,
+        "hyperparams_function": _get_knn_classifier_hyperparams,
         "description": "Instance-based learning. Simple, no training phase, but slower prediction.",
         "default_params": {
             "n_neighbors": 5,
@@ -679,6 +899,7 @@ CLASSIFICATION_MODELS = {
     "decision_tree": {
         "name": "Decision Tree Classifier",
         "function": _train_decision_tree_classifier,
+        "hyperparams_function": _get_decision_tree_classifier_hyperparams,
         "description": "Simple tree-based model. Interpretable but prone to overfitting.",
         "default_params": {
             "max_depth": None,
@@ -690,6 +911,7 @@ CLASSIFICATION_MODELS = {
     "adaboost": {
         "name": "AdaBoost Classifier",
         "function": _train_adaboost_classifier,
+        "hyperparams_function": _get_adaboost_classifier_hyperparams,
         "description": "Boosting ensemble focusing on misclassified samples. Good for binary classification.",
         "default_params": {
             "n_estimators": 50,
@@ -699,6 +921,7 @@ CLASSIFICATION_MODELS = {
     "extra_trees": {
         "name": "Extra Trees Classifier",
         "function": _train_extra_trees_classifier,
+        "hyperparams_function": _get_extra_trees_classifier_hyperparams,
         "description": "Similar to Random Forest with random split thresholds. Faster, reduces overfitting.",
         "default_params": {
             "n_estimators": 100,
@@ -709,12 +932,14 @@ CLASSIFICATION_MODELS = {
     "naive_bayes": {
         "name": "Gaussian Naive Bayes",
         "function": _train_naive_bayes,
+        "hyperparams_function": _get_naive_bayes_hyperparams,
         "description": "Probabilistic classifier with independence assumption. Fast, works with small datasets.",
         "default_params": {}
     },
     "lda": {
         "name": "Linear Discriminant Analysis",
         "function": _train_lda,
+        "hyperparams_function": _get_lda_hyperparams,
         "description": "Linear classifier with dimensionality reduction. Assumes Gaussian distributions.",
         "default_params": {
             "solver": "svd"
@@ -723,6 +948,7 @@ CLASSIFICATION_MODELS = {
     "sgd": {
         "name": "SGD Classifier",
         "function": _train_sgd_classifier,
+        "hyperparams_function": _get_sgd_classifier_hyperparams,
         "description": "Linear classifier with SGD training. Very efficient for large sparse datasets.",
         "default_params": {
             "loss": "hinge",
@@ -737,6 +963,7 @@ REGRESSION_MODELS = {
     "random_forest": {
         "name": "Random Forest Regressor",
         "function": _train_random_forest_regressor,
+        "hyperparams_function": _get_random_forest_regressor_hyperparams,
         "description": "Ensemble of decision trees. Handles non-linear relationships, robust to outliers.",
         "default_params": {
             "n_estimators": 100,
@@ -749,6 +976,7 @@ REGRESSION_MODELS = {
     "gradient_boosting": {
         "name": "Gradient Boosting Regressor",
         "function": _train_gradient_boosting_regressor,
+        "hyperparams_function": _get_gradient_boosting_regressor_hyperparams,
         "description": "Sequential tree ensemble. Often best accuracy for tabular data but slower.",
         "default_params": {
             "n_estimators": 100,
@@ -760,6 +988,7 @@ REGRESSION_MODELS = {
     "ridge": {
         "name": "Ridge Regression",
         "function": _train_ridge,
+        "hyperparams_function": _get_ridge_hyperparams,
         "description": "Linear regression with L2 regularization. Fast, stable, handles multicollinearity.",
         "default_params": {
             "alpha": 1.0,
@@ -769,6 +998,7 @@ REGRESSION_MODELS = {
     "lasso": {
         "name": "Lasso Regression",
         "function": _train_lasso,
+        "hyperparams_function": _get_lasso_hyperparams,
         "description": "Linear regression with L1 regularization. Performs automatic feature selection.",
         "default_params": {
             "alpha": 1.0,
@@ -778,6 +1008,7 @@ REGRESSION_MODELS = {
     "elastic_net": {
         "name": "Elastic Net",
         "function": _train_elastic_net,
+        "hyperparams_function": _get_elastic_net_hyperparams,
         "description": "Linear regression with L1 and L2 regularization. Combines Ridge and Lasso benefits.",
         "default_params": {
             "alpha": 1.0,
@@ -788,6 +1019,7 @@ REGRESSION_MODELS = {
     "svr": {
         "name": "Support Vector Regressor",
         "function": _train_svr,
+        "hyperparams_function": _get_svr_hyperparams,
         "description": "Non-linear regression with kernel trick. Good for high-dimensional complex patterns.",
         "default_params": {
             "C": 1.0,
@@ -799,6 +1031,7 @@ REGRESSION_MODELS = {
     "knn": {
         "name": "K-Nearest Neighbors Regressor",
         "function": _train_knn_regressor,
+        "hyperparams_function": _get_knn_regressor_hyperparams,
         "description": "Predicts based on k nearest neighbors. Non-parametric, simple, slower prediction.",
         "default_params": {
             "n_neighbors": 5,
@@ -809,6 +1042,7 @@ REGRESSION_MODELS = {
     "decision_tree": {
         "name": "Decision Tree Regressor",
         "function": _train_decision_tree_regressor,
+        "hyperparams_function": _get_decision_tree_regressor_hyperparams,
         "description": "Simple tree-based model. Interpretable but prone to overfitting.",
         "default_params": {
             "max_depth": None,
@@ -820,6 +1054,7 @@ REGRESSION_MODELS = {
     "adaboost": {
         "name": "AdaBoost Regressor",
         "function": _train_adaboost_regressor,
+        "hyperparams_function": _get_adaboost_regressor_hyperparams,
         "description": "Boosting ensemble focusing on difficult samples. Improves weak learners.",
         "default_params": {
             "n_estimators": 50,
@@ -830,6 +1065,7 @@ REGRESSION_MODELS = {
     "extra_trees": {
         "name": "Extra Trees Regressor",
         "function": _train_extra_trees_regressor,
+        "hyperparams_function": _get_extra_trees_regressor_hyperparams,
         "description": "Similar to Random Forest with random splits. Faster, reduces overfitting.",
         "default_params": {
             "n_estimators": 100,
@@ -840,6 +1076,7 @@ REGRESSION_MODELS = {
     "sgd": {
         "name": "SGD Regressor",
         "function": _train_sgd_regressor,
+        "hyperparams_function": _get_sgd_regressor_hyperparams,
         "description": "Linear regression with SGD training. Very efficient for large sparse datasets.",
         "default_params": {
             "loss": "squared_error",
@@ -898,3 +1135,78 @@ def get_model_function(model_key: str, task: str = "classification"):
         return REGRESSION_MODELS[model_key]["function"]
     else:
         raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
+
+
+def get_hyperparameter_space(model_key: str, task: str = "classification") -> Dict[str, Dict[str, Any]]:
+    """
+    Get the hyperparameter search space for a specific model.
+    
+    Returns a dictionary describing each hyperparameter's type, range, and other properties
+    that can be used to define a hyperparameter search space.
+    
+    Args:
+        model_key: Key identifying the model (e.g., "random_forest", "ridge")
+        task: Either "classification" or "regression"
+    
+    Returns:
+        Dictionary mapping hyperparameter names to their space definitions.
+        Each space definition contains:
+        - type: "int", "float", "categorical", "int_or_none", "float_or_none", etc.
+        - range: [min, max] for numeric types (when applicable)
+        - choices: List of valid options for categorical types
+        - log_scale: Boolean indicating if log scale should be used for sampling
+        - description: Human-readable description of the hyperparameter
+    
+    Example:
+        >>> space = get_hyperparameter_space("random_forest", "classification")
+        >>> space["n_estimators"]
+        {
+            "type": "int",
+            "range": [10, 500],
+            "log_scale": False,
+            "description": "Number of trees in the forest"
+        }
+    """
+    if task not in ["classification", "regression"]:
+        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
+    
+    # Get the appropriate registry
+    registry = CLASSIFICATION_MODELS if task == "classification" else REGRESSION_MODELS
+    
+    if model_key not in registry:
+        available = list(registry.keys())
+        raise ValueError(f"Unknown {task} model '{model_key}'. Available: {available}")
+    
+    # Call the hyperparameter function
+    hyperparams_func = registry[model_key]["hyperparams_function"]
+    return hyperparams_func()
+
+
+def get_all_hyperparameter_spaces(task: str = "classification") -> Dict[str, Dict[str, Dict[str, Any]]]:
+    """
+    Get hyperparameter search spaces for all models of a given task.
+    
+    Args:
+        task: Either "classification" or "regression"
+    
+    Returns:
+        Dictionary mapping model keys to their hyperparameter spaces
+    
+    Example:
+        >>> spaces = get_all_hyperparameter_spaces("classification")
+        >>> list(spaces.keys())
+        ['random_forest', 'gradient_boosting', 'logistic_regression', ...]
+    """
+    if task not in ["classification", "regression"]:
+        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
+    
+    # Get the appropriate registry
+    registry = CLASSIFICATION_MODELS if task == "classification" else REGRESSION_MODELS
+    
+    # Call each model's hyperparameter function
+    spaces = {}
+    for model_key, model_info in registry.items():
+        hyperparams_func = model_info["hyperparams_function"]
+        spaces[model_key] = hyperparams_func()
+    
+    return spaces

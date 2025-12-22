@@ -1036,6 +1036,84 @@ def keep_columns(
     }
 
 
+def transform_column(
+    input_filename: str,
+    expression: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str
+) -> dict:
+    """
+    Apply a mathematical transformation to create a new column using pandas.eval().
+    
+    Creates a single new column based on a mathematical expression. To create multiple
+    columns, call this function multiple times.
+    
+    Args:
+        input_filename: Input dataset filename
+        expression: Single pandas eval expression with assignment, e.g.:
+                   "pKi = -log10(Ki_nM / 1e9)"
+                   "log_MW = log10(MolWt)"
+                   "normalized = (value - value.mean()) / value.std()"
+                   "active = pIC50 > 6"
+        project_manifest_path: Path to manifest.json
+        output_filename: Name for output file
+        explanation: Description of transformation
+        
+    Returns:
+        Dictionary with output_filename, n_rows, columns, expression, and preview
+        
+    Examples:
+        # Convert nM to pKi
+        >>> transform_column(
+        ...     input_filename="data.csv",
+        ...     expression="pKi = -log10(Ki_nM / 1e9)",
+        ...     project_manifest_path="/path/to/manifest.json",
+        ...     output_filename="data_with_pKi",
+        ...     explanation="Added pKi column"
+        ... )
+        
+        # Normalize a column
+        >>> transform_column(
+        ...     input_filename="data.csv",
+        ...     expression="MolWt_norm = (MolWt - MolWt.mean()) / MolWt.std()",
+        ...     project_manifest_path="/path/to/manifest.json",
+        ...     output_filename="data_normalized",
+        ...     explanation="Z-score normalized MolWt"
+        ... )
+        
+        # Boolean flag
+        >>> transform_column(
+        ...     input_filename="data.csv",
+        ...     expression="is_active = IC50_nM < 100",
+        ...     project_manifest_path="/path/to/manifest.json",
+        ...     output_filename="data_with_flag",
+        ...     explanation="Added activity flag"
+        ... )
+
+    Note:
+        - Only ONE expression per call (pandas.eval() limitation)
+        - Use numpy functions: log10, sqrt, exp, log, etc.
+        - Can reference existing columns and use .mean(), .std(), etc.
+        - Supports arithmetic: +, -, *, /, **, %
+        - Supports comparisons: <, >, <=, >=, ==, !=
+        - To create multiple columns, call this function multiple times
+    """
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Safe evaluation with numpy functions available
+    import numpy as np
+    df.eval(expression, inplace=True)
+    
+    output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_filename,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "expression": expression,
+        "preview": df.head().to_dict('records')
+    }
 
 
 def get_all_dataset_tools():
@@ -1052,5 +1130,6 @@ def get_all_dataset_tools():
         drop_duplicate_rows,
         drop_empty_rows,
         drop_columns,
-        keep_columns
+        keep_columns,
+        transform_column
     ]

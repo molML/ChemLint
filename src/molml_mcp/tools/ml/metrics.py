@@ -240,6 +240,56 @@ def get_metric_function(metric_name: str):
     return METRIC_REGISTRY[metric_name]
 
 
+def _compute_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    metrics: list[str],
+    pos_label: int = 1
+) -> dict:
+    """
+    Compute multiple metrics on true and predicted values.
+    
+    This is a helper function that computes metrics without any dataset loading or
+    column validation. It takes raw numpy arrays and returns computed metric values.
+    
+    Args:
+        y_true: True labels/values
+        y_pred: Predicted labels/values or probabilities
+        metrics: List of metric names to calculate
+        pos_label: Positive class label for binary classification (default: 1)
+    
+    Returns:
+        Dictionary mapping metric names to computed values
+        
+    Example:
+        >>> y_true = np.array([0, 1, 1, 0, 1])
+        >>> y_pred = np.array([0, 1, 0, 0, 1])
+        >>> compute_metrics(y_true, y_pred, ['accuracy', 'precision', 'recall'])
+        {'accuracy': 0.8, 'precision': 1.0, 'recall': 0.6667}
+    """
+    # Metrics that require pos_label parameter
+    METRICS_WITH_POS_LABEL = {'precision', 'recall', 'f1_score', 'tp', 'fp', 'tn', 'fn'}
+    
+    results = {}
+    for metric_name in metrics:
+        metric_name_lower = metric_name.lower()
+        
+        # Handle "mcc" alias for matthews_corrcoef
+        if metric_name_lower == "mcc":
+            metric_name_lower = "matthews_corrcoef"
+        
+        # Get metric function from registry
+        metric_func = get_metric_function(metric_name_lower)
+        
+        # Call with pos_label if required
+        if metric_name_lower in METRICS_WITH_POS_LABEL:
+            results[metric_name] = metric_func(y_true, y_pred, pos_label=pos_label)
+        else:
+            results[metric_name] = metric_func(y_true, y_pred)
+    
+    return results
+
+
 # ============================================================================
 # Dataset-level metric calculation function
 # ============================================================================
@@ -323,63 +373,8 @@ def calculate_metrics(
     y_pred = df[predicted_column].values
     n_samples = len(y_true)
     
-    # Compute requested metrics
-    results = {}
-    
-    for metric_name in metrics:
-        metric_name_lower = metric_name.lower()
-        
-        if metric_name_lower == "accuracy":
-            results[metric_name] = _accuracy(y_true, y_pred)
-            
-        elif metric_name_lower == "balanced_accuracy":
-            results[metric_name] = _balanced_accuracy(y_true, y_pred)
-            
-        elif metric_name_lower == "precision":
-            results[metric_name] = _precision(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "recall":
-            results[metric_name] = _recall(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "f1_score":
-            results[metric_name] = _f1_score(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "roc_auc":
-            results[metric_name] = _roc_auc(y_true, y_pred)
-            
-        elif metric_name_lower == "matthews_corrcoef" or metric_name_lower == "mcc":
-            results[metric_name] = _matthews_corrcoef(y_true, y_pred)
-            
-        elif metric_name_lower == "tp":
-            results[metric_name] = _tp(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "fp":
-            results[metric_name] = _fp(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "tn":
-            results[metric_name] = _tn(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "fn":
-            results[metric_name] = _fn(y_true, y_pred, pos_label=pos_label)
-            
-        elif metric_name_lower == "mse":
-            results[metric_name] = _mse(y_true, y_pred)
-            
-        elif metric_name_lower == "rmse":
-            results[metric_name] = _rmse(y_true, y_pred)
-            
-        elif metric_name_lower == "mae":
-            results[metric_name] = _mae(y_true, y_pred)
-            
-        elif metric_name_lower == "r2":
-            results[metric_name] = _r2(y_true, y_pred)
-            
-        else:
-            raise ValueError(
-                f"Unknown metric '{metric_name}'. Available metrics: "
-                "accuracy, balanced_accuracy, precision, recall, f1_score, roc_auc, "
-                "matthews_corrcoef, TP, FP, TN, FN, mse, rmse, mae, r2"
-            )
+    # Compute metrics using helper function
+    results = _compute_metrics(y_true, y_pred, metrics, pos_label=pos_label)
     
     # Build summary
     metric_summary = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in results.items()])

@@ -221,7 +221,17 @@ METRIC_REGISTRY = {
 }
 
 
-def get_metric_function(metric_name: str):
+def list_all_supported_metrics() -> list[str]:
+    """
+    List all supported metric names.
+    
+    Returns:
+        List of metric names as strings
+    """
+    return list(METRIC_REGISTRY.keys())
+
+
+def _get_metric_function(metric_name: str):
     """
     Get a metric function by name.
     
@@ -279,7 +289,7 @@ def _compute_metrics(
             metric_name_lower = "matthews_corrcoef"
         
         # Get metric function from registry
-        metric_func = get_metric_function(metric_name_lower)
+        metric_func = _get_metric_function(metric_name_lower)
         
         # Call with pos_label if required
         if metric_name_lower in METRICS_WITH_POS_LABEL:

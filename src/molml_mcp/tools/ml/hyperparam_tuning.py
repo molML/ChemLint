@@ -145,6 +145,9 @@ def tune_hyperparameters(
     
     # load training data
     train_df = _load_resource(project_manifest_path, input_filename)
+    
+    # load feature vectors dict
+    feature_vectors_dict = _load_resource(project_manifest_path, feature_vectors_filename)
 
     # get list of dicts of hyperparams to explore from the param_grid (full grid for grid search, random with size n for random search)
     hyper_params = _define_search_space(param_grid, search_strategy, n_searches, random_state)  # list of dicts
@@ -156,7 +159,7 @@ def tune_hyperparameters(
                                          dataset=train_df,
                                          smiles_column=smiles_column,
                                          label_column=target_column,
-                                         feature_vector_dict=feature_vectors_filename,
+                                         feature_vector_dict=feature_vectors_dict,
                                          cv_strategy=cv_strategy,
                                          n_folds=n_folds,
                                          random_state=random_state,

@@ -101,8 +101,16 @@ def predict_ml_model(
     import pandas as pd
     import numpy as np
     
-    # Load model
-    model = _load_resource(project_manifest_path, ml_model_filename)
+    # Load model data (could be a dict structure or raw model for backwards compatibility)
+    model_data = _load_resource(project_manifest_path, ml_model_filename)
+    
+    # Extract the actual model from the structure
+    if isinstance(model_data, dict) and "models" in model_data:
+        # New format from train_ml_model: {"models": [model], "data_splits": [...], ...}
+        model = model_data["models"][0]
+    else:
+        # Backwards compatibility: assume it's the model directly
+        model = model_data
     
     # Load test dataset
     test_df = _load_resource(project_manifest_path, test_input_filename)

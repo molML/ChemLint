@@ -46,6 +46,102 @@ def tune_hyperparameters(
     metric: str = "auto",
     random_state: int = 42
 ) -> dict:
+    """
+    Perform hyperparameter tuning for a machine learning model using cross-validation.
+    
+    This function searches for the best hyperparameters by evaluating different parameter
+    combinations using cross-validation. Supports both grid search (exhaustive) and random
+    search (sampling) strategies. The best hyperparameters are stored as a JSON resource.
+    
+    Args:
+        input_filename: Dataset filename with SMILES and labels (CSV)
+        feature_vectors_filename: Feature vectors filename (JSON dict {smiles: [features]})
+        smiles_column: Name of SMILES column in dataset
+        target_column: Name of label/target column in dataset
+        project_manifest_path: Path to manifest.json
+        output_filename: Name for output file with best hyperparameters (JSON)
+        explanation: Description of tuning operation
+        model_algorithm: ML algorithm to use (e.g., "random_forest", "gradient_boosting", "svm")
+        param_grid: Dictionary of hyperparameters to search {param_name: [values]}
+                   If None, uses default parameter grid from get_hyperparameter_space()
+        search_strategy: Search strategy - "grid" for exhaustive grid search, 
+                        "random" for random sampling
+        n_searches: Number of parameter combinations to try for random search
+                   (ignored for grid search which tries all combinations)
+        cv_strategy: Cross-validation strategy ("kfold", "stratified", "scaffold", 
+                    "cluster", "montecarlo", "leavepout")
+        n_folds: Number of CV folds
+        val_size: Validation size fraction (used for montecarlo CV)
+        scaffold_type: Type of scaffold for scaffold-based CV ("bemis_murcko", "generic", "cyclic_skeleton")
+        shuffle: Whether to shuffle data before splitting
+        p: Number of samples to leave out for leavepout strategy
+        max_splits: Maximum number of splits for leavepout strategy
+        cluster_column: Column name for cluster-based CV (required if cv_strategy="cluster")
+        higher_is_better: If True, maximize the metric; if False, minimize it
+                         (True for accuracy/f1/r2, False for mse/mae/rmse)
+        metric: Metric to optimize ("auto" auto-detects, or specify like "accuracy", "f1_score", "r2", "mse")
+        random_state: Random seed for reproducibility
+    
+    Returns:
+        dict with:
+            - output_filename: Filename of stored best hyperparameters (JSON)
+            - best_hyperparameters: Dictionary of best hyperparameter values
+            - best_score: Best cross-validation score achieved
+    
+    Example:
+        >>> # Grid search for Random Forest
+        >>> result = tune_hyperparameters(
+        ...     input_filename="train_data_A1B2C3D4.csv",
+        ...     feature_vectors_filename="features_E5F6G7H8.json",
+        ...     smiles_column="smiles",
+        ...     target_column="activity",
+        ...     project_manifest_path="/path/to/manifest.json",
+        ...     output_filename="rf_best_params",
+        ...     explanation="Hyperparameter tuning for Random Forest classifier",
+        ...     model_algorithm="random_forest",
+        ...     param_grid={
+        ...         "n_estimators": [50, 100, 200],
+        ...         "max_depth": [3, 5, 10, None],
+        ...         "min_samples_split": [2, 5, 10]
+        ...     },
+        ...     search_strategy="grid",
+        ...     cv_strategy="stratified",
+        ...     n_folds=5,
+        ...     metric="accuracy",
+        ...     higher_is_better=True
+        ... )
+        >>> print(f"Best accuracy: {result['best_score']:.4f}")
+        >>> print(f"Best params: {result['best_hyperparameters']}")
+        
+        >>> # Random search with scaffold CV
+        >>> result = tune_hyperparameters(
+        ...     input_filename="train_data_A1B2C3D4.csv",
+        ...     feature_vectors_filename="features_E5F6G7H8.json",
+        ...     smiles_column="smiles",
+        ...     target_column="ic50",
+        ...     project_manifest_path="/path/to/manifest.json",
+        ...     output_filename="svr_best_params",
+        ...     explanation="Random search for SVR with scaffold CV",
+        ...     model_algorithm="svr",
+        ...     param_grid={
+        ...         "C": [0.1, 1, 10, 100],
+        ...         "gamma": ["scale", "auto", 0.001, 0.01, 0.1],
+        ...         "kernel": ["rbf", "linear"]
+        ...     },
+        ...     search_strategy="random",
+        ...     n_searches=20,
+        ...     cv_strategy="scaffold",
+        ...     n_folds=5,
+        ...     metric="r2",
+        ...     higher_is_better=True
+        ... )
+    
+    Note:
+        - Grid search evaluates all possible combinations of hyperparameters
+        - Random search samples n_searches combinations without replacement
+        - Use random search when the parameter space is very large
+        - The best hyperparameters can be loaded and used with train_ml_model()
+    """
     
     # load training data
     train_df = _load_resource(project_manifest_path, input_filename)

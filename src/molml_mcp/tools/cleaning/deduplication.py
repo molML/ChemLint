@@ -533,6 +533,9 @@ def deduplicate_dataset(
         - n_rows_before: Number of rows before deduplication
         - n_rows_after: Number of rows after deduplication
         - n_rows_removed: Number of rows removed
+        - n_nan_smiles: Number of entries with NaN SMILES detected
+        - n_nan_labels: Number of entries with NaN labels detected (0 if label_col is None)
+        - suggestions: List of recommendations for handling NaN values
         - operations_summary: Dict with counts of each merge operation executed
         - preview: First 5 rows of deduplicated dataset
     """
@@ -559,6 +562,10 @@ def deduplicate_dataset(
         missing_cols = [col for col in group_by_cols if col not in df.columns]
         if missing_cols:
             raise ValueError(f"Group-by columns {missing_cols} not found in dataset. Available columns: {list(df.columns)}")
+    
+    # Count NaN values before deduplication
+    n_nan_smiles = df[smiles_col].isna().sum()
+    n_nan_labels = df[label_col].isna().sum() if label_col is not None else 0
     
     # Prepare grouping columns
     grouping_cols = [smiles_col]
@@ -661,12 +668,22 @@ def deduplicate_dataset(
         'csv'
     )
     
+    # Create suggestions based on NaN counts
+    suggestions = []
+    if n_nan_smiles > 0:
+        suggestions.append(f"Found {n_nan_smiles} entries with NaN SMILES - recommend removing these invalid entries")
+    if n_nan_labels > 0:
+        suggestions.append(f"Found {n_nan_labels} entries with NaN labels - recommend removing these missing values")
+    
     # Return summary
     return {
         "output_filename": output_id,
         "n_rows_before": n_rows_before,
         "n_rows_after": n_rows_after,
         "n_rows_removed": n_rows_removed,
+        "n_nan_smiles": n_nan_smiles,
+        "n_nan_labels": n_nan_labels,
+        "suggestions": suggestions,
         "operations_summary": operations_summary,
         "preview": df_deduplicated.head(5).to_dict('records'),
     }

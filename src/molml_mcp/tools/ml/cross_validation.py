@@ -450,13 +450,6 @@ def _cross_validate_and_eval(
     smiles_list = dataset[smiles_column].tolist()
     labels = dataset[label_column].tolist()
     
-    # Auto-detect task type from labels
-    unique_labels = np.unique(labels)
-    if len(unique_labels) <= 2:
-        task_type = "classification"
-    else:
-        task_type = "regression"
-    
     # Get clusters if needed for cluster-based CV
     clusters = None
     if cv_strategy == 'cluster':
@@ -505,7 +498,6 @@ def _cross_validate_and_eval(
             y=y_train,
             model_algorithm=model_algorithm,
             hyperparameters=hyperparameters,
-            task_type=task_type,
             random_state=random_state
         )
         

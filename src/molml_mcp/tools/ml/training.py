@@ -12,9 +12,8 @@ def train_ml_model(
     project_manifest_path: str,
     output_filename: str,
     explanation: str,
-    model_algorithm: str = "random_forest",
+    model_algorithm: str = "random_forest_classifier",
     hyperparameters: dict = None,
-    task_type: str = "auto",
     random_state: int = 42
 ) -> dict:
     """
@@ -28,9 +27,8 @@ def train_ml_model(
         project_manifest_path: Path to project manifest.json
         output_filename: Name for output model file (without extension)
         explanation: Description of the model
-        model_algorithm: ML algorithm to use (e.g., "random_forest", "gradient_boosting")
+        model_algorithm: ML algorithm to use (e.g., "random_forest_classifier", "ridge", "svr")
         hyperparameters: Optional dict of hyperparameters
-        task_type: "classification", "regression", or "auto" (auto-detect from labels)
         random_state: Random seed for reproducibility
     
     Returns:
@@ -61,18 +59,10 @@ def train_ml_model(
     X_train = np.array([train_features_dict[smi] for smi in train_smiles])
     y_train = train_labels
     
-    # Auto-detect task type
-    if task_type == "auto":
-        unique_labels = np.unique(y_train)
-        if len(unique_labels) <= 10 and np.all(y_train == y_train.astype(int)):
-            task_type = "classification"
-        else:
-            task_type = "regression"
-    
     # Check if model algorithm is supported
-    available_models = get_available_models(task_type)
+    available_models = get_available_models()
     if model_algorithm not in available_models:
-        raise ValueError(f"Model '{model_algorithm}' not supported for {task_type}. Available: {available_models}")
+        raise ValueError(f"Model '{model_algorithm}' not supported. Available: {list(available_models.keys())}")
     
     # Train the model
     model = _train_ml_model(
@@ -80,7 +70,6 @@ def train_ml_model(
         y=y_train,
         model_algorithm=model_algorithm,
         hyperparameters=hyperparameters,
-        task_type=task_type,
         random_state=random_state
     )
     
@@ -98,7 +87,6 @@ def train_ml_model(
         ],
         "model_algorithm": model_algorithm,
         "hyperparameters": hyperparameters or {},
-        "task_type": task_type,
         "random_state": random_state,
         "n_features": X_train.shape[1]
     }
@@ -115,7 +103,6 @@ def train_ml_model(
     return {
         "output_filename": output_id,
         "model_algorithm": model_algorithm,
-        "task_type": task_type,
         "n_train_samples": len(train_smiles),
         "n_features": X_train.shape[1],
         "hyperparameters": hyperparameters or {}
@@ -129,14 +116,13 @@ def train_ml_models_cv(
     project_manifest_path: str,
     output_filename: str,
     explanation: str,
-    model_algorithm: str = "random_forest",
+    model_algorithm: str = "random_forest_classifier",
     hyperparameters: dict = None,
     n_models: int = 10,
     cv_strategy: str = "monte_carlo",
     train_fraction: float = 0.8,
     n_folds: int = 5,
     scaffold_column: Optional[str] = None,
-    task_type: str = "auto",
     random_state: int = 42,
     store_labels: bool = True
 ) -> dict:
@@ -148,7 +134,6 @@ def _train_ml_model(
     y: np.ndarray,
     model_algorithm: str,
     hyperparameters: dict,
-    task_type: str,
     random_state: int
 ):
     """
@@ -157,26 +142,25 @@ def _train_ml_model(
     Args:
         X: Feature matrix (n_samples, n_features)
         y: Target vector (n_samples,)
-        model_algorithm: Algorithm name (e.g., "random_forest", "gradient_boosting")
+        model_algorithm: Algorithm name (e.g., "random_forest_classifier", "ridge", "svr")
         hyperparameters: Dictionary of hyperparameters to pass to the model.
                         If None or empty, the training function will use its defaults.
-        task_type: Either "classification" or "regression"
         random_state: Random seed for reproducibility
     
     Returns:
         Trained scikit-learn model object
     
     Raises:
-        ValueError: If model_algorithm is not found for the given task_type
+        ValueError: If model_algorithm is not found
     """
     from molml_mcp.tools.ml.trad_ml_models import get_model_function
     import inspect
     
     # Get the training function for the specified model
     try:
-        train_func = get_model_function(model_algorithm, task_type)
+        train_func = get_model_function(model_algorithm)
     except ValueError as e:
-        raise ValueError(f"Invalid model_algorithm '{model_algorithm}' for task '{task_type}': {e}")
+        raise ValueError(f"Invalid model_algorithm '{model_algorithm}': {e}")
     
     # Prepare parameters
     params = hyperparameters.copy() if hyperparameters else {}

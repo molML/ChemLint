@@ -30,7 +30,7 @@ def tune_hyperparameters(
     project_manifest_path: str,
     output_filename: str,
     explanation: str,
-    model_algorithm: str = "random_forest",
+    model_algorithm: str = "random_forest_classifier",
     param_grid: dict = None,
     search_strategy: str = "grid",
     n_searches: int = 50,
@@ -61,7 +61,7 @@ def tune_hyperparameters(
         project_manifest_path: Path to manifest.json
         output_filename: Name for output file with best hyperparameters (JSON)
         explanation: Description of tuning operation
-        model_algorithm: ML algorithm to use (e.g., "random_forest", "gradient_boosting", "svm")
+        model_algorithm: ML algorithm to use (e.g., "random_forest_classifier", "gradient_boosting_regressor", "svr")
         param_grid: Dictionary of hyperparameters to search {param_name: [values]}
                    If None, uses default parameter grid from get_hyperparameter_space()
         search_strategy: Search strategy - "grid" for exhaustive grid search, 
@@ -92,7 +92,7 @@ def tune_hyperparameters(
             - success_rate: Fraction of successful runs (n_successful / n_total)
     
     Example:
-        >>> # Grid search for Random Forest
+        >>> # Grid search for Random Forest Classifier
         >>> result = tune_hyperparameters(
         ...     input_filename="train_data_A1B2C3D4.csv",
         ...     feature_vectors_filename="features_E5F6G7H8.json",
@@ -101,7 +101,7 @@ def tune_hyperparameters(
         ...     project_manifest_path="/path/to/manifest.json",
         ...     output_filename="rf_best_params",
         ...     explanation="Hyperparameter tuning for Random Forest classifier",
-        ...     model_algorithm="random_forest",
+        ...     model_algorithm="random_forest_classifier",
         ...     param_grid={
         ...         "n_estimators": [50, 100, 200],
         ...         "max_depth": [3, 5, 10, None],

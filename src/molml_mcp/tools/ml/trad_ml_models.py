@@ -845,7 +845,7 @@ def _get_sgd_regressor_hyperparams() -> Dict[str, Dict[str, Any]]:
 # ============================================================================
 
 CLASSIFICATION_MODELS = {
-    "random_forest": {
+    "random_forest_classifier": {
         "name": "Random Forest Classifier",
         "function": _train_random_forest_classifier,
         "hyperparams_function": _get_random_forest_classifier_hyperparams,
@@ -858,7 +858,7 @@ CLASSIFICATION_MODELS = {
             "max_features": "sqrt"
         }
     },
-    "gradient_boosting": {
+    "gradient_boosting_classifier": {
         "name": "Gradient Boosting Classifier",
         "function": _train_gradient_boosting_classifier,
         "hyperparams_function": _get_gradient_boosting_classifier_hyperparams,
@@ -894,7 +894,7 @@ CLASSIFICATION_MODELS = {
             "probability": True
         }
     },
-    "knn": {
+    "knn_classifier": {
         "name": "K-Nearest Neighbors Classifier",
         "function": _train_knn_classifier,
         "hyperparams_function": _get_knn_classifier_hyperparams,
@@ -905,7 +905,7 @@ CLASSIFICATION_MODELS = {
             "metric": "minkowski"
         }
     },
-    "decision_tree": {
+    "decision_tree_classifier": {
         "name": "Decision Tree Classifier",
         "function": _train_decision_tree_classifier,
         "hyperparams_function": _get_decision_tree_classifier_hyperparams,
@@ -917,7 +917,7 @@ CLASSIFICATION_MODELS = {
             "criterion": "gini"
         }
     },
-    "adaboost": {
+    "adaboost_classifier": {
         "name": "AdaBoost Classifier",
         "function": _train_adaboost_classifier,
         "hyperparams_function": _get_adaboost_classifier_hyperparams,
@@ -927,7 +927,7 @@ CLASSIFICATION_MODELS = {
             "learning_rate": 1.0
         }
     },
-    "extra_trees": {
+    "extra_trees_classifier": {
         "name": "Extra Trees Classifier",
         "function": _train_extra_trees_classifier,
         "hyperparams_function": _get_extra_trees_classifier_hyperparams,
@@ -945,7 +945,7 @@ CLASSIFICATION_MODELS = {
         "description": "Probabilistic classifier with independence assumption. Fast, works with small datasets.",
         "default_params": {}
     },
-    "lda": {
+    "lda_classifier": {
         "name": "Linear Discriminant Analysis",
         "function": _train_lda,
         "hyperparams_function": _get_lda_hyperparams,
@@ -954,7 +954,7 @@ CLASSIFICATION_MODELS = {
             "solver": "svd"
         }
     },
-    "sgd": {
+    "sgd_classifier": {
         "name": "SGD Classifier",
         "function": _train_sgd_classifier,
         "hyperparams_function": _get_sgd_classifier_hyperparams,
@@ -969,7 +969,7 @@ CLASSIFICATION_MODELS = {
 }
 
 REGRESSION_MODELS = {
-    "random_forest": {
+    "random_forest_regressor": {
         "name": "Random Forest Regressor",
         "function": _train_random_forest_regressor,
         "hyperparams_function": _get_random_forest_regressor_hyperparams,
@@ -982,7 +982,7 @@ REGRESSION_MODELS = {
             "max_features": "sqrt"
         }
     },
-    "gradient_boosting": {
+    "gradient_boosting_regressor": {
         "name": "Gradient Boosting Regressor",
         "function": _train_gradient_boosting_regressor,
         "hyperparams_function": _get_gradient_boosting_regressor_hyperparams,
@@ -1037,7 +1037,7 @@ REGRESSION_MODELS = {
             "epsilon": 0.1
         }
     },
-    "knn": {
+    "knn_regressor": {
         "name": "K-Nearest Neighbors Regressor",
         "function": _train_knn_regressor,
         "hyperparams_function": _get_knn_regressor_hyperparams,
@@ -1048,7 +1048,7 @@ REGRESSION_MODELS = {
             "metric": "minkowski"
         }
     },
-    "decision_tree": {
+    "decision_tree_regressor": {
         "name": "Decision Tree Regressor",
         "function": _train_decision_tree_regressor,
         "hyperparams_function": _get_decision_tree_regressor_hyperparams,
@@ -1060,7 +1060,7 @@ REGRESSION_MODELS = {
             "criterion": "squared_error"
         }
     },
-    "adaboost": {
+    "adaboost_regressor": {
         "name": "AdaBoost Regressor",
         "function": _train_adaboost_regressor,
         "hyperparams_function": _get_adaboost_regressor_hyperparams,
@@ -1071,7 +1071,7 @@ REGRESSION_MODELS = {
             "loss": "linear"
         }
     },
-    "extra_trees": {
+    "extra_trees_regressor": {
         "name": "Extra Trees Regressor",
         "function": _train_extra_trees_regressor,
         "hyperparams_function": _get_extra_trees_regressor_hyperparams,
@@ -1082,7 +1082,7 @@ REGRESSION_MODELS = {
             "max_features": "sqrt"
         }
     },
-    "sgd": {
+    "sgd_regressor": {
         "name": "SGD Regressor",
         "function": _train_sgd_regressor,
         "hyperparams_function": _get_sgd_regressor_hyperparams,
@@ -1097,56 +1097,40 @@ REGRESSION_MODELS = {
 }
 
 
-def get_available_models(task: str = "classification") -> Dict[str, Dict[str, Any]]:
+# Consolidated registry of all models
+ALL_MODELS = {**CLASSIFICATION_MODELS, **REGRESSION_MODELS}
+
+
+def get_available_models() -> Dict[str, Dict[str, Any]]:
     """
-    Get registry of available models for a given task.
-    
-    Args:
-        task: Either "classification" or "regression"
+    Get registry of all available models.
     
     Returns:
         Dictionary mapping model keys to their metadata (name, description, default params)
     """
-    if task == "classification":
-        return {k: {
-            "name": v["name"],
-            "description": v["description"],
-            "default_params": v["default_params"]
-        } for k, v in CLASSIFICATION_MODELS.items()}
-    elif task == "regression":
-        return {k: {
-            "name": v["name"],
-            "description": v["description"],
-            "default_params": v["default_params"]
-        } for k, v in REGRESSION_MODELS.items()}
-    else:
-        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
+    return {k: {
+        "name": v["name"],
+        "description": v["description"],
+        "default_params": v["default_params"]
+    } for k, v in ALL_MODELS.items()}
 
 
-def get_model_function(model_key: str, task: str = "classification"):
+def get_model_function(model_key: str):
     """
     Get the training function for a specific model.
     
     Args:
-        model_key: Key identifying the model (e.g., "random_forest", "ridge")
-        task: Either "classification" or "regression"
+        model_key: Key identifying the model (e.g., "random_forest_classifier", "ridge")
     
     Returns:
         Training function for the specified model
     """
-    if task == "classification":
-        if model_key not in CLASSIFICATION_MODELS:
-            raise ValueError(f"Unknown classification model '{model_key}'. Available: {list(CLASSIFICATION_MODELS.keys())}")
-        return CLASSIFICATION_MODELS[model_key]["function"]
-    elif task == "regression":
-        if model_key not in REGRESSION_MODELS:
-            raise ValueError(f"Unknown regression model '{model_key}'. Available: {list(REGRESSION_MODELS.keys())}")
-        return REGRESSION_MODELS[model_key]["function"]
-    else:
-        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
+    if model_key not in ALL_MODELS:
+        raise ValueError(f"Unknown model '{model_key}'. Available: {list(ALL_MODELS.keys())}")
+    return ALL_MODELS[model_key]["function"]
 
 
-def get_hyperparameter_space(model_key: str, task: str = "classification") -> Dict[str, Dict[str, Any]]:
+def get_hyperparameter_space(model_key: str) -> Dict[str, Dict[str, Any]]:
     """
     Get the hyperparameter search space for a specific model.
     
@@ -1154,8 +1138,7 @@ def get_hyperparameter_space(model_key: str, task: str = "classification") -> Di
     that can be used to define a hyperparameter search space.
     
     Args:
-        model_key: Key identifying the model (e.g., "random_forest", "ridge")
-        task: Either "classification" or "regression"
+        model_key: Key identifying the model (e.g., "random_forest_classifier", "ridge")
     
     Returns:
         Dictionary mapping hyperparameter names to their space definitions.
@@ -1167,7 +1150,7 @@ def get_hyperparameter_space(model_key: str, task: str = "classification") -> Di
         - description: Human-readable description of the hyperparameter
     
     Example:
-        >>> space = get_hyperparameter_space("random_forest", "classification")
+        >>> space = get_hyperparameter_space("random_forest_classifier")
         >>> space["n_estimators"]
         {
             "type": "int",
@@ -1176,45 +1159,29 @@ def get_hyperparameter_space(model_key: str, task: str = "classification") -> Di
             "description": "Number of trees in the forest"
         }
     """
-    if task not in ["classification", "regression"]:
-        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
-    
-    # Get the appropriate registry
-    registry = CLASSIFICATION_MODELS if task == "classification" else REGRESSION_MODELS
-    
-    if model_key not in registry:
-        available = list(registry.keys())
-        raise ValueError(f"Unknown {task} model '{model_key}'. Available: {available}")
+    if model_key not in ALL_MODELS:
+        raise ValueError(f"Unknown model '{model_key}'. Available: {list(ALL_MODELS.keys())}")
     
     # Call the hyperparameter function
-    hyperparams_func = registry[model_key]["hyperparams_function"]
+    hyperparams_func = ALL_MODELS[model_key]["hyperparams_function"]
     return hyperparams_func()
 
 
-def get_all_hyperparameter_spaces(task: str = "classification") -> Dict[str, Dict[str, Dict[str, Any]]]:
+def get_all_hyperparameter_spaces() -> Dict[str, Dict[str, Dict[str, Any]]]:
     """
-    Get hyperparameter search spaces for all models of a given task.
-    
-    Args:
-        task: Either "classification" or "regression"
+    Get hyperparameter search spaces for all available models.
     
     Returns:
         Dictionary mapping model keys to their hyperparameter spaces
     
     Example:
-        >>> spaces = get_all_hyperparameter_spaces("classification")
+        >>> spaces = get_all_hyperparameter_spaces()
         >>> list(spaces.keys())
-        ['random_forest', 'gradient_boosting', 'logistic_regression', ...]
+        ['random_forest_classifier', 'gradient_boosting_classifier', 'logistic_regression', ...]
     """
-    if task not in ["classification", "regression"]:
-        raise ValueError(f"Unknown task '{task}'. Must be 'classification' or 'regression'")
-    
-    # Get the appropriate registry
-    registry = CLASSIFICATION_MODELS if task == "classification" else REGRESSION_MODELS
-    
     # Call each model's hyperparameter function
     spaces = {}
-    for model_key, model_info in registry.items():
+    for model_key, model_info in ALL_MODELS.items():
         hyperparams_func = model_info["hyperparams_function"]
         spaces[model_key] = hyperparams_func()
     

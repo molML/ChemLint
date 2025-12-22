@@ -16,7 +16,6 @@ def _eval_single_ml_model(
         X: Feature matrix (n_samples, n_features)
         y: True labels (n_samples,)
         metric: Metric name (e.g., "accuracy", "f1_score", "mse", "r2")
-        task_type: Either "classification" or "regression"
     
     Returns:
         Metric value as float (or None if metric cannot be computed)

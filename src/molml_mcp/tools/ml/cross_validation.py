@@ -34,7 +34,7 @@ def get_cv_splits(
     labels: list = None,
     clusters: list = None,
     val_size: float = None,
-    scaffold_type: str = 'bemis_murcko',
+    scaffolds: list = None,
     shuffle: bool = True,
     p: int = 1,
     max_splits: int = None
@@ -50,7 +50,7 @@ def get_cv_splits(
         labels: List of labels (required for 'stratified')
         clusters: List of cluster assignments (required for 'cluster')
         val_size: Validation size fraction (used for 'montecarlo', optional for others)
-        scaffold_type: Scaffold type for 'scaffold' strategy
+        scaffolds: List of scaffold SMILES (required for 'scaffold' if pre-computed)
         shuffle: Whether to shuffle (used by most strategies)
         p: Number of samples to leave out (for 'leavepout')
         max_splits: Maximum splits for 'leavepout'
@@ -83,7 +83,9 @@ def get_cv_splits(
         kwargs['clusters'] = clusters
     
     elif strategy == 'scaffold':
-        kwargs['scaffold_type'] = scaffold_type
+        if scaffolds is None:
+            raise ValueError("Scaffold-based CV requires 'scaffolds' parameter (list of scaffold SMILES)")
+        kwargs['scaffolds'] = scaffolds
     
     elif strategy == 'montecarlo':
         kwargs = {
@@ -140,18 +142,77 @@ def cv_splits_kfold(k: int, smiles: list, val_size: float, random_state: int, sh
     
     return splits
 
+
+def _bin_continuous_labels(y_array: np.ndarray, k: int) -> np.ndarray:
+    """
+    Bin continuous regression labels for stratification.
+    
+    Converts continuous values into discrete bins to enable stratified splitting.
+    Uses quantile-based binning (qcut) for equal-sized bins, with fallback to
+    equal-width binning (cut) if quantiles coincide.
+    
+    Args:
+        y_array: Array of continuous labels
+        k: Number of folds for cross-validation (used to determine optimal bin count)
+    
+    Returns:
+        Array of binned labels (integers)
+    
+    Note:
+        - Number of bins is min(10, max(5, k*2)) to ensure at least 2 bins per fold
+        - For small samples (n < k*2), uses max(2, k) bins to ensure feasibility
+        - Uses quantile-based binning for balanced bin sizes
+        - Falls back to equal-width binning if qcut fails
+    """
+    import numpy as np
+    
+    n_samples = len(y_array)
+    
+    # Determine number of bins: min(10, max(5, k*2))
+    # For small samples, limit bins to avoid having fewer samples than bins
+    # Ensure at least k bins (one per fold) but not more than n_samples/2
+    n_bins = min(10, max(5, k * 2))
+    n_bins = min(n_bins, max(2, n_samples // 2))  # At least 2 samples per bin on average
+    n_bins = max(n_bins, k)  # At least k bins for k folds
+    
+    # If we have very few samples, just use k bins
+    if n_samples < k * 2:
+        n_bins = max(2, k)
+    
+    # Use qcut for quantile-based binning (equal-sized bins)
+    # duplicates='drop' handles cases where quantiles coincide
+    try:
+        y_binned = pd.qcut(y_array, q=n_bins, labels=False, duplicates='drop')
+    except (ValueError, TypeError):
+        # If qcut fails (e.g., too many duplicate values or insufficient unique values)
+        # Fall back to equal-width binning
+        try:
+            y_binned = pd.cut(y_array, bins=n_bins, labels=False, duplicates='drop')
+        except (ValueError, TypeError):
+            # If even cut fails, fall back to simple binning with fewer bins
+            n_bins_fallback = min(n_bins, len(np.unique(y_array)))
+            if n_bins_fallback < 2:
+                # If only 1 unique value, just return zeros (all same bin)
+                y_binned = np.zeros(len(y_array), dtype=int)
+            else:
+                y_binned = pd.cut(y_array, bins=n_bins_fallback, labels=False, duplicates='drop')
+    
+    return y_binned
+
+
 @register_cv_strategy('stratified')
 def cv_splits_stratifiedkfold(k: int, smiles: list, y: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
     """
     Split data into k stratified folds for cross-validation.
     
     Stratified splitting ensures each fold maintains the same class distribution as the original dataset.
-    Important for imbalanced classification problems.
+    For classification problems, stratifies on class labels directly. For regression problems,
+    automatically bins continuous values into quantile-based bins to enable stratification.
     
     Args:
         k: Number of folds
         smiles: List of SMILES strings
-        y: List of labels (for stratification)
+        y: List of labels (for stratification). Can be discrete class labels or continuous values.
         val_size: Fraction of data to use for validation (not used in k-fold, kept for API consistency)
         random_state: Random seed for reproducibility
         shuffle: Whether to shuffle data before splitting
@@ -159,6 +220,11 @@ def cv_splits_stratifiedkfold(k: int, smiles: list, y: list, val_size: float, ra
     Returns:
         List of dicts with keys 'train_smiles' and 'val_smiles'
         [{'train_smiles': [...], 'val_smiles': [...]}, ...]
+    
+    Note:
+        Continuous regression values are automatically binned into quantile-based bins
+        to enable stratification. This ensures each fold has a representative distribution
+        of the target variable range.
     """
     from sklearn.model_selection import StratifiedKFold
     import numpy as np
@@ -166,10 +232,21 @@ def cv_splits_stratifiedkfold(k: int, smiles: list, y: list, val_size: float, ra
     smiles_array = np.array(smiles)
     y_array = np.array(y)
     
+    # Check if labels are continuous (regression) or discrete (classification)
+    n_unique = len(np.unique(y_array))
+    
+    # If we have many unique values (likely regression), bin them for stratification
+    # Rule of thumb: if more unique values than 2*k, treat as regression
+    if n_unique > 2:
+        y_stratify = _bin_continuous_labels(y_array, k)
+    else:
+        # Discrete labels - use directly
+        y_stratify = y_array
+    
     skf = StratifiedKFold(n_splits=k, shuffle=shuffle, random_state=random_state if shuffle else None)
     
     splits = []
-    for train_idx, val_idx in skf.split(smiles_array, y_array):
+    for train_idx, val_idx in skf.split(smiles_array, y_stratify):
         splits.append({
             'train_smiles': smiles_array[train_idx].tolist(),
             'val_smiles': smiles_array[val_idx].tolist()
@@ -317,21 +394,21 @@ def cv_splits_cluster(k: int, smiles: list, clusters: list, val_size: float, ran
 
 
 @register_cv_strategy('scaffold')
-def cv_splits_scaffold(k: int, smiles: list, val_size: float, random_state: int, scaffold_type: str = 'bemis_murcko', shuffle: bool = True) -> list[dict]:
+def cv_splits_scaffold(k: int, smiles: list, scaffolds: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
     """
-    Split data into k folds based on Bemis-Murcko scaffolds.
+    Split data into k folds based on pre-computed scaffolds.
     
-    Automatically extracts scaffolds from SMILES, assigns each unique scaffold a cluster ID,
-    and uses cluster-based splitting. Molecules without a scaffold are assigned to a separate
-    'no_scaffold' cluster. This ensures models are evaluated on their ability to generalize
-    to new chemical scaffolds.
+    Takes a list of pre-computed scaffold SMILES and uses cluster-based splitting to ensure
+    molecules with the same scaffold are kept together. Molecules without a scaffold (None or '')
+    are assigned to a separate 'no_scaffold' cluster. This ensures models are evaluated on
+    their ability to generalize to new chemical scaffolds.
     
     Args:
         k: Number of folds
         smiles: List of SMILES strings
+        scaffolds: List of scaffold SMILES (one per molecule, pre-computed)
         val_size: Fraction of data to use for validation (not used in k-fold, kept for API consistency)
         random_state: Random seed for reproducibility
-        scaffold_type: Type of scaffold to extract ('bemis_murcko', 'generic', 'cyclic_skeleton')
         shuffle: Whether to shuffle the scaffold groups before splitting
     
     Returns:
@@ -341,15 +418,13 @@ def cv_splits_scaffold(k: int, smiles: list, val_size: float, random_state: int,
     Note:
         - Molecules with the same scaffold will always be in the same fold
         - Molecules without a scaffold are grouped together in a 'no_scaffold' cluster
-        - Uses cv_splits_cluster internally after scaffold extraction
+        - Uses cv_splits_cluster internally
+        - Scaffolds should be pre-computed using get_scaffold() to avoid redundant computation
     """
-    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    if len(smiles) != len(scaffolds):
+        raise ValueError(f"Length mismatch: {len(smiles)} SMILES but {len(scaffolds)} scaffolds")
     
-    # Extract scaffolds for all SMILES
-    scaffold_list = []
-    for smi in smiles:
-        scaffold_smi, comment = _get_scaffold(smi, scaffold_type=scaffold_type)
-        scaffold_list.append(scaffold_smi)
+    scaffold_list = scaffolds
     
     # Create cluster assignments: map scaffold SMILES to cluster IDs
     # Molecules with None/no scaffold get their own cluster
@@ -404,11 +479,11 @@ def _cross_validate_and_eval(
     hyperparameters: dict = None,
     cluster_column: str = None,
     val_size: float = None,
-    scaffold_type: str = 'bemis_murcko',
+    scaffold_column: str = None,
     shuffle: bool = True,
     p: int = 1,
     max_splits: int = None
-) -> float:
+) -> list[float]:
     """
     Internal function for cross validation used in hyperparameter tuning.
     
@@ -425,13 +500,13 @@ def _cross_validate_and_eval(
         hyperparameters: Dictionary of hyperparameters to pass to the model
         cluster_column: Name of cluster column (required for cluster-based CV)
         val_size: Validation size fraction (for montecarlo, optional for others)
-        scaffold_type: Type of scaffold for scaffold-based CV ('bemis_murcko', 'generic', 'cyclic_skeleton')
+        scaffold_column: Name of column with pre-computed scaffolds (required for scaffold-based CV)
         shuffle: Whether to shuffle data before splitting
         p: Number of samples to leave out for leavepout strategy
         max_splits: Maximum number of splits for leavepout strategy
     
     Returns:
-        Average metric value across all folds
+        list of metric values 
     """
     from molml_mcp.tools.ml.training import _train_ml_model
     from molml_mcp.tools.ml.evaluation import _eval_single_ml_model
@@ -459,6 +534,15 @@ def _cross_validate_and_eval(
             raise ValueError(f"Cluster column '{cluster_column}' not found in dataset")
         clusters = dataset[cluster_column].tolist()
     
+    # Get scaffolds if needed for scaffold-based CV
+    scaffolds = None
+    if cv_strategy == 'scaffold':
+        if scaffold_column is None:
+            raise ValueError("Scaffold-based CV requires scaffold_column parameter with pre-computed scaffolds")
+        if scaffold_column not in dataset.columns:
+            raise ValueError(f"Scaffold column '{scaffold_column}' not found in dataset")
+        scaffolds = dataset[scaffold_column].tolist()
+    
     # Create CV splits using the generic function
     splits = get_cv_splits(
         strategy=cv_strategy,
@@ -468,7 +552,7 @@ def _cross_validate_and_eval(
         labels=labels,
         clusters=clusters,
         val_size=val_size,
-        scaffold_type=scaffold_type,
+        scaffolds=scaffolds,
         shuffle=shuffle,
         p=p,
         max_splits=max_splits
@@ -517,7 +601,7 @@ def _cross_validate_and_eval(
     if len(scores) == 0:
         raise ValueError(f"No valid scores computed for metric '{metric}'")
     
-    return float(np.mean(scores))
+    return scores
 
 
 

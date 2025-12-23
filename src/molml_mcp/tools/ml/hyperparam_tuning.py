@@ -38,6 +38,7 @@ def tune_hyperparameters(
     n_folds: int = 5,
     val_size: float = 0.2,
     scaffold_type: str = "bemis_murcko",
+    scaffold_column: str = None,
     shuffle: bool = True,
     p: int = 1,
     max_splits: int = 100,
@@ -72,14 +73,15 @@ def tune_hyperparameters(
                     "cluster", "montecarlo", "leavepout")
         n_folds: Number of CV folds
         val_size: Validation size fraction (used for montecarlo CV)
-        scaffold_type: Type of scaffold for scaffold-based CV ("bemis_murcko", "generic", "cyclic_skeleton")
+        scaffold_type: Type of scaffold for scaffold-based CV (only used if scaffold_column=None)
+        scaffold_column: Column name with pre-computed scaffolds (required if cv_strategy="scaffold")
         shuffle: Whether to shuffle data before splitting
         p: Number of samples to leave out for leavepout strategy
         max_splits: Maximum number of splits for leavepout strategy
         cluster_column: Column name for cluster-based CV (required if cv_strategy="cluster")
         higher_is_better: If True, maximize the metric; if False, minimize it
                          (True for accuracy/f1/r2, False for mse/mae/rmse)
-        metric: Metric to optimize ("auto" auto-detects, or specify like "accuracy", "f1_score", "r2", "mse")
+        metric: Metric to optimize (for classification: "accuracy", "balanced_accuracy", "f1_score", "roc_auc"; for regression: "r2", "mse", "rmse")
         random_state: Random seed for reproducibility
     
     Returns:
@@ -172,10 +174,13 @@ def tune_hyperparameters(
                                              cluster_column=cluster_column,
                                              val_size=val_size,
                                              scaffold_type=scaffold_type,
+                                             scaffold_column=scaffold_column,
                                              shuffle=shuffle,
                                              p=p,
                                              max_splits=max_splits)
-            cv_results.append(score)
+            mean_score = sum(score) / len(score)
+            cv_results.append(mean_score)
+
         except Exception as e:
             # If this parameter combination fails, record None and continue
             print(f"Warning: Parameter combination {params} failed with error: {str(e)[:100]}")

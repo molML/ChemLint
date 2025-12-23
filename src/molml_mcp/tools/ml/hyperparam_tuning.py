@@ -37,7 +37,6 @@ def tune_hyperparameters(
     cv_strategy: str = "stratified",
     n_folds: int = 5,
     val_size: float = 0.2,
-    scaffold_type: str = "bemis_murcko",
     scaffold_column: str = None,
     shuffle: bool = True,
     p: int = 1,
@@ -73,7 +72,6 @@ def tune_hyperparameters(
                     "cluster", "montecarlo", "leavepout")
         n_folds: Number of CV folds
         val_size: Validation size fraction (used for montecarlo CV)
-        scaffold_type: Type of scaffold for scaffold-based CV (only used if scaffold_column=None)
         scaffold_column: Column name with pre-computed scaffolds (required if cv_strategy="scaffold")
         shuffle: Whether to shuffle data before splitting
         p: Number of samples to leave out for leavepout strategy
@@ -159,7 +157,9 @@ def tune_hyperparameters(
 
     # perform cross-validation for each set of hyperparams and collect results
     cv_results = []
-    for params in hyper_params:
+    error_log = []  # Track all errors for debugging
+    
+    for idx, params in enumerate(hyper_params):
         try:
             score = _cross_validate_and_eval(model_algorithm=model_algorithm,
                                              dataset=train_df,
@@ -173,7 +173,6 @@ def tune_hyperparameters(
                                              hyperparameters=params,
                                              cluster_column=cluster_column,
                                              val_size=val_size,
-                                             scaffold_type=scaffold_type,
                                              scaffold_column=scaffold_column,
                                              shuffle=shuffle,
                                              p=p,
@@ -183,14 +182,24 @@ def tune_hyperparameters(
 
         except Exception as e:
             # If this parameter combination fails, record None and continue
-            print(f"Warning: Parameter combination {params} failed with error: {str(e)[:100]}")
+            import traceback
+            error_msg = f"Params {idx+1}/{len(hyper_params)}: {params}\nError: {str(e)}\nTraceback: {traceback.format_exc()}"
+            error_log.append(error_msg)
             cv_results.append(None)
         
     # Filter out failed runs (None values)
     valid_results = [(i, score) for i, score in enumerate(cv_results) if score is not None]
     
     if not valid_results:
-        raise ValueError("All hyperparameter combinations failed during cross-validation. Check your parameter grid and data.")
+        # Provide detailed error information
+        error_summary = "\n\n".join(error_log[:3])  # Show first 3 errors
+        raise ValueError(
+            f"All hyperparameter combinations failed during cross-validation.\n\n"
+            f"Total attempts: {len(hyper_params)}\n"
+            f"All failed: {len(error_log)}\n\n"
+            f"First errors:\n{error_summary}\n\n"
+            f"Check your parameter grid, data, cv_strategy settings, and required columns."
+        )
     
     # get the best hyperparams based on the best score among valid results
     if higher_is_better:

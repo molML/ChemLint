@@ -20,8 +20,12 @@ July 2024
 import math
 from collections import Counter, defaultdict
 import numpy as np
+import pandas as pd
+from typing import List, Optional, Dict
 from rdkit import Chem
 from rdkit.Chem.GraphDescriptors import BertzCT
+from molml_mcp.tools.featurization.SMILES_encoding import _tokenize_smiles
+from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 
 
 def _calculate_smiles_branches(smiles: str) -> int:
@@ -79,31 +83,46 @@ def _calculate_molecular_shannon_entropy(smiles: str) -> float | None:
     return entropy
 
 
-# def calculate_smiles_shannon_entropy(smiles: str) -> float:
-#     """ Calculate the Shannon entropy of a SMILES string by its tokens. Start, end-of-sequence, and padding tokens are
-#     not considered.
+def _calculate_smiles_shannon_entropy(smiles: str) -> float:
+    """ Calculate the Shannon entropy of a SMILES string by its tokens.
+    
+    Uses the proper SMILES tokenizer that handles multi-character tokens.
+    Start, end-of-sequence, and padding tokens are not considered.
 
-#     :math:`H=\sum_{i=1}^{n}{p_i\log_2p_i}`
+    :math:`H=\sum_{i=1}^{n}{p_i\log_2p_i}`
 
-#     :param smiles: SMILES string
-#     :return: Shannon Entropy
-#     """
+    :param smiles: SMILES string
+    :return: Shannon Entropy
+    """
 
-#     tokens = smiles_tokenizer(smiles)
+    tokens = _tokenize_smiles(smiles)
 
-#     # Count the frequency of each token in the SMILES string
-#     char_counts = Counter(tokens)
+    # Count the frequency of each token in the SMILES string
+    char_counts = Counter(tokens)
 
-#     # Total number of tokens in the SMILES string
-#     N = len(tokens)
+    # Total number of tokens in the SMILES string
+    N = len(tokens)
 
-#     # Calculate the probabilities
-#     probabilities = [count / N for count in char_counts.values()]
+    # Calculate the probabilities
+    probabilities = [count / N for count in char_counts.values()]
 
-#     # Calculate Shannon Entropy
-#     shannon_entropy = sum(p * -np.log2(p) for p in probabilities)
+    # Calculate Shannon Entropy
+    shannon_entropy = sum(p * -np.log2(p) for p in probabilities)
 
-#     return shannon_entropy
+    return shannon_entropy
+
+
+def _calculate_num_tokens(smiles: str) -> int:
+    """ Calculate the number of tokens in a SMILES string.
+    
+    Uses the proper SMILES tokenizer that handles multi-character tokens
+    (Cl, Br, @@, bracketed atoms, etc.).
+
+    :param smiles: SMILES string
+    :return: Number of tokens
+    """
+    tokens = _tokenize_smiles(smiles)
+    return len(tokens)
 
 
 def _calculate_bertz_complexity(smiles: str, **kwargs) -> float | None:
@@ -362,3 +381,170 @@ def _calculate_bottcher_complexity(smiles: str, debug: bool = False) -> float | 
     return complexity
 
 
+def add_complexity_columns(
+    input_filename: str,
+    project_manifest_path: str,
+    smiles_column: str,
+    metrics: List[str],
+    inplace: bool = False,
+    output_filename: Optional[str] = None,
+    explanation: str = "Dataset with molecular complexity metrics"
+) -> Dict:
+    """
+    Add one or more molecular complexity metric columns to a dataset.
+    
+    Function that computes various complexity metrics from SMILES
+    and adds them as new columns to the dataset.
+    
+    Available metrics:
+    - 'branches': Number of branches in SMILES string
+    - 'num_tokens': Number of tokens in SMILES string (using proper tokenizer)
+    - 'molecular_entropy': Shannon entropy of molecular graph (element distribution)
+    - 'smiles_entropy': Shannon entropy of SMILES tokenization
+    - 'bertz': BertzCT complexity (structural branching and connectivity)
+    - 'bottcher': Böttcher complexity (comprehensive atom-wise complexity)
+    
+    Args:
+        input_filename: CSV dataset resource filename
+        project_manifest_path: Path to project manifest.json
+        smiles_column: Column name containing SMILES strings
+        metrics: List of metric names to compute (see available metrics above)
+        inplace: Modify existing dataset (replaces input file)
+        output_filename: Name for output dataset (required if not inplace)
+        explanation: Description for saved dataset
+        
+    Returns:
+        Dictionary containing:
+            - output_filename: Saved dataset filename
+            - n_rows: Number of rows processed
+            - columns_added: List of column names added
+            - n_failed: Number of SMILES that failed processing per metric
+            - preview: First 5 rows showing new columns
+            
+    Example:
+        >>> result = add_complexity_columns(
+        ...     "molecules.csv",
+        ...     "manifest.json",
+        ...     "SMILES",
+        ...     metrics=['bertz', 'smiles_entropy', 'branches'],
+        ...     output_filename="molecules_complexity"
+        ... )
+        >>> print(f"Added columns: {result['columns_added']}")
+        ['bertz', 'smiles_entropy', 'branches']
+    """
+    # Metric name to function mapping
+    METRIC_FUNCTIONS = {
+        'branches': _calculate_smiles_branches,
+        'num_tokens': _calculate_num_tokens,
+        'molecular_entropy': _calculate_molecular_shannon_entropy,
+        'smiles_entropy': _calculate_smiles_shannon_entropy,
+        'bertz': _calculate_bertz_complexity,
+        'bottcher': _calculate_bottcher_complexity,
+    }
+    
+    # Validate metrics
+    invalid_metrics = [m for m in metrics if m not in METRIC_FUNCTIONS]
+    if invalid_metrics:
+        raise ValueError(
+            f"Invalid metrics: {invalid_metrics}. "
+            f"Available: {list(METRIC_FUNCTIONS.keys())}"
+        )
+    
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate column
+    if smiles_column not in df.columns:
+        raise ValueError(
+            f"SMILES column '{smiles_column}' not found. "
+            f"Available: {list(df.columns)}"
+        )
+    
+    # Make copy for modifications
+    df_copy = df.copy()
+    
+    # Track failures per metric
+    n_failed = {}
+    columns_added = []
+    
+    # Compute each metric
+    for metric in metrics:
+        func = METRIC_FUNCTIONS[metric]
+        column_name = metric
+        
+        # Initialize column
+        values = []
+        failures = 0
+        
+        # Compute for each SMILES
+        for smiles in df_copy[smiles_column]:
+            if pd.isna(smiles):
+                values.append(None)
+                failures += 1
+            else:
+                try:
+                    value = func(str(smiles))
+                    # Handle functions that return (None, error_msg) tuples
+                    if isinstance(value, tuple):
+                        values.append(None)
+                        failures += 1
+                    else:
+                        values.append(value)
+                except Exception:
+                    values.append(None)
+                    failures += 1
+        
+        # Add column to dataframe
+        df_copy[column_name] = values
+        columns_added.append(column_name)
+        n_failed[metric] = failures
+    
+    # Save dataset
+    if inplace:
+        # Save with original filename (extract base name without unique ID)
+        base_name = input_filename.rsplit('_', 1)[0] if '_' in input_filename else input_filename
+        saved_filename = _store_resource(
+            df_copy,
+            project_manifest_path,
+            base_name,
+            explanation,
+            'csv'
+        )
+    else:
+        # Save with new filename
+        if output_filename is None:
+            raise ValueError(
+                "output_filename is required when inplace=False"
+            )
+        saved_filename = _store_resource(
+            df_copy,
+            project_manifest_path,
+            output_filename,
+            explanation,
+            'csv'
+        )
+    
+    # Get preview of new columns
+    preview_cols = [smiles_column] + columns_added
+    preview = df_copy[preview_cols].head(5).to_dict('records')
+    
+    return {
+        "output_filename": saved_filename,
+        "n_rows": len(df_copy),
+        "columns_added": columns_added,
+        "n_failed": n_failed,
+        "preview": preview,
+        "summary": (
+            f"Added {len(columns_added)} complexity metric(s) to {len(df_copy)} rows. "
+            f"Columns: {', '.join(columns_added)}"
+        )
+    }
+
+
+def get_all_complexity_tools():
+    """
+    Returns a list of MCP-exposed molecular complexity functions for server registration.
+    """
+    return [
+        add_complexity_columns,
+    ]

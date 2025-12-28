@@ -18,7 +18,7 @@ from molml_mcp.tools.core import (
     reduce_dimensions_tsne
 )
 from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset, deduplicate_dataset
-from molml_mcp.tools.core_mol import get_all_scaffold_tools
+from molml_mcp.tools.core_mol import get_all_scaffold_tools, get_all_complexity_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
 from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
@@ -70,6 +70,10 @@ mcp.add_tool(deduplicate_dataset)
 
 # Add scaffold tools
 for tool_func in get_all_scaffold_tools():
+    mcp.add_tool(tool_func)
+
+# Add complexity tools
+for tool_func in get_all_complexity_tools():
     mcp.add_tool(tool_func)
 
 # Add substructure matching tools

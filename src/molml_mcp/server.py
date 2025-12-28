@@ -5,9 +5,7 @@ from molml_mcp.infrastructure.resources import get_all_resources_tools
 
 from molml_mcp.tools.core import (
     get_all_dataset_tools,
-    get_all_normality_test_tools,
-    get_all_paired_test_tools,
-    get_all_correlation_test_tools,
+    get_all_statistical_test_tools,
     filter_by_property_range,
     filter_by_lipinski_ro5,
     filter_by_veber_rules,
@@ -63,16 +61,8 @@ mcp.add_tool(filter_by_functional_groups)
 mcp.add_tool(reduce_dimensions_pca)
 mcp.add_tool(reduce_dimensions_tsne)
 
-# Add normality test tools
-for tool_func in get_all_normality_test_tools():
-    mcp.add_tool(tool_func)
-
-# Add paired comparison test tools
-for tool_func in get_all_paired_test_tools():
-    mcp.add_tool(tool_func)
-
-# Add correlation test tools
-for tool_func in get_all_correlation_test_tools():
+# Add all statistical test tools
+for tool_func in get_all_statistical_test_tools():
     mcp.add_tool(tool_func)
 
 # Add molecular cleaning tools

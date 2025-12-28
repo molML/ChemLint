@@ -13,11 +13,20 @@ Paired Comparison Tests:
 Correlation Tests:
 - Pearson correlation: measures linear correlation (assumes normality)
 - Spearman correlation: measures monotonic correlation (rank-based, non-parametric)
+
+Independent Sample Tests:
+- Independent t-test (Welch's): compares means of two independent samples
+- Mann-Whitney U test: non-parametric alternative to independent t-test
+- Kolmogorov-Smirnov test: compares distributions of two independent samples
+
+Multi-Group Tests:
+- One-way ANOVA: compares means across multiple groups (assumes normality)
+- Kruskal-Wallis test: non-parametric alternative to one-way ANOVA
 """
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from scipy import stats
 from molml_mcp.infrastructure.resources import _load_resource
 
@@ -934,32 +943,702 @@ def test_spearman_correlation(
     }
 
 
-def get_all_normality_test_tools():
+def test_independent_ttest(
+    input_filename_a: str,
+    input_filename_b: str,
+    project_manifest_path: str,
+    column_a: str,
+    column_b: str,
+    alpha: float = 0.05,
+    alternative: str = "two-sided"
+) -> Dict:
     """
-    Returns a list of MCP-exposed normality test functions for server registration.
+    Perform independent samples t-test (Welch's version) comparing two independent groups.
+    
+    Welch's t-test compares means of two independent samples without assuming equal
+    variances. Use this when comparing two different groups (not paired measurements).
+    Assumes both samples are normally distributed.
+    
+    Null hypothesis (H0): The two groups have equal means.
+    - p-value > alpha: Fail to reject H0 (no significant difference)
+    - p-value <= alpha: Reject H0 (significant difference exists)
+    
+    Args:
+        input_filename_a: First CSV dataset resource filename
+        input_filename_b: Second CSV dataset resource filename
+        project_manifest_path: Path to project manifest.json
+        column_a: Column name in dataset A
+        column_b: Column name in dataset B
+        alpha: Significance level (default: 0.05)
+        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        
+    Returns:
+        Dictionary containing:
+            - statistic: t-statistic from the test
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - alternative: Type of test performed
+            - is_significant: Boolean indicating if difference is significant
+            - n_a: Number of samples in group A
+            - n_b: Number of samples in group B
+            - mean_a: Mean of group A
+            - mean_b: Mean of group B
+            - std_a: Standard deviation of group A
+            - std_b: Standard deviation of group B
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_independent_ttest(
+        ...     "control_group.csv",
+        ...     "treatment_group.csv",
+        ...     "manifest.json",
+        ...     "measurement",
+        ...     "measurement"
+        ... )
+    """
+    # Validate alternative
+    valid_alternatives = ["two-sided", "less", "greater"]
+    if alternative not in valid_alternatives:
+        raise ValueError(
+            f"alternative must be one of {valid_alternatives}. "
+            f"Got: {alternative}"
+        )
+    
+    # Load datasets
+    df_a = _load_resource(project_manifest_path, input_filename_a)
+    df_b = _load_resource(project_manifest_path, input_filename_b)
+    
+    # Validate columns
+    if column_a not in df_a.columns:
+        raise ValueError(
+            f"Column '{column_a}' not found in dataset A. "
+            f"Available: {list(df_a.columns)}"
+        )
+    if column_b not in df_b.columns:
+        raise ValueError(
+            f"Column '{column_b}' not found in dataset B. "
+            f"Available: {list(df_b.columns)}"
+        )
+    
+    # Get data and remove NaN
+    data_a = df_a[column_a].dropna().values
+    data_b = df_b[column_b].dropna().values
+    
+    n_a = len(data_a)
+    n_b = len(data_b)
+    
+    if n_a < 2 or n_b < 2:
+        raise ValueError(f"Each group needs at least 2 samples. Group A: {n_a}, Group B: {n_b}")
+    
+    # Calculate statistics
+    mean_a = float(np.mean(data_a))
+    mean_b = float(np.mean(data_b))
+    std_a = float(np.std(data_a, ddof=1))
+    std_b = float(np.std(data_b, ddof=1))
+    
+    # Perform Welch's t-test (equal_var=False)
+    statistic, p_value = stats.ttest_ind(data_a, data_b, equal_var=False, alternative=alternative)
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    mean_diff = mean_a - mean_b
+    
+    if alternative == "two-sided":
+        if is_significant:
+            direction = "greater" if mean_diff > 0 else "less"
+            interpretation = (
+                f"Significant difference detected (p={p_value:.4f} ≤ α={alpha}). "
+                f"Group A mean ({mean_a:.4f}) is {direction} than Group B mean ({mean_b:.4f})."
+            )
+        else:
+            interpretation = (
+                f"No significant difference (p={p_value:.4f} > α={alpha}). "
+                f"Group A mean: {mean_a:.4f}, Group B mean: {mean_b:.4f}."
+            )
+    elif alternative == "greater":
+        if is_significant:
+            interpretation = (
+                f"Group A is significantly GREATER than Group B (p={p_value:.4f} ≤ α={alpha}). "
+                f"Mean A: {mean_a:.4f}, Mean B: {mean_b:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Group A is NOT significantly greater than Group B (p={p_value:.4f} > α={alpha}). "
+                f"Mean A: {mean_a:.4f}, Mean B: {mean_b:.4f}."
+            )
+    else:  # alternative == "less"
+        if is_significant:
+            interpretation = (
+                f"Group A is significantly LESS than Group B (p={p_value:.4f} ≤ α={alpha}). "
+                f"Mean A: {mean_a:.4f}, Mean B: {mean_b:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Group A is NOT significantly less than Group B (p={p_value:.4f} > α={alpha}). "
+                f"Mean A: {mean_a:.4f}, Mean B: {mean_b:.4f}."
+            )
+    
+    return {
+        "test": "Independent t-test (Welch's)",
+        "dataset_a": input_filename_a,
+        "dataset_b": input_filename_b,
+        "column_a": column_a,
+        "column_b": column_b,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "alternative": alternative,
+        "is_significant": is_significant,
+        "n_a": n_a,
+        "n_b": n_b,
+        "mean_a": mean_a,
+        "mean_b": mean_b,
+        "std_a": std_a,
+        "std_b": std_b,
+        "interpretation": interpretation,
+        "summary": f"Welch's t-test: t={statistic:.4f}, p={p_value:.4f}, significant={is_significant}"
+    }
+
+
+def test_mann_whitney_u(
+    input_filename_a: str,
+    input_filename_b: str,
+    project_manifest_path: str,
+    column_a: str,
+    column_b: str,
+    alpha: float = 0.05,
+    alternative: str = "two-sided"
+) -> Dict:
+    """
+    Perform Mann-Whitney U test comparing two independent samples.
+    
+    The Mann-Whitney U test (also called Wilcoxon rank-sum test) is a non-parametric
+    test that compares the distributions of two independent samples. It tests whether
+    one distribution is stochastically greater than the other. Does not assume normality.
+    
+    Null hypothesis (H0): The two samples come from the same distribution.
+    - p-value > alpha: Fail to reject H0 (no significant difference)
+    - p-value <= alpha: Reject H0 (significant difference exists)
+    
+    Args:
+        input_filename_a: First CSV dataset resource filename
+        input_filename_b: Second CSV dataset resource filename
+        project_manifest_path: Path to project manifest.json
+        column_a: Column name in dataset A
+        column_b: Column name in dataset B
+        alpha: Significance level (default: 0.05)
+        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        
+    Returns:
+        Dictionary containing:
+            - statistic: U statistic from the test
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - alternative: Type of test performed
+            - is_significant: Boolean indicating if difference is significant
+            - n_a: Number of samples in group A
+            - n_b: Number of samples in group B
+            - median_a: Median of group A
+            - median_b: Median of group B
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_mann_whitney_u(
+        ...     "group1.csv",
+        ...     "group2.csv",
+        ...     "manifest.json",
+        ...     "score",
+        ...     "score"
+        ... )
+    """
+    # Validate alternative
+    valid_alternatives = ["two-sided", "less", "greater"]
+    if alternative not in valid_alternatives:
+        raise ValueError(
+            f"alternative must be one of {valid_alternatives}. "
+            f"Got: {alternative}"
+        )
+    
+    # Load datasets
+    df_a = _load_resource(project_manifest_path, input_filename_a)
+    df_b = _load_resource(project_manifest_path, input_filename_b)
+    
+    # Validate columns
+    if column_a not in df_a.columns:
+        raise ValueError(
+            f"Column '{column_a}' not found in dataset A. "
+            f"Available: {list(df_a.columns)}"
+        )
+    if column_b not in df_b.columns:
+        raise ValueError(
+            f"Column '{column_b}' not found in dataset B. "
+            f"Available: {list(df_b.columns)}"
+        )
+    
+    # Get data and remove NaN
+    data_a = df_a[column_a].dropna().values
+    data_b = df_b[column_b].dropna().values
+    
+    n_a = len(data_a)
+    n_b = len(data_b)
+    
+    if n_a < 1 or n_b < 1:
+        raise ValueError(f"Each group needs at least 1 sample. Group A: {n_a}, Group B: {n_b}")
+    
+    # Calculate medians
+    median_a = float(np.median(data_a))
+    median_b = float(np.median(data_b))
+    
+    # Perform Mann-Whitney U test
+    result = stats.mannwhitneyu(data_a, data_b, alternative=alternative)
+    statistic = result.statistic
+    p_value = result.pvalue
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    median_diff = median_a - median_b
+    
+    if alternative == "two-sided":
+        if is_significant:
+            direction = "greater" if median_diff > 0 else "less"
+            interpretation = (
+                f"Significant difference detected (p={p_value:.4f} ≤ α={alpha}). "
+                f"Group A median ({median_a:.4f}) is {direction} than Group B median ({median_b:.4f})."
+            )
+        else:
+            interpretation = (
+                f"No significant difference (p={p_value:.4f} > α={alpha}). "
+                f"Group A median: {median_a:.4f}, Group B median: {median_b:.4f}."
+            )
+    elif alternative == "greater":
+        if is_significant:
+            interpretation = (
+                f"Group A is significantly GREATER than Group B (p={p_value:.4f} ≤ α={alpha}). "
+                f"Median A: {median_a:.4f}, Median B: {median_b:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Group A is NOT significantly greater than Group B (p={p_value:.4f} > α={alpha}). "
+                f"Median A: {median_a:.4f}, Median B: {median_b:.4f}."
+            )
+    else:  # alternative == "less"
+        if is_significant:
+            interpretation = (
+                f"Group A is significantly LESS than Group B (p={p_value:.4f} ≤ α={alpha}). "
+                f"Median A: {median_a:.4f}, Median B: {median_b:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Group A is NOT significantly less than Group B (p={p_value:.4f} > α={alpha}). "
+                f"Median A: {median_a:.4f}, Median B: {median_b:.4f}."
+            )
+    
+    return {
+        "test": "Mann-Whitney U",
+        "dataset_a": input_filename_a,
+        "dataset_b": input_filename_b,
+        "column_a": column_a,
+        "column_b": column_b,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "alternative": alternative,
+        "is_significant": is_significant,
+        "n_a": n_a,
+        "n_b": n_b,
+        "median_a": median_a,
+        "median_b": median_b,
+        "interpretation": interpretation,
+        "summary": f"Mann-Whitney U={statistic:.4f}, p={p_value:.4f}, significant={is_significant}"
+    }
+
+
+def test_kolmogorov_smirnov_two_sample(
+    input_filename_a: str,
+    input_filename_b: str,
+    project_manifest_path: str,
+    column_a: str,
+    column_b: str,
+    alpha: float = 0.05,
+    alternative: str = "two-sided"
+) -> Dict:
+    """
+    Perform two-sample Kolmogorov-Smirnov test comparing distributions.
+    
+    The two-sample K-S test compares the empirical cumulative distribution functions
+    of two samples. It tests whether the two samples come from the same distribution.
+    Non-parametric and sensitive to any differences in distribution (location, shape, spread).
+    
+    Null hypothesis (H0): The two samples come from the same distribution.
+    - p-value > alpha: Fail to reject H0 (distributions are similar)
+    - p-value <= alpha: Reject H0 (distributions are different)
+    
+    Args:
+        input_filename_a: First CSV dataset resource filename
+        input_filename_b: Second CSV dataset resource filename
+        project_manifest_path: Path to project manifest.json
+        column_a: Column name in dataset A
+        column_b: Column name in dataset B
+        alpha: Significance level (default: 0.05)
+        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        
+    Returns:
+        Dictionary containing:
+            - statistic: K-S statistic (maximum distance between CDFs)
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - alternative: Type of test performed
+            - is_significant: Boolean indicating if distributions differ
+            - n_a: Number of samples in group A
+            - n_b: Number of samples in group B
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_kolmogorov_smirnov_two_sample(
+        ...     "distribution1.csv",
+        ...     "distribution2.csv",
+        ...     "manifest.json",
+        ...     "values",
+        ...     "values"
+        ... )
+    """
+    # Validate alternative
+    valid_alternatives = ["two-sided", "less", "greater"]
+    if alternative not in valid_alternatives:
+        raise ValueError(
+            f"alternative must be one of {valid_alternatives}. "
+            f"Got: {alternative}"
+        )
+    
+    # Load datasets
+    df_a = _load_resource(project_manifest_path, input_filename_a)
+    df_b = _load_resource(project_manifest_path, input_filename_b)
+    
+    # Validate columns
+    if column_a not in df_a.columns:
+        raise ValueError(
+            f"Column '{column_a}' not found in dataset A. "
+            f"Available: {list(df_a.columns)}"
+        )
+    if column_b not in df_b.columns:
+        raise ValueError(
+            f"Column '{column_b}' not found in dataset B. "
+            f"Available: {list(df_b.columns)}"
+        )
+    
+    # Get data and remove NaN
+    data_a = df_a[column_a].dropna().values
+    data_b = df_b[column_b].dropna().values
+    
+    n_a = len(data_a)
+    n_b = len(data_b)
+    
+    if n_a < 1 or n_b < 1:
+        raise ValueError(f"Each group needs at least 1 sample. Group A: {n_a}, Group B: {n_b}")
+    
+    # Perform two-sample K-S test
+    statistic, p_value = stats.ks_2samp(data_a, data_b, alternative=alternative)
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    
+    if alternative == "two-sided":
+        if is_significant:
+            interpretation = (
+                f"Distributions are significantly different (p={p_value:.4f} ≤ α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+        else:
+            interpretation = (
+                f"No significant difference between distributions (p={p_value:.4f} > α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+    elif alternative == "greater":
+        if is_significant:
+            interpretation = (
+                f"Distribution A is stochastically GREATER than B (p={p_value:.4f} ≤ α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Distribution A is NOT stochastically greater than B (p={p_value:.4f} > α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+    else:  # alternative == "less"
+        if is_significant:
+            interpretation = (
+                f"Distribution A is stochastically LESS than B (p={p_value:.4f} ≤ α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+        else:
+            interpretation = (
+                f"Distribution A is NOT stochastically less than B (p={p_value:.4f} > α={alpha}). "
+                f"K-S statistic: {statistic:.4f}."
+            )
+    
+    return {
+        "test": "Two-sample Kolmogorov-Smirnov",
+        "dataset_a": input_filename_a,
+        "dataset_b": input_filename_b,
+        "column_a": column_a,
+        "column_b": column_b,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "alternative": alternative,
+        "is_significant": is_significant,
+        "n_a": n_a,
+        "n_b": n_b,
+        "interpretation": interpretation,
+        "summary": f"K-S test: D={statistic:.4f}, p={p_value:.4f}, significant={is_significant}"
+    }
+
+
+def test_one_way_anova(
+    input_filenames: List[str],
+    project_manifest_path: str,
+    columns: List[str],
+    alpha: float = 0.05
+) -> Dict:
+    """
+    Perform one-way ANOVA comparing means across multiple groups.
+    
+    One-way ANOVA tests whether there are any significant differences between the
+    means of three or more independent groups. Assumes normality and equal variances.
+    
+    Null hypothesis (H0): All group means are equal.
+    - p-value > alpha: Fail to reject H0 (no significant differences)
+    - p-value <= alpha: Reject H0 (at least one group differs)
+    
+    Args:
+        input_filenames: List of CSV dataset resource filenames (one per group)
+        project_manifest_path: Path to project manifest.json
+        columns: List of column names (one per dataset, in same order)
+        alpha: Significance level (default: 0.05)
+        
+    Returns:
+        Dictionary containing:
+            - statistic: F-statistic from the test
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - is_significant: Boolean indicating if groups differ
+            - n_groups: Number of groups
+            - group_sizes: List of sample sizes per group
+            - group_means: List of means per group
+            - group_stds: List of standard deviations per group
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_one_way_anova(
+        ...     ["control.csv", "treatment1.csv", "treatment2.csv"],
+        ...     "manifest.json",
+        ...     ["score", "score", "score"]
+        ... )
+    """
+    if len(input_filenames) < 2:
+        raise ValueError(f"Need at least 2 groups for ANOVA. Got: {len(input_filenames)}")
+    
+    if len(columns) != len(input_filenames):
+        raise ValueError(
+            f"Number of columns ({len(columns)}) must match number of datasets ({len(input_filenames)})"
+        )
+    
+    # Load all groups
+    groups = []
+    group_means = []
+    group_stds = []
+    group_sizes = []
+    
+    for i, (filename, column) in enumerate(zip(input_filenames, columns)):
+        df = _load_resource(project_manifest_path, filename)
+        
+        if column not in df.columns:
+            raise ValueError(
+                f"Column '{column}' not found in dataset {i+1}. "
+                f"Available: {list(df.columns)}"
+            )
+        
+        data = df[column].dropna().values
+        
+        if len(data) < 2:
+            raise ValueError(f"Group {i+1} needs at least 2 samples. Got: {len(data)}")
+        
+        groups.append(data)
+        group_means.append(float(np.mean(data)))
+        group_stds.append(float(np.std(data, ddof=1)))
+        group_sizes.append(len(data))
+    
+    # Perform one-way ANOVA
+    statistic, p_value = stats.f_oneway(*groups)
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    n_groups = len(groups)
+    
+    if is_significant:
+        interpretation = (
+            f"Significant differences detected among {n_groups} groups (p={p_value:.4f} ≤ α={alpha}). "
+            f"At least one group mean differs from the others. "
+            f"F-statistic: {statistic:.4f}."
+        )
+    else:
+        interpretation = (
+            f"No significant differences among {n_groups} groups (p={p_value:.4f} > α={alpha}). "
+            f"All group means are statistically similar. "
+            f"F-statistic: {statistic:.4f}."
+        )
+    
+    return {
+        "test": "One-way ANOVA",
+        "datasets": input_filenames,
+        "columns": columns,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "is_significant": is_significant,
+        "n_groups": n_groups,
+        "group_sizes": group_sizes,
+        "group_means": group_means,
+        "group_stds": group_stds,
+        "interpretation": interpretation,
+        "summary": f"ANOVA: F={statistic:.4f}, p={p_value:.4f}, {n_groups} groups, significant={is_significant}"
+    }
+
+
+def test_kruskal_wallis(
+    input_filenames: List[str],
+    project_manifest_path: str,
+    columns: List[str],
+    alpha: float = 0.05
+) -> Dict:
+    """
+    Perform Kruskal-Wallis H-test comparing distributions across multiple groups.
+    
+    The Kruskal-Wallis test is a non-parametric alternative to one-way ANOVA. It tests
+    whether samples originate from the same distribution. Does not assume normality.
+    
+    Null hypothesis (H0): All groups have the same distribution.
+    - p-value > alpha: Fail to reject H0 (no significant differences)
+    - p-value <= alpha: Reject H0 (at least one group differs)
+    
+    Args:
+        input_filenames: List of CSV dataset resource filenames (one per group)
+        project_manifest_path: Path to project manifest.json
+        columns: List of column names (one per dataset, in same order)
+        alpha: Significance level (default: 0.05)
+        
+    Returns:
+        Dictionary containing:
+            - statistic: H-statistic from the test
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - is_significant: Boolean indicating if groups differ
+            - n_groups: Number of groups
+            - group_sizes: List of sample sizes per group
+            - group_medians: List of medians per group
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_kruskal_wallis(
+        ...     ["group1.csv", "group2.csv", "group3.csv"],
+        ...     "manifest.json",
+        ...     ["rank", "rank", "rank"]
+        ... )
+    """
+    if len(input_filenames) < 2:
+        raise ValueError(f"Need at least 2 groups for Kruskal-Wallis. Got: {len(input_filenames)}")
+    
+    if len(columns) != len(input_filenames):
+        raise ValueError(
+            f"Number of columns ({len(columns)}) must match number of datasets ({len(input_filenames)})"
+        )
+    
+    # Load all groups
+    groups = []
+    group_medians = []
+    group_sizes = []
+    
+    for i, (filename, column) in enumerate(zip(input_filenames, columns)):
+        df = _load_resource(project_manifest_path, filename)
+        
+        if column not in df.columns:
+            raise ValueError(
+                f"Column '{column}' not found in dataset {i+1}. "
+                f"Available: {list(df.columns)}"
+            )
+        
+        data = df[column].dropna().values
+        
+        if len(data) < 1:
+            raise ValueError(f"Group {i+1} needs at least 1 sample. Got: {len(data)}")
+        
+        groups.append(data)
+        group_medians.append(float(np.median(data)))
+        group_sizes.append(len(data))
+    
+    # Perform Kruskal-Wallis test
+    statistic, p_value = stats.kruskal(*groups)
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    n_groups = len(groups)
+    
+    if is_significant:
+        interpretation = (
+            f"Significant differences detected among {n_groups} groups (p={p_value:.4f} ≤ α={alpha}). "
+            f"At least one group distribution differs from the others. "
+            f"H-statistic: {statistic:.4f}."
+        )
+    else:
+        interpretation = (
+            f"No significant differences among {n_groups} groups (p={p_value:.4f} > α={alpha}). "
+            f"All group distributions are statistically similar. "
+            f"H-statistic: {statistic:.4f}."
+        )
+    
+    return {
+        "test": "Kruskal-Wallis H",
+        "datasets": input_filenames,
+        "columns": columns,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "is_significant": is_significant,
+        "n_groups": n_groups,
+        "group_sizes": group_sizes,
+        "group_medians": group_medians,
+        "interpretation": interpretation,
+        "summary": f"Kruskal-Wallis: H={statistic:.4f}, p={p_value:.4f}, {n_groups} groups, significant={is_significant}"
+    }
+
+
+def get_all_statistical_test_tools():
+    """
+    Returns a list of all MCP-exposed statistical test functions for server registration.
+    
+    Includes:
+    - Normality tests: Shapiro-Wilk, Kolmogorov-Smirnov, Anderson-Darling
+    - Paired comparison tests: Paired t-test, Wilcoxon signed-rank
+    - Correlation tests: Pearson, Spearman
+    - Independent sample tests: Independent t-test (Welch's), Mann-Whitney U, Two-sample K-S
+    - Multi-group tests: One-way ANOVA, Kruskal-Wallis
     """
     return [
+        # Normality tests
         test_shapiro_wilk,
         test_kolmogorov_smirnov_norm,
         test_anderson_darling,
-    ]
-
-
-def get_all_paired_test_tools():
-    """
-    Returns a list of MCP-exposed paired comparison test functions for server registration.
-    """
-    return [
+        # Paired comparison tests
         test_paired_ttest,
         test_wilcoxon_signed_rank,
-    ]
-
-
-def get_all_correlation_test_tools():
-    """
-    Returns a list of MCP-exposed correlation test functions for server registration.
-    """
-    return [
+        # Correlation tests
         test_pearson_correlation,
         test_spearman_correlation,
+        # Independent sample tests
+        test_independent_ttest,
+        test_mann_whitney_u,
+        test_kolmogorov_smirnov_two_sample,
+        # Multi-group tests
+        test_one_way_anova,
+        test_kruskal_wallis,
     ]

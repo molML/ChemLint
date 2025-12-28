@@ -12,12 +12,14 @@ dependencies = [
     "mcp[cli]>=1.20.0",
     "rdkit>=2025.9.1",
     "numpy",
+    "scipy",
     "scikit-learn",
     "pandas",
     "cairosvg>=2.8.2",
     "joblib>=1.5.2",
     "kneed>=0.8.5",
     "plotnine>=0.15.2",
+    "statsmodels>=0.14.0",
 ]
 
 [tool.setuptools]

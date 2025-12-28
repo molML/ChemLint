@@ -27,12 +27,15 @@ Multi-Group Tests:
 
 Categorical Tests:
 - Chi-square test of independence: tests association between categorical variables [Cramér's V effect size]
+- Fisher's exact test: exact test for 2x2 tables (small samples) [odds ratio effect size]
+- McNemar's test: tests for changes in paired categorical data [odds ratio effect size]
 """
 
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional, List
 from scipy import stats
+from statsmodels.stats.contingency_tables import mcnemar as mcnemar_test
 from molml_mcp.infrastructure.resources import _load_resource
 
 
@@ -1826,6 +1829,384 @@ def test_chi_square(
     }
 
 
+def test_fisher_exact(
+    input_filename: str,
+    project_manifest_path: str,
+    column_a: str,
+    column_b: str,
+    alpha: float = 0.05,
+    alternative: str = "two-sided"
+) -> Dict:
+    """
+    Perform Fisher's exact test for 2x2 contingency tables.
+    
+    Fisher's exact test is used for categorical data with small sample sizes where
+    chi-square assumptions may be violated. It calculates the exact probability of
+    observing the data (or more extreme) under the null hypothesis. Only works with
+    2x2 tables (both variables must have exactly 2 categories).
+    
+    Null hypothesis (H0): The two variables are independent.
+    - p-value > alpha: Fail to reject H0 (variables are independent)
+    - p-value <= alpha: Reject H0 (variables are associated)
+    
+    Args:
+        input_filename: CSV dataset resource filename
+        project_manifest_path: Path to project manifest.json
+        column_a: First categorical column name (must have exactly 2 categories)
+        column_b: Second categorical column name (must have exactly 2 categories)
+        alpha: Significance level (default: 0.05)
+        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        
+    Returns:
+        Dictionary containing:
+            - p_value: Exact p-value from the test
+            - odds_ratio: Odds ratio effect size
+            - alpha: Significance level used
+            - alternative: Type of test performed
+            - is_significant: Boolean indicating if association is significant
+            - contingency_table: Observed frequencies as nested dict
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_fisher_exact(
+        ...     "dataset.csv",
+        ...     "manifest.json",
+        ...     "treatment",
+        ...     "response"
+        ... )
+    """
+    # Validate alternative
+    valid_alternatives = ["two-sided", "less", "greater"]
+    if alternative not in valid_alternatives:
+        raise ValueError(
+            f"alternative must be one of {valid_alternatives}. "
+            f"Got: {alternative}"
+        )
+    
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate columns
+    if column_a not in df.columns:
+        raise ValueError(
+            f"Column '{column_a}' not found. "
+            f"Available: {list(df.columns)}"
+        )
+    if column_b not in df.columns:
+        raise ValueError(
+            f"Column '{column_b}' not found. "
+            f"Available: {list(df.columns)}"
+        )
+    
+    # Remove rows with NaN in either column
+    df_clean = df[[column_a, column_b]].dropna()
+    
+    if len(df_clean) == 0:
+        raise ValueError("No valid data after removing NaN values")
+    
+    # Create contingency table
+    contingency_table = pd.crosstab(df_clean[column_a], df_clean[column_b])
+    
+    # Fisher's exact test requires exactly 2x2 table
+    if contingency_table.shape != (2, 2):
+        raise ValueError(
+            f"Fisher's exact test requires 2x2 contingency table. "
+            f"Got {contingency_table.shape[0]} x {contingency_table.shape[1]}. "
+            f"Both variables must have exactly 2 categories."
+        )
+    
+    # Extract 2x2 table as numpy array
+    table = contingency_table.values
+    
+    # Perform Fisher's exact test
+    odds_ratio, p_value = stats.fisher_exact(table, alternative=alternative)
+    
+    # Interpret odds ratio as effect size
+    # OR = 1: No association
+    # OR > 1: Positive association
+    # OR < 1: Negative association
+    if odds_ratio == 0 or np.isinf(odds_ratio):
+        effect_size_interp = "extreme (perfect or no overlap)"
+    elif 0.9 <= odds_ratio <= 1.1:
+        effect_size_interp = "negligible"
+    elif (1.5 <= odds_ratio <= 3.5) or (1/3.5 <= odds_ratio <= 1/1.5):
+        effect_size_interp = "small"
+    elif (3.5 <= odds_ratio <= 9) or (1/9 <= odds_ratio <= 1/3.5):
+        effect_size_interp = "medium"
+    else:
+        effect_size_interp = "large"
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    n = contingency_table.sum().sum()
+    
+    # Get category names for interpretation
+    cat_a = list(contingency_table.index)
+    cat_b = list(contingency_table.columns)
+    
+    if alternative == "two-sided":
+        if is_significant:
+            interpretation = (
+                f"Significant association detected (p={p_value:.4f} ≤ α={alpha}). "
+                f"The variables '{column_a}' and '{column_b}' are NOT independent. "
+                f"Odds ratio={odds_ratio:.4f} ({effect_size_interp} effect)."
+            )
+        else:
+            interpretation = (
+                f"No significant association (p={p_value:.4f} > α={alpha}). "
+                f"The variables '{column_a}' and '{column_b}' appear independent. "
+                f"Odds ratio={odds_ratio:.4f}."
+            )
+    elif alternative == "greater":
+        if is_significant:
+            interpretation = (
+                f"Significant positive association (p={p_value:.4f} ≤ α={alpha}). "
+                f"Odds of '{cat_b[1]}' are HIGHER for '{cat_a[0]}' vs '{cat_a[1]}'. "
+                f"Odds ratio={odds_ratio:.4f} ({effect_size_interp} effect)."
+            )
+        else:
+            interpretation = (
+                f"No significant positive association (p={p_value:.4f} > α={alpha}). "
+                f"Odds ratio={odds_ratio:.4f}."
+            )
+    else:  # alternative == "less"
+        if is_significant:
+            interpretation = (
+                f"Significant negative association (p={p_value:.4f} ≤ α={alpha}). "
+                f"Odds of '{cat_b[1]}' are LOWER for '{cat_a[0]}' vs '{cat_a[1]}'. "
+                f"Odds ratio={odds_ratio:.4f} ({effect_size_interp} effect)."
+            )
+        else:
+            interpretation = (
+                f"No significant negative association (p={p_value:.4f} > α={alpha}). "
+                f"Odds ratio={odds_ratio:.4f}."
+            )
+    
+    # Convert contingency table to nested dict for JSON serialization
+    contingency_dict = {
+        str(idx): {str(col): int(val) for col, val in row.items()}
+        for idx, row in contingency_table.to_dict('index').items()
+    }
+    
+    return {
+        "test": "Fisher's exact test",
+        "dataset": input_filename,
+        "column_a": column_a,
+        "column_b": column_b,
+        "p_value": float(p_value),
+        "odds_ratio": float(odds_ratio),
+        "alpha": alpha,
+        "alternative": alternative,
+        "is_significant": is_significant,
+        "n_samples": int(n),
+        "effect_size": effect_size_interp,
+        "contingency_table": contingency_dict,
+        "interpretation": interpretation,
+        "summary": f"Fisher's exact: p={p_value:.4f}, OR={odds_ratio:.4f} ({effect_size_interp}), significant={is_significant}"
+    }
+
+
+def test_mcnemar(
+    input_filename_before: str,
+    input_filename_after: str,
+    project_manifest_path: str,
+    column_before: str,
+    column_after: str,
+    alpha: float = 0.05
+) -> Dict:
+    """
+    Perform McNemar's test for paired categorical data.
+    
+    McNemar's test is used for paired nominal data (before/after designs) to determine
+    whether the row and column marginal frequencies are equal. It tests for changes in
+    proportions for paired observations. Both variables must be binary (2 categories).
+    
+    Null hypothesis (H0): The marginal proportions are equal (no change).
+    - p-value > alpha: Fail to reject H0 (no significant change)
+    - p-value <= alpha: Reject H0 (significant change detected)
+    
+    Args:
+        input_filename_before: CSV dataset resource filename for "before" measurements
+        input_filename_after: CSV dataset resource filename for "after" measurements
+        project_manifest_path: Path to project manifest.json
+        column_before: Column name in "before" dataset (must be binary)
+        column_after: Column name in "after" dataset (must be binary)
+        alpha: Significance level (default: 0.05)
+        
+    Returns:
+        Dictionary containing:
+            - statistic: Chi-square statistic from McNemar's test
+            - p_value: p-value from the test
+            - alpha: Significance level used
+            - is_significant: Boolean indicating if change is significant
+            - n_pairs: Number of paired observations
+            - n_concordant: Pairs with same value before and after
+            - n_discordant: Pairs with different values before and after
+            - odds_ratio: Odds ratio for change (b/c ratio)
+            - contingency_table: 2x2 table of paired responses
+            - interpretation: Human-readable interpretation
+            
+    Example:
+        >>> result = test_mcnemar(
+        ...     "before_treatment.csv",
+        ...     "after_treatment.csv",
+        ...     "manifest.json",
+        ...     "symptom_present",
+        ...     "symptom_present"
+        ... )
+    """
+    # Load datasets
+    df_before = _load_resource(project_manifest_path, input_filename_before)
+    df_after = _load_resource(project_manifest_path, input_filename_after)
+    
+    # Validate columns
+    if column_before not in df_before.columns:
+        raise ValueError(
+            f"Column '{column_before}' not found in 'before' dataset. "
+            f"Available: {list(df_before.columns)}"
+        )
+    if column_after not in df_after.columns:
+        raise ValueError(
+            f"Column '{column_after}' not found in 'after' dataset. "
+            f"Available: {list(df_after.columns)}"
+        )
+    
+    # Get data
+    data_before = df_before[column_before].values
+    data_after = df_after[column_after].values
+    
+    # Check equal lengths
+    if len(data_before) != len(data_after):
+        raise ValueError(
+            f"Datasets must have equal length for paired test. "
+            f"Before: {len(data_before)}, After: {len(data_after)}"
+        )
+    
+    # Remove pairs with NaN in either column
+    valid_mask = ~(pd.isna(data_before) | pd.isna(data_after))
+    data_before_clean = data_before[valid_mask]
+    data_after_clean = data_after[valid_mask]
+    n_pairs = len(data_before_clean)
+    
+    if n_pairs == 0:
+        raise ValueError("No valid paired samples (all contain NaN)")
+    
+    # Create contingency table for paired data
+    contingency_table = pd.crosstab(data_before_clean, data_after_clean)
+    
+    # McNemar's test requires 2x2 table
+    if contingency_table.shape != (2, 2):
+        raise ValueError(
+            f"McNemar's test requires 2x2 contingency table (binary variables). "
+            f"Got {contingency_table.shape[0]} x {contingency_table.shape[1]}. "
+            f"Before has {len(set(data_before_clean))} categories, "
+            f"After has {len(set(data_after_clean))} categories."
+        )
+    
+    # Extract 2x2 table as numpy array
+    table = contingency_table.values
+    
+    # McNemar's test focuses on discordant pairs (b and c in the 2x2 table)
+    # table layout:
+    #               After=0  After=1
+    # Before=0        a        b
+    # Before=1        c        d
+    
+    a = table[0, 0]  # Both 0
+    b = table[0, 1]  # Before=0, After=1 (changed to 1)
+    c = table[1, 0]  # Before=1, After=0 (changed to 0)
+    d = table[1, 1]  # Both 1
+    
+    n_concordant = a + d
+    n_discordant = b + c
+    
+    # Calculate odds ratio for paired data (ratio of discordant pairs)
+    if c == 0:
+        odds_ratio = float('inf') if b > 0 else 1.0
+    else:
+        odds_ratio = b / c
+    
+    # Interpret odds ratio
+    if np.isinf(odds_ratio):
+        effect_size_interp = "extreme (all changes in one direction)"
+    elif odds_ratio == 0:
+        effect_size_interp = "extreme (all changes in opposite direction)"
+    elif 0.9 <= odds_ratio <= 1.1:
+        effect_size_interp = "negligible"
+    elif (1.5 <= odds_ratio <= 3.5) or (1/3.5 <= odds_ratio <= 1/1.5):
+        effect_size_interp = "small"
+    elif (3.5 <= odds_ratio <= 9) or (1/9 <= odds_ratio <= 1/3.5):
+        effect_size_interp = "medium"
+    else:
+        effect_size_interp = "large"
+    
+    # Perform McNemar's test
+    result = mcnemar_test(table, exact=False)  # Use chi-square approximation
+    statistic = result.statistic
+    p_value = result.pvalue
+    
+    # Interpret result
+    is_significant = p_value <= alpha
+    
+    # Get category names
+    cat_before = list(contingency_table.index)
+    cat_after = list(contingency_table.columns)
+    
+    if is_significant:
+        if odds_ratio > 1:
+            interpretation = (
+                f"Significant change detected (p={p_value:.4f} ≤ α={alpha}). "
+                f"More pairs changed from '{cat_before[0]}' to '{cat_after[1]}' (n={b}) "
+                f"than from '{cat_before[1]}' to '{cat_after[0]}' (n={c}). "
+                f"Odds ratio={odds_ratio:.4f} ({effect_size_interp} effect)."
+            )
+        elif odds_ratio < 1:
+            interpretation = (
+                f"Significant change detected (p={p_value:.4f} ≤ α={alpha}). "
+                f"More pairs changed from '{cat_before[1]}' to '{cat_after[0]}' (n={c}) "
+                f"than from '{cat_before[0]}' to '{cat_after[1]}' (n={b}). "
+                f"Odds ratio={odds_ratio:.4f} ({effect_size_interp} effect)."
+            )
+        else:
+            interpretation = (
+                f"Significant change detected (p={p_value:.4f} ≤ α={alpha}), "
+                f"but equal discordant pairs. Odds ratio={odds_ratio:.4f}."
+            )
+    else:
+        interpretation = (
+            f"No significant change (p={p_value:.4f} > α={alpha}). "
+            f"Discordant pairs: {b} vs {c}. Odds ratio={odds_ratio:.4f}."
+        )
+    
+    # Convert contingency table to nested dict for JSON serialization
+    contingency_dict = {
+        str(idx): {str(col): int(val) for col, val in row.items()}
+        for idx, row in contingency_table.to_dict('index').items()
+    }
+    
+    return {
+        "test": "McNemar's test",
+        "dataset_before": input_filename_before,
+        "dataset_after": input_filename_after,
+        "column_before": column_before,
+        "column_after": column_after,
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+        "alpha": alpha,
+        "is_significant": is_significant,
+        "n_pairs": n_pairs,
+        "n_concordant": int(n_concordant),
+        "n_discordant": int(n_discordant),
+        "discordant_b": int(b),  # Before=0, After=1
+        "discordant_c": int(c),  # Before=1, After=0
+        "odds_ratio": float(odds_ratio),
+        "effect_size": effect_size_interp,
+        "contingency_table": contingency_dict,
+        "interpretation": interpretation,
+        "summary": f"McNemar's test: χ²={statistic:.4f}, p={p_value:.4f}, OR={odds_ratio:.4f} ({effect_size_interp}), significant={is_significant}"
+    }
+
+
 def get_all_statistical_test_tools():
     """
     Returns a list of all MCP-exposed statistical test functions for server registration.
@@ -1836,7 +2217,7 @@ def get_all_statistical_test_tools():
     - Correlation tests: Pearson, Spearman
     - Independent sample tests: Independent t-test (Welch's), Mann-Whitney U, Two-sample K-S
     - Multi-group tests: One-way ANOVA, Kruskal-Wallis
-    - Categorical tests: Chi-square test of independence
+    - Categorical tests: Chi-square test of independence, Fisher's exact test, McNemar's test
     """
     return [
         # Normality tests
@@ -1858,4 +2239,6 @@ def get_all_statistical_test_tools():
         test_kruskal_wallis,
         # Categorical tests
         test_chi_square,
+        test_fisher_exact,
+        test_mcnemar,
     ]

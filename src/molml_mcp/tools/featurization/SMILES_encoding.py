@@ -920,7 +920,6 @@ def flag_smiles_vocab_fit(
     smiles_column: str,
     vocab_filename: str,
     add_coverage_column: bool = True,
-    allow_unknown: bool = True,
     inplace: bool = False,
     output_filename: Optional[str] = None,
     explanation: str = "Dataset with vocab fit flags"
@@ -929,16 +928,17 @@ def flag_smiles_vocab_fit(
     Flag SMILES in dataset based on whether they fit in the vocabulary.
     
     MCP-friendly version that loads vocab from JSON resource and optionally
-    adds a boolean coverage column to the dataset.
+    adds a status column to the dataset with values:
+    - 'passed': All tokens in vocabulary
+    - 'failed': Some tokens missing and no <unk> token in vocab
+    - 'unknown token': Some tokens missing but vocab has <unk> token
     
     Args:
         input_filename: CSV dataset resource filename
         project_manifest_path: Path to project manifest.json
         smiles_column: Column name containing SMILES strings
         vocab_filename: Vocab JSON resource filename
-        add_coverage_column: Add 'vocab_covered' boolean column
-        allow_unknown: If True, molecules with unknown tokens pass (if vocab has <unk> token).
-                      If False, molecules with unknown tokens fail.
+        add_coverage_column: Add 'vocab_status' string column
         inplace: Modify existing dataset (requires add_coverage_column=True)
         output_filename: Name for output dataset (only if not inplace)
         explanation: Description for saved dataset
@@ -946,34 +946,26 @@ def flag_smiles_vocab_fit(
     Returns:
         Dictionary containing:
             - n_smiles: Number of SMILES checked
-            - n_fully_covered: Number of SMILES fully tokenizable
-            - n_partial_coverage: Number with some unknown tokens
+            - n_passed: Number of SMILES fully tokenizable
+            - n_failed: Number with missing tokens (no <unk> in vocab)
+            - n_unknown_token: Number with missing tokens (vocab has <unk>)
             - overall_coverage: Average coverage percentage
             - missing_tokens: Set of all unknown tokens found
             - missing_token_counts: Dict of unknown token frequencies
             - output_filename: Saved dataset filename (if column added)
             
     Example:
-        >>> # Strict mode: fail if any unknown tokens
         >>> result = flag_smiles_vocab_fit(
         ...     "molecules.csv",
         ...     "manifest.json",
         ...     "SMILES",
         ...     "my_vocab.json",
         ...     add_coverage_column=True,
-        ...     allow_unknown=False,
-        ...     output_filename="molecules_strict"
+        ...     output_filename="molecules_flagged"
         ... )
-        >>> # Lenient mode: pass if vocab has <unk> token
-        >>> result = flag_smiles_vocab_fit(
-        ...     "molecules.csv",
-        ...     "manifest.json",
-        ...     "SMILES",
-        ...     "my_vocab.json",
-        ...     add_coverage_column=True,
-        ...     allow_unknown=True,
-        ...     output_filename="molecules_lenient"
-        ... )
+        >>> # User can then filter based on status:
+        >>> # df[df['vocab_status'] == 'passed']  # Only fully covered
+        >>> # df[df['vocab_status'].isin(['passed', 'unknown token'])]  # Allow <unk>
     """
     # Load vocab
     vocab, special_tokens = load_vocab_from_json(vocab_filename, project_manifest_path)
@@ -997,32 +989,34 @@ def flag_smiles_vocab_fit(
     if n_smiles == 0:
         raise ValueError(f"No valid SMILES in column '{smiles_column}'")
     # Check coverage for each SMILES and build column data
-    n_fully_covered = 0
-    n_partial_coverage = 0
+    n_passed = 0
+    n_failed = 0
+    n_unknown_token = 0
     total_coverage = 0.0
     all_unknown_tokens = Counter()
     
-    coverage_flags = {}
+    coverage_status = {}
     
     for idx, smiles in zip(smiles_indices, smiles_list):
         result = _check_smiles_vocab_coverage(smiles, vocab_filename, project_manifest_path, return_unknown=True)
         
-        if result['can_tokenize']:
-            n_fully_covered += 1
-        elif result['n_known'] > 0:
-            n_partial_coverage += 1
-        
         total_coverage += result['coverage']
         
-        # Determine pass/fail based on allow_unknown setting
-        if allow_unknown:
-            # Pass if fully covered OR has unknown tokens but vocab has <unk> token
-            passes = result['can_tokenize'] or (has_unk_token and result['n_unknown'] > 0)
+        # Determine status
+        if result['can_tokenize']:
+            # All tokens in vocab
+            status = 'passed'
+            n_passed += 1
+        elif has_unk_token:
+            # Has unknown tokens but vocab has <unk> token
+            status = 'unknown token'
+            n_unknown_token += 1
         else:
-            # Pass only if fully covered (no unknown tokens)
-            passes = result['can_tokenize']
+            # Has unknown tokens and no <unk> in vocab
+            status = 'failed'
+            n_failed += 1
         
-        coverage_flags[idx] = passes
+        coverage_status[idx] = status
         
         # Count unknown tokens
         for token in result.get('unknown_tokens', []):
@@ -1040,13 +1034,14 @@ def flag_smiles_vocab_fit(
     # Prepare result dict
     result_dict = {
         "n_smiles": n_smiles,
-        "n_fully_covered": n_fully_covered,
-        "n_partial_coverage": n_partial_coverage,
+        "n_passed": n_passed,
+        "n_failed": n_failed,
+        "n_unknown_token": n_unknown_token,
         "overall_coverage": round(overall_coverage, 2),
         "missing_tokens": list(all_unknown_tokens.keys()),
         "missing_token_counts": dict(missing_tokens_sorted),
         "summary": (
-            f"{n_fully_covered}/{n_smiles} SMILES fully covered "
+            f"{n_passed} passed, {n_unknown_token} with unknown tokens, {n_failed} failed. "
             f"({overall_coverage:.1f}% average coverage). "
             f"Found {len(all_unknown_tokens)} unique unknown tokens."
         )
@@ -1056,10 +1051,10 @@ def flag_smiles_vocab_fit(
     if add_coverage_column:
         df_copy = df.copy()
         
-        # Initialize column with None, then fill with boolean flags
-        df_copy['vocab_covered'] = None
-        for idx, flag in coverage_flags.items():
-            df_copy.at[idx, 'vocab_covered'] = flag
+        # Initialize column with None, then fill with status strings
+        df_copy['vocab_status'] = None
+        for idx, status in coverage_status.items():
+            df_copy.at[idx, 'vocab_status'] = status
         
         # Save dataset
         if inplace:
@@ -1086,6 +1081,6 @@ def flag_smiles_vocab_fit(
             )
         
         result_dict['output_filename'] = saved_filename
-        result_dict['column_added'] = 'vocab_covered'
+        result_dict['column_added'] = 'vocab_status'
     
     return result_dict

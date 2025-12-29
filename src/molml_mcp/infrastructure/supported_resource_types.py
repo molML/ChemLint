@@ -10,6 +10,7 @@ TYPE_REGISTRY: dict[str, dict[str, Any]] = {}
 # png
 # joblib
 # feature_vectors (joblib format)
+# txt
 
 
 # csv
@@ -114,4 +115,23 @@ TYPE_REGISTRY["feature_vectors"] = {
     "ext": ".joblib",
     "save": _save_feature_vectors,
     "load": _load_feature_vectors,
+}
+
+
+# txt (text files)
+def _save_txt(text: str, path: Path):
+    """Save text string to file."""
+    assert isinstance(text, str), "txt type expects a string"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+def _load_txt(path: Path) -> str:
+    """Load text string from file."""
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+TYPE_REGISTRY["txt"] = {
+    "ext": ".txt",
+    "save": _save_txt,
+    "load": _load_txt,
 }

@@ -135,3 +135,8 @@ for tool_func in get_all_ml_tools():
 # add SMILES encoding tools
 for tool_func in get_all_smiles_encoding_tools():
     mcp.add_tool(tool_func)
+
+# Add report generation tools
+from molml_mcp.tools.reports import get_all_report_tools
+for tool_func in get_all_report_tools():
+    mcp.add_tool(tool_func)

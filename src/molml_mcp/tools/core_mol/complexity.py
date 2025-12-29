@@ -386,8 +386,7 @@ def add_complexity_columns(
     project_manifest_path: str,
     smiles_column: str,
     metrics: List[str],
-    inplace: bool = False,
-    output_filename: Optional[str] = None,
+    output_filename: str,
     explanation: str = "Dataset with molecular complexity metrics"
 ) -> Dict:
     """
@@ -409,8 +408,7 @@ def add_complexity_columns(
         project_manifest_path: Path to project manifest.json
         smiles_column: Column name containing SMILES strings
         metrics: List of metric names to compute (see available metrics above)
-        inplace: Modify existing dataset (replaces input file)
-        output_filename: Name for output dataset (required if not inplace)
+        output_filename: Name for output dataset
         explanation: Description for saved dataset
         
     Returns:
@@ -499,30 +497,14 @@ def add_complexity_columns(
         columns_added.append(column_name)
         n_failed[metric] = failures
     
-    # Save dataset
-    if inplace:
-        # Save with original filename (extract base name without unique ID)
-        base_name = input_filename.rsplit('_', 1)[0] if '_' in input_filename else input_filename
-        saved_filename = _store_resource(
-            df_copy,
-            project_manifest_path,
-            base_name,
-            explanation,
-            'csv'
-        )
-    else:
-        # Save with new filename
-        if output_filename is None:
-            raise ValueError(
-                "output_filename is required when inplace=False"
-            )
-        saved_filename = _store_resource(
-            df_copy,
-            project_manifest_path,
-            output_filename,
-            explanation,
-            'csv'
-        )
+    # Save dataset (always create new resource for traceability)
+    saved_filename = _store_resource(
+        df_copy,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
     
     # Get preview of new columns
     preview_cols = [smiles_column] + columns_added

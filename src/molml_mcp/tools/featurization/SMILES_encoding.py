@@ -920,7 +920,6 @@ def flag_smiles_vocab_fit(
     smiles_column: str,
     vocab_filename: str,
     add_coverage_column: bool = True,
-    inplace: bool = False,
     output_filename: Optional[str] = None,
     explanation: str = "Dataset with vocab fit flags"
 ) -> Dict:
@@ -939,8 +938,7 @@ def flag_smiles_vocab_fit(
         smiles_column: Column name containing SMILES strings
         vocab_filename: Vocab JSON resource filename
         add_coverage_column: Add 'vocab_status' string column
-        inplace: Modify existing dataset (requires add_coverage_column=True)
-        output_filename: Name for output dataset (only if not inplace)
+        output_filename: Name for output dataset (required if add_coverage_column=True)
         explanation: Description for saved dataset
         
     Returns:
@@ -1056,29 +1054,18 @@ def flag_smiles_vocab_fit(
         for idx, status in coverage_status.items():
             df_copy.at[idx, 'vocab_status'] = status
         
-        # Save dataset
-        if inplace:
-            # Save with original filename
-            saved_filename = _store_resource(
-                df_copy,
-                project_manifest_path,
-                input_filename.rsplit('_', 1)[0] if '_' in input_filename else input_filename,
-                explanation,
-                'csv'
+        # Save dataset (always create new resource for traceability)
+        if output_filename is None:
+            raise ValueError(
+                "output_filename is required when add_coverage_column=True"
             )
-        else:
-            # Save with new filename
-            if output_filename is None:
-                raise ValueError(
-                    "output_filename is required when inplace=False and add_coverage_column=True"
-                )
-            saved_filename = _store_resource(
-                df_copy,
-                project_manifest_path,
-                output_filename,
-                explanation,
-                'csv'
-            )
+        saved_filename = _store_resource(
+            df_copy,
+            project_manifest_path,
+            output_filename,
+            explanation,
+            'csv'
+        )
         
         result_dict['output_filename'] = saved_filename
         result_dict['column_added'] = 'vocab_status'

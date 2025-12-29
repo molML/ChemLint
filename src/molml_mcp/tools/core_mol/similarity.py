@@ -634,8 +634,7 @@ def add_similarity_statistics_dataset(
     output_filename: str,
     explanation: str,
     similarity_metric: str = 'tanimoto',
-    similarity_threshold: float = 0.8,
-    inplace: bool = False
+    similarity_threshold: float = 0.8
 ) -> dict:
     """
     Add similarity statistics columns to a dataset based on pairwise molecular similarities.
@@ -671,9 +670,6 @@ def add_similarity_statistics_dataset(
     similarity_threshold : float, default=0.8
         Threshold for counting similar molecules. A new column `n_similar_above_threshold`
         will count how many molecules have similarity > this value.
-    inplace : bool, default=False
-        If True, modifies the input dataset and returns same filename.
-        If False, creates a new dataset with similarity statistics.
     
     Returns
     -------
@@ -825,10 +821,7 @@ def add_similarity_statistics_dataset(
     overall_mean_similarity = float(np.mean(off_diagonal_values))
     overall_median_similarity = float(np.median(off_diagonal_values))
     
-    # Store output dataset
-    if inplace:
-        output_filename = input_filename
-    
+    # Store output dataset (always create new resource for traceability)
     output_filename = _store_resource(
         df_out,
         project_manifest_path,

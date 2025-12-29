@@ -296,6 +296,7 @@ def generate_scaffold_report(
         - n_no_scaffold: Number of molecules without scaffolds
         - diversity_ratio: Ratio of unique scaffolds to total molecules
         - summary: Brief summary of findings
+        - report: Full text report content
         
     Example
     -------
@@ -584,7 +585,8 @@ def generate_scaffold_report(
         'diversity_ratio': diversity_ratio,
         'gini_coefficient': float(gini),
         'shannon_entropy': float(shannon),
-        'summary': summary
+        'summary': summary,
+        'report': report_text
     }
 
 

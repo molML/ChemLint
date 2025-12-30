@@ -1068,6 +1068,15 @@ def _analyze_functional_groups(smiles_list: List[str]) -> Dict:
                 functional_groups[key].append(0)
             continue
         
+        # Convert to string if needed
+        if not isinstance(smi, str):
+            try:
+                smi = str(smi)
+            except:
+                for key in functional_groups:
+                    functional_groups[key].append(0)
+                continue
+        
         mol = Chem.MolFromSmiles(smi)
         if mol is None:
             for key in functional_groups:

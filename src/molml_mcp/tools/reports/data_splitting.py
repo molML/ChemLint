@@ -155,9 +155,10 @@ def _analyze_split_characteristics(
         all_labels.extend(df_val[label_col].dropna().tolist())
     
     unique_labels = set(all_labels)
-    is_classification = len(unique_labels) <= 20 and all(
-        isinstance(x, (int, np.integer)) or x in [0, 1, 0.0, 1.0] 
-        for x in unique_labels
+    # Classification: exactly 2 unique values (binary classification only)
+    is_classification = (
+        len(unique_labels) == 2 and 
+        all(isinstance(x, (int, np.integer)) or float(x).is_integer() for x in unique_labels)
     )
     
     result = {
@@ -417,6 +418,8 @@ def _detect_similarity_leakage(
     Returns
     -------
     Dict with:
+        - within_split_similarity: avg and max similarity within each split
+        - between_split_similarity: avg and max similarity between splits
         - leakage statistics per split comparison
         - activity cliff counts and examples
         - similarity distribution statistics
@@ -568,6 +571,44 @@ def _detect_similarity_leakage(
             'showing_cliff_examples': min(len(activity_cliff_pairs), max_examples)
         }
     
+    # Helper to compute within-split similarity statistics
+    def compute_within_split_similarity(fps, name):
+        """Compute average and max similarity within a single split."""
+        if len(fps) < 2:
+            return {
+                'error': 'Insufficient molecules for within-split similarity',
+                'n_molecules': len(fps)
+            }
+        
+        # Sample pairs to avoid O(n²) computation for large datasets
+        # For datasets > 1000, sample 1000 random molecules
+        if len(fps) > 1000:
+            import random
+            sampled_fps = random.sample(fps, 1000)
+        else:
+            sampled_fps = fps
+        
+        similarities = []
+        for i in range(len(sampled_fps)):
+            for j in range(i + 1, len(sampled_fps)):
+                sim = DataStructs.TanimotoSimilarity(sampled_fps[i], sampled_fps[j])
+                similarities.append(sim)
+        
+        if len(similarities) == 0:
+            return {
+                'error': 'Could not compute similarities',
+                'n_molecules': len(fps)
+            }
+        
+        return {
+            'n_molecules': len(fps),
+            'n_comparisons': len(similarities),
+            'avg_similarity': round(float(np.mean(similarities)), 4),
+            'max_similarity': round(float(np.max(similarities)), 4),
+            'median_similarity': round(float(np.median(similarities)), 4),
+            'sampled': len(fps) > 1000
+        }
+    
     # Compute fingerprints for all splits
     train_fps, train_indices, train_smiles = compute_fingerprints(df_train, smiles_col)
     test_fps, test_indices, test_smiles = compute_fingerprints(df_test, smiles_col)
@@ -579,11 +620,19 @@ def _detect_similarity_leakage(
         'similarity_threshold': similarity_threshold,
         'activity_cliff_similarity_threshold': activity_cliff_similarity,
         'activity_cliff_fold_threshold': activity_cliff_fold_diff,
+        'within_split_similarity': {},
+        'between_split_similarity': {},
         'test_vs_train': None,
         'val_vs_train': None,
         'val_vs_test': None,
         'overall_severity': 'OK'
     }
+    
+    # Compute within-split similarities
+    result['within_split_similarity']['train'] = compute_within_split_similarity(train_fps, 'train')
+    result['within_split_similarity']['test'] = compute_within_split_similarity(test_fps, 'test')
+    if df_val is not None and val_fps is not None:
+        result['within_split_similarity']['val'] = compute_within_split_similarity(val_fps, 'val')
     
     # Analyze test vs train
     test_train_analysis = analyze_split_similarity(
@@ -592,6 +641,12 @@ def _detect_similarity_leakage(
         test_fps, test_indices, test_smiles
     )
     result['test_vs_train'] = test_train_analysis
+    
+    # Store between-split similarity summary
+    result['between_split_similarity']['test_vs_train'] = {
+        'avg_max_similarity': test_train_analysis['similarity_stats']['mean'],
+        'max_similarity': test_train_analysis['similarity_stats']['max']
+    }
     
     # Determine severity
     if test_train_analysis['n_high_similarity'] > 0:
@@ -609,6 +664,11 @@ def _detect_similarity_leakage(
         )
         result['val_vs_train'] = val_train_analysis
         
+        result['between_split_similarity']['val_vs_train'] = {
+            'avg_max_similarity': val_train_analysis['similarity_stats']['mean'],
+            'max_similarity': val_train_analysis['similarity_stats']['max']
+        }
+        
         if val_train_analysis['n_high_similarity'] > 0:
             result['overall_severity'] = 'HIGH'
         if val_train_analysis['n_activity_cliffs'] > 0 and result['overall_severity'] == 'OK':
@@ -622,6 +682,11 @@ def _detect_similarity_leakage(
             val_fps, val_indices, val_smiles
         )
         result['val_vs_test'] = val_test_analysis
+        
+        result['between_split_similarity']['val_vs_test'] = {
+            'avg_max_similarity': val_test_analysis['similarity_stats']['mean'],
+            'max_similarity': val_test_analysis['similarity_stats']['max']
+        }
         
         if val_test_analysis['n_high_similarity'] > 0:
             result['overall_severity'] = 'HIGH'

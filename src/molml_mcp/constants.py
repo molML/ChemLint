@@ -74,6 +74,33 @@ SMARTS_NEUTRALIZATION_PATTERNS = (
 
 SMARTS_COMMON_SALTS = "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"
 
+# Common salt SMILES for detection in multi-component entries
+COMMON_SALT_SMILES = {
+    '[Cl-]': 'Chloride',
+    '[Br-]': 'Bromide',
+    '[I-]': 'Iodide',
+    '[Na+]': 'Sodium',
+    '[K+]': 'Potassium',
+    '[Li+]': 'Lithium',
+    '[Ca+2]': 'Calcium',
+    '[Ca++]': 'Calcium',
+    '[Mg+2]': 'Magnesium',
+    '[Mg++]': 'Magnesium',
+    '[Zn+2]': 'Zinc',
+    '[Zn++]': 'Zinc',
+    '[NH4+]': 'Ammonium',
+    '[OH-]': 'Hydroxide',
+    'O=S(=O)([O-])[O-]': 'Sulfate',
+    '[O-]S(=O)(=O)[O-]': 'Sulfate',
+    '[O-]C(=O)C(=O)[O-]': 'Oxalate',
+    'O=C([O-])[O-]': 'Carbonate',
+    '[O-]C([O-])=O': 'Carbonate',
+    'O=P([O-])([O-])[O-]': 'Phosphate',
+    '[O-]P([O-])([O-])=O': 'Phosphate',
+    'O=C([O-])C(F)(F)F': 'Trifluoroacetate',
+    '[O-]C(=O)C(F)(F)F': 'Trifluoroacetate',
+}
+
 
 STRUCTURAL_PATTERNS: Dict[str, Dict[str, str]] = {
     # chirality

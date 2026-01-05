@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from molml_mcp.tools.ml.training import train_ml_models_cv
+from molml_mcp.tools.ml.training import train_ml_models_cross_validation
 from molml_mcp.tools.ml.evaluation import evaluate_models
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
@@ -79,7 +79,7 @@ def test_evaluate_cv_models_validation_mode(classification_data):
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_test_features', 'Test features', 'json')
     
     # Train CV models
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -153,7 +153,7 @@ def test_evaluate_cv_models_test_mode(classification_data):
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_features_test', 'Features', 'json')
     
     # Train CV models on train set
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=train_data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -208,7 +208,7 @@ def test_evaluate_cv_models_regression(regression_data):
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_regression_features', 'Features', 'json')
     
     # Train CV models
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -256,7 +256,7 @@ def test_evaluate_cv_models_stratified(classification_data):
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_stratified_features', 'Features', 'json')
     
     # Train with stratified CV
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -307,7 +307,7 @@ def test_evaluate_cv_models_metrics_consistency():
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_perfect_features', 'Features', 'json')
     
     # Train CV models
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -346,7 +346,7 @@ def test_evaluate_cv_models_error_handling():
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_error_features', 'Features', 'json')
     
     # Train a simple model
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',
@@ -397,7 +397,7 @@ def test_evaluate_cv_models_summary_statistics():
     features_file = _store_resource(feature_vectors, str(TEST_MANIFEST), 'eval_cv_stats_features', 'Features', 'json')
     
     # Train models
-    train_result = train_ml_models_cv(
+    train_result = train_ml_models_cross_validation(
         input_filename=data_file,
         feature_vectors_filename=features_file,
         smiles_column='smiles',

@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from molml_mcp.tools.ml.training import train_ml_model
+from molml_mcp.tools.ml.training import train_single_ml_model
 from molml_mcp.tools.ml.evaluation import evaluate_models
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
@@ -42,7 +42,7 @@ def test_evaluate_single_model_classification():
     test_feat = _store_resource(test_features, str(TEST_MANIFEST), 'eval_single_test_feat', 'Features', 'json')
     
     # Train model
-    train_result = train_ml_model(
+    train_result = train_single_ml_model(
         train_input_filename=train_file,
         train_feature_vectors_filename=train_feat,
         train_smiles_column='smiles',
@@ -116,7 +116,7 @@ def test_evaluate_single_model_regression():
     test_feat = _store_resource(test_features, str(TEST_MANIFEST), 'eval_reg_test_feat', 'Features', 'json')
     
     # Train
-    train_result = train_ml_model(
+    train_result = train_single_ml_model(
         train_input_filename=train_file,
         train_feature_vectors_filename=train_feat,
         train_smiles_column='smiles',
@@ -163,7 +163,7 @@ def test_evaluate_model_error_handling():
     data_file = _store_resource(df, str(TEST_MANIFEST), 'eval_error_data', 'Data', 'csv')
     feat_file = _store_resource(features, str(TEST_MANIFEST), 'eval_error_feat', 'Features', 'json')
     
-    train_result = train_ml_model(
+    train_result = train_single_ml_model(
         train_input_filename=data_file,
         train_feature_vectors_filename=feat_file,
         train_smiles_column='smiles',

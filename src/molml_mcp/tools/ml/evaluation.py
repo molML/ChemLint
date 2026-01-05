@@ -53,7 +53,7 @@ def predict_ml_model(
     Generate predictions from single model or CV ensemble. For CV models, outputs per-fold predictions plus aggregates (mean, std, entropy).
     
     Args:
-        ml_model_filename: Model(s) from train_ml_model() or train_ml_models_cv()
+        ml_model_filename: Model(s) from train_single_ml_model() or train_ml_models_cross_validation()
         test_input_filename: Test CSV with SMILES
         test_feature_vectors_filename: Feature vectors JSON
         test_smiles_column: SMILES column name
@@ -164,7 +164,7 @@ def evaluate_models(
     For CV models: can evaluate on CV validation sets, training sets, or external test set. Aggregates per-fold statistics.
     
     Args:
-        model_filename: Model(s) from train_ml_model() or train_ml_models_cv()
+        model_filename: Model(s) from train_single_ml_model() or train_ml_models_cross_validation()
         feature_vectors_filename: Feature vectors JSON
         project_manifest_path: Path to manifest.json
         metrics: Metrics to compute (e.g., ["accuracy", "f1_score", "r2"])

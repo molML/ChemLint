@@ -4,7 +4,7 @@ import pandas as pd
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 
 
-def train_ml_model(
+def train_single_ml_model(
     train_input_filename: str,
     train_feature_vectors_filename: str,
     train_smiles_column: str,
@@ -109,7 +109,7 @@ def train_ml_model(
     }
 
 
-def train_ml_models_cv(
+def train_ml_models_cross_validation(
     input_filename: str,
     feature_vectors_filename: str,
     smiles_column: str,

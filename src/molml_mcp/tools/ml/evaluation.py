@@ -50,91 +50,96 @@ def predict_ml_model(
     explanation: str,
 ) -> dict:
     """
-    Predict using a trained ML model on a test dataset.
+    Predict using trained ML model(s) on a test dataset.
     
-    This function loads a trained model and applies it to a test dataset to generate
-    predictions. The predictions are added as a new column to the test dataset and
-    stored as a new resource.
-    
-    After making predictions, you can evaluate model performance by using the
-    calculate_metrics() function from metrics.py to compare predictions against
-    true labels (if available in the test dataset).
+    For single models, adds one prediction column. For multiple models (CV),
+    adds individual predictions per fold plus aggregated statistics (mean, std,
+    and entropy for classification).
     
     Args:
-        ml_model_filename: Filename of the trained model to use for predictions
-        test_input_filename: Filename of the test dataset (CSV with SMILES)
-        test_feature_vectors_filename: Filename of the feature vectors (JSON dict {smiles: [features]})
-        test_smiles_column: Name of the SMILES column in the test dataset
-        predict_column_name: Name for the new prediction column (e.g., "predicted_label")
+        ml_model_filename: Filename of trained model(s)
+        test_input_filename: Filename of test dataset (CSV with SMILES)
+        test_feature_vectors_filename: Filename of feature vectors (JSON dict {smiles: [features]})
+        test_smiles_column: Name of SMILES column in test dataset
+        predict_column_name: Base name for prediction columns
         project_manifest_path: Path to manifest.json
-        output_filename: Name for the output dataset with predictions
+        output_filename: Name for output dataset with predictions
         explanation: Description of this prediction operation
     
     Returns:
-        dict with output_filename, n_predictions, columns, and preview
+        dict with output_filename, n_models, n_predictions, columns, and preview
         
-    Example:
-        >>> # Make predictions
-        >>> result = predict_ml_model(
-        ...     ml_model_filename="random_forest_A1B2C3D4.pkl",
-        ...     test_input_filename="test_data_E5F6G7H8.csv",
-        ...     test_feature_vectors_filename="test_features_I9J0K1L2.json",
-        ...     test_smiles_column="smiles",
-        ...     predict_column_name="predicted_activity",
-        ...     project_manifest_path="/path/to/manifest.json",
-        ...     output_filename="predictions",
-        ...     explanation="Predictions on test set using Random Forest model"
-        ... )
-        >>> 
-        >>> # Evaluate predictions (if test data has true labels)
-        >>> from molml_mcp.tools.ml.metrics import calculate_metrics
-        >>> metrics = calculate_metrics(
-        ...     input_filename=result['output_filename'],
-        ...     project_manifest_path="/path/to/manifest.json",
-        ...     true_label_column="true_activity",
-        ...     predicted_column="predicted_activity",
-        ...     metrics=["accuracy", "precision", "recall", "f1_score"]
-        ... )
+    Single model output columns:
+        - {predict_column_name}: predictions
+        
+    Multiple models output columns:
+        - {predict_column_name}_1, _2, ..., _n: per-fold predictions
+        - {predict_column_name}_mean: mean across folds
+        - {predict_column_name}_std: standard deviation across folds
+        - {predict_column_name}_entropy: prediction entropy (classification only)
     """
     from molml_mcp.infrastructure.resources import _load_resource, _store_resource
     import pandas as pd
     import numpy as np
+    from scipy.stats import entropy
     
-    # Load model data (could be a dict structure or raw model for backwards compatibility)
+    # Load model data
     model_data = _load_resource(project_manifest_path, ml_model_filename)
     
-    # Extract the actual model from the structure
+    # Extract models (support both single and multiple)
     if isinstance(model_data, dict) and "models" in model_data:
-        # New format from train_ml_model: {"models": [model], "data_splits": [...], ...}
-        model = model_data["models"][0]
+        models = model_data["models"]
+        is_cv = len(models) > 1
     else:
-        # Backwards compatibility: assume it's the model directly
-        model = model_data
+        models = [model_data]
+        is_cv = False
     
-    # Load test dataset
+    # Load test dataset and features
     test_df = _load_resource(project_manifest_path, test_input_filename)
-    
-    # Load feature vectors
     feature_vectors = _load_resource(project_manifest_path, test_feature_vectors_filename)
     
-    # Validate SMILES column exists
     if test_smiles_column not in test_df.columns:
         raise ValueError(f"SMILES column '{test_smiles_column}' not found in test dataset")
     
-    # Extract SMILES from test dataset
     test_smiles = test_df[test_smiles_column].tolist()
-    
-    # Build feature matrix (ensure order matches test_smiles)
     X_test = np.array([feature_vectors[smi] for smi in test_smiles])
     
-    # Generate predictions
-    predictions = model.predict(X_test)
-    
-    # Add predictions to dataset
     output_df = test_df.copy()
-    output_df[predict_column_name] = predictions
     
-    # Store output dataset
+    if not is_cv:
+        # Single model: simple prediction
+        predictions = models[0].predict(X_test)
+        output_df[predict_column_name] = predictions
+    else:
+        # Multiple models: per-fold predictions + aggregates
+        all_predictions = []
+        
+        for fold_idx, model in enumerate(models, 1):
+            preds = model.predict(X_test)
+            col_name = f"{predict_column_name}_{fold_idx}"
+            output_df[col_name] = preds
+            all_predictions.append(preds)
+        
+        # Convert to array for aggregation
+        pred_array = np.array(all_predictions)  # Shape: (n_folds, n_samples)
+        
+        # Mean and std
+        output_df[f"{predict_column_name}_mean"] = np.mean(pred_array, axis=0)
+        output_df[f"{predict_column_name}_std"] = np.std(pred_array, axis=0)
+        
+        # Entropy for classification (check if predictions are discrete)
+        if hasattr(models[0], "predict_proba"):
+            # Classification: compute entropy from prediction distribution
+            entropies = []
+            for sample_idx in range(len(test_smiles)):
+                sample_preds = pred_array[:, sample_idx]
+                # Count occurrences of each class
+                unique, counts = np.unique(sample_preds, return_counts=True)
+                probs = counts / len(sample_preds)
+                entropies.append(entropy(probs, base=2))
+            output_df[f"{predict_column_name}_entropy"] = entropies
+    
+    # Store output
     output_id = _store_resource(
         output_df,
         project_manifest_path,
@@ -145,7 +150,8 @@ def predict_ml_model(
     
     return {
         "output_filename": output_id,
-        "n_predictions": len(predictions),
+        "n_models": len(models),
+        "n_predictions": len(test_smiles),
         "columns": output_df.columns.tolist(),
         "preview": output_df.head(5).to_dict('records')
     }

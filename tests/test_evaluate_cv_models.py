@@ -1,9 +1,14 @@
 """Test evaluate_cv_models function."""
 
+import sys
+import os
 import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 from molml_mcp.tools.ml.training import train_ml_models_cv
 from molml_mcp.tools.ml.evaluation import evaluate_cv_models
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource

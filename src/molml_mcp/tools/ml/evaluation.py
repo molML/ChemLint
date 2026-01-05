@@ -67,7 +67,7 @@ def predict_ml_model(
         explanation: Description of this prediction operation
     
     Returns:
-        dict with output_filename, n_models, n_predictions, columns, and preview
+        dict with output_filename, n_models, n_predictions, and columns
         
     Single model output columns:
         - {predict_column_name}: predictions
@@ -152,8 +152,96 @@ def predict_ml_model(
         "output_filename": output_id,
         "n_models": len(models),
         "n_predictions": len(test_smiles),
-        "columns": output_df.columns.tolist(),
-        "preview": output_df.head(5).to_dict('records')
+        "columns": output_df.columns.tolist()
+    }
+
+
+def evaluate_model(
+    model_filename: str,
+    test_input_filename: str,
+    feature_vectors_filename: str,
+    test_smiles_column: str,
+    test_label_column: str,
+    project_manifest_path: str,
+    metrics: List[str],
+    output_filename: str,
+    explanation: str = "Model evaluation results"
+) -> Dict[str, Any]:
+    """
+    Evaluate a single trained model on a test dataset.
+    
+    Args:
+        model_filename: Filename of trained model from train_ml_model()
+        test_input_filename: CSV file with test data
+        feature_vectors_filename: JSON file with SMILES -> feature vector mapping
+        test_smiles_column: SMILES column name in test data
+        test_label_column: Label column name in test data
+        project_manifest_path: Path to manifest.json
+        metrics: List of metric names (e.g., ["accuracy", "f1_score", "r2"])
+        output_filename: Name for output JSON report
+        explanation: Description of this evaluation
+        
+    Returns:
+        Dict with output_filename, metrics_computed, and n_samples
+    """
+    from molml_mcp.infrastructure.resources import _load_resource, _store_resource
+    import pandas as pd
+    
+    # Load model
+    model_data = _load_resource(project_manifest_path, model_filename)
+    if isinstance(model_data, dict) and "models" in model_data:
+        model = model_data["models"][0]
+        model_algorithm = model_data.get("model_algorithm", "unknown")
+    else:
+        model = model_data
+        model_algorithm = "unknown"
+    
+    # Load test data and features
+    test_df = _load_resource(project_manifest_path, test_input_filename)
+    feature_vectors = _load_resource(project_manifest_path, feature_vectors_filename)
+    
+    if test_smiles_column not in test_df.columns or test_label_column not in test_df.columns:
+        raise ValueError(f"Required columns not found in test data")
+    
+    test_smiles = test_df[test_smiles_column].tolist()
+    test_labels = test_df[test_label_column].values
+    
+    missing = [s for s in test_smiles if s not in feature_vectors]
+    if missing:
+        raise ValueError(f"Missing {len(missing)} feature vectors")
+    
+    X_test = np.array([feature_vectors[s] for s in test_smiles])
+    
+    # Compute metrics
+    metrics_computed = {}
+    for metric_name in metrics:
+        try:
+            metrics_computed[metric_name] = float(_eval_single_ml_model(model, X_test, test_labels, metric_name))
+        except Exception:
+            metrics_computed[metric_name] = None
+    
+    # Build report
+    report = {
+        "evaluation_type": "single_model_evaluation",
+        "model_filename": model_filename,
+        "feature_vectors_filename": feature_vectors_filename,
+        "model_algorithm": model_algorithm,
+        "test_dataset": {
+            "filename": test_input_filename,
+            "n_samples": len(test_smiles),
+            "smiles_column": test_smiles_column,
+            "label_column": test_label_column
+        },
+        "metrics_requested": metrics,
+        "metrics_computed": metrics_computed
+    }
+    
+    output_id = _store_resource(report, project_manifest_path, output_filename, explanation, "json")
+    
+    return {
+        "output_filename": output_id,
+        "metrics_computed": metrics_computed,
+        "n_samples": len(test_smiles)
     }
 
 

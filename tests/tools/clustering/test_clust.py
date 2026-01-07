@@ -11,12 +11,48 @@ from molml_mcp.tools.clustering.clust import (
     cluster_kmeans_on_features,
     cluster_butina_on_similarity
 )
-from molml_mcp.infrastructure.resources import _store_resource
+from molml_mcp.infrastructure.resources import _store_resource, read_project_manifest
+
+# Cache for sample data files within a test session
+_sample_data_cache = {}
 
 
-def create_sample_dataset_and_features(session_workdir):
-    """Helper to create sample dataset with SMILES and feature vectors."""
-    manifest_path = session_workdir / "test_manifest.json"
+def create_sample_dataset_and_features(session_workdir, test_name):
+    """Helper to create sample dataset with SMILES and feature vectors.
+    
+    Checks if files are already created to avoid redundant creation.
+    """
+    # Create test-specific subdirectory
+    test_dir = session_workdir / test_name
+    test_dir.mkdir(exist_ok=True)
+    
+    manifest_path = test_dir / "test_manifest.json"
+    cache_key = str(test_dir)
+    
+    # Check if we already created these files
+    if cache_key in _sample_data_cache:
+        return _sample_data_cache[cache_key]
+    
+    # Check if files exist in manifest
+    try:
+        manifest = read_project_manifest(str(manifest_path))
+        existing_dataset = None
+        existing_features = None
+        
+        for resource in manifest.get('resources', []):
+            if resource['filename'].startswith('test_dataset_'):
+                existing_dataset = resource['filename']
+            elif resource['filename'].startswith('test_features_'):
+                existing_features = resource['filename']
+        
+        # If both exist, return them
+        if existing_dataset and existing_features:
+            _sample_data_cache[cache_key] = (existing_dataset, existing_features, manifest_path)
+            return existing_dataset, existing_features, manifest_path
+    except FileNotFoundError:
+        # Manifest doesn't exist yet, create it
+        from molml_mcp.infrastructure.resources import create_project_manifest
+        create_project_manifest(str(test_dir), "test")
     
     # Create sample dataset with SMILES
     df = pd.DataFrame({
@@ -60,6 +96,9 @@ def create_sample_dataset_and_features(session_workdir):
         'model'  # Use joblib format
     )
     
+    # Cache the result
+    _sample_data_cache[cache_key] = (dataset_file, features_file, manifest_path)
+    
     return dataset_file, features_file, manifest_path
 
 
@@ -84,9 +123,9 @@ def test_eigenvalue_cluster_approx():
         assert n_clusters <= len(sim_matrix)
 
 
-def test_cluster_dbscan_on_similarity(session_workdir):
+def test_cluster_dbscan_on_similarity(session_workdir, request):
     """Test DBSCAN clustering runs and produces reasonable output."""
-    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir)
+    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir, request.node.name)
     
     result = cluster_dbscan_on_similarity(
         input_filename=dataset_file,
@@ -109,9 +148,9 @@ def test_cluster_dbscan_on_similarity(session_workdir):
     assert result['n_rows'] > 0
 
 
-def test_cluster_hierarchical_on_similarity(session_workdir):
+def test_cluster_hierarchical_on_similarity(session_workdir, request):
     """Test hierarchical clustering runs and produces reasonable output."""
-    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir)
+    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir, request.node.name)
     
     result = cluster_hierarchical_on_similarity(
         input_filename=dataset_file,
@@ -132,9 +171,9 @@ def test_cluster_hierarchical_on_similarity(session_workdir):
     assert 'smallest_cluster' in result
 
 
-def test_cluster_spectral_on_similarity(session_workdir):
+def test_cluster_spectral_on_similarity(session_workdir, request):
     """Test spectral clustering runs and produces reasonable output."""
-    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir)
+    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir, request.node.name)
     
     result = cluster_spectral_on_similarity(
         input_filename=dataset_file,
@@ -154,9 +193,9 @@ def test_cluster_spectral_on_similarity(session_workdir):
     assert result['n_clusters_estimated'] is False  # We specified n_clusters
 
 
-def test_cluster_kmeans_on_features(session_workdir):
+def test_cluster_kmeans_on_features(session_workdir, request):
     """Test k-means clustering runs and produces reasonable output."""
-    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir)
+    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir, request.node.name)
     
     result = cluster_kmeans_on_features(
         input_filename=dataset_file,
@@ -176,9 +215,9 @@ def test_cluster_kmeans_on_features(session_workdir):
     assert isinstance(result['n_iterations'], int)
 
 
-def test_cluster_butina_on_similarity(session_workdir):
+def test_cluster_butina_on_similarity(session_workdir, request):
     """Test Butina clustering runs and produces reasonable output."""
-    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir)
+    dataset_file, features_file, manifest_path = create_sample_dataset_and_features(session_workdir, request.node.name)
     
     result = cluster_butina_on_similarity(
         input_filename=dataset_file,

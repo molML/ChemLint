@@ -4,15 +4,20 @@ import pytest
 from pathlib import Path
 
 
-def test_store_csv_as_dataset(session_workdir):
+def test_store_csv_as_dataset(session_workdir, request):
     """Test storing CSV file as dataset."""
     from molml_mcp.tools.core.dataset_ops import store_csv_as_dataset
-    from molml_mcp.infrastructure.resources import _load_resource
+    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Create test CSV
-    csv_path = session_workdir / "test.csv"
+    csv_path = test_dir / "test.csv"
     df_original = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
     df_original.to_csv(csv_path, index=False)
     
@@ -37,12 +42,17 @@ def test_store_csv_as_dataset(session_workdir):
     assert df_loaded.equals(df_original)
 
 
-def test_store_csv_as_dataset_from_text(session_workdir):
+def test_store_csv_as_dataset_from_text(session_workdir, request):
     """Test storing CSV text as dataset."""
     from molml_mcp.tools.core.dataset_ops import store_csv_as_dataset_from_text
-    from molml_mcp.infrastructure.resources import _load_resource
+    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Create CSV text
     csv_text = "A,B\n1,4\n2,5\n3,6"
@@ -70,12 +80,17 @@ def test_store_csv_as_dataset_from_text(session_workdir):
     assert list(df_loaded["B"]) == [4, 5, 6]
 
 
-def test_get_dataset_head(session_workdir):
+def test_get_dataset_head(session_workdir, request):
     """Test getting dataset head."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import get_dataset_head
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": range(10), "B": range(10, 20)})
@@ -99,12 +114,17 @@ def test_get_dataset_head(session_workdir):
     assert result["rows"][4]["A"] == 4
 
 
-def test_get_dataset_full(session_workdir):
+def test_get_dataset_full(session_workdir, request):
     """Test getting full dataset."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import get_dataset_full
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -126,12 +146,17 @@ def test_get_dataset_full(session_workdir):
     assert result["truncated"] == False
 
 
-def test_get_dataset_summary(session_workdir):
+def test_get_dataset_summary(session_workdir, request):
     """Test getting dataset summary."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import get_dataset_summary
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -155,12 +180,17 @@ def test_get_dataset_summary(session_workdir):
     assert result["column_summaries"]["A"]["mean"] == 2.0
 
 
-def test_inspect_dataset_rows(session_workdir):
+def test_inspect_dataset_rows(session_workdir, request):
     """Test inspecting specific dataset rows with index and filter conditions."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import inspect_dataset_rows
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": range(10), "B": range(10, 20), "C": [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5]})
@@ -235,12 +265,17 @@ def test_inspect_dataset_rows(session_workdir):
     assert all(row["A"] > 2 and row["B"] < 17 for row in result6["rows"])
 
 
-def test_drop_from_dataset(session_workdir):
+def test_drop_from_dataset(session_workdir, request):
     """Test dropping rows from dataset with various conditions."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import drop_from_dataset
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Test 1: Drop rows with exact numeric match
     df1 = pd.DataFrame({"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50]})
@@ -347,12 +382,17 @@ def test_drop_from_dataset(session_workdir):
     assert list(df_result5["A"]) == [2, 3]
 
 
-def test_keep_from_dataset(session_workdir):
+def test_keep_from_dataset(session_workdir, request):
     """Test keeping rows in dataset with various conditions."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import keep_from_dataset
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Test 1: Keep rows with exact numeric match
     df1 = pd.DataFrame({"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50]})
@@ -432,12 +472,17 @@ def test_keep_from_dataset(session_workdir):
     assert len(df_result4) == 3
 
 
-def test_drop_duplicate_rows(session_workdir):
+def test_drop_duplicate_rows(session_workdir, request):
     """Test dropping duplicate rows."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import drop_duplicate_rows
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset with duplicates
     df = pd.DataFrame({"A": [1, 2, 2, 3], "B": [10, 20, 20, 30]})
@@ -457,12 +502,17 @@ def test_drop_duplicate_rows(session_workdir):
     assert result["n_rows_after"] == 3  # Should have 3 unique rows
 
 
-def test_drop_empty_rows(session_workdir):
+def test_drop_empty_rows(session_workdir, request):
     """Test dropping rows where ALL values are null."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import drop_empty_rows
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset with one completely empty row
     df = pd.DataFrame({"A": [1, None, None, 4], "B": [10, None, None, 40]})
@@ -488,12 +538,17 @@ def test_drop_empty_rows(session_workdir):
     assert list(df_result["A"].dropna()) == [1.0, 4.0]
 
 
-def test_drop_columns(session_workdir):
+def test_drop_columns(session_workdir, request):
     """Test dropping columns."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import drop_columns
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]})
@@ -514,12 +569,17 @@ def test_drop_columns(session_workdir):
     assert len(result["columns_remaining"]) == 2
 
 
-def test_keep_columns(session_workdir):
+def test_keep_columns(session_workdir, request):
     """Test keeping specific columns."""
-    from molml_mcp.infrastructure.resources import _store_resource
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import keep_columns
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Store test dataset
     df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]})
@@ -540,13 +600,18 @@ def test_keep_columns(session_workdir):
     assert len(result["columns_kept"]) == 2
 
 
-def test_transform_column(session_workdir):
+def test_transform_column(session_workdir, request):
     """Test transforming a column."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     from molml_mcp.tools.core.dataset_ops import transform_column
     import numpy as np
     
-    manifest_path = str(session_workdir / "test_manifest.json")
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
     
     # Test 1: Simple multiplication transformation
     df1 = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})

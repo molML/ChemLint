@@ -28,13 +28,22 @@ def _is_invalid_smiles(smi) -> bool:
     """Check if SMILES is None, NaN, or otherwise invalid."""
     if smi is None:
         return True
-    # Check for pandas NA, numpy NaN, or float NaN
-    if pd.isna(smi):
+    # Check if it's a string - the only valid type
+    if isinstance(smi, str):
+        return False
+    # For non-strings, check specific types to avoid pd.isna() returning arrays
+    import numpy as np
+    # Arrays and lists are not valid SMILES
+    if isinstance(smi, (np.ndarray, list, tuple)):
         return True
-    # Check if it's not a string
-    if not isinstance(smi, str):
-        return True
-    return False
+    # For scalars (float, int, pd.NA), check if it's NaN/NA, otherwise invalid
+    try:
+        if pd.isna(smi):
+            return True
+    except (TypeError, ValueError):
+        pass
+    # Any non-string type is invalid
+    return True
 
 
 def _canonicalize_smiles(smi: str) -> tuple[str, str]: 

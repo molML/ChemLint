@@ -1,0 +1,129 @@
+SMILES,activity,label,comment
+CCO,5.2,1,Clean ethanol - active
+CC(C)O,4.8,1,Clean isopropanol - active
+c1ccccc1,6.1,1,Clean benzene - active (activity cliff with next)
+Cc1ccccc1,3.2,0,Clean toluene - inactive (activity cliff - similar structure big activity diff)
+CC(=O)O,5.5,1,Clean acetic acid - active
+CCCC,4.9,1,Clean butane - active
+CCC(C)C,5.1,1,Clean isopentane - active
+c1ccc(O)cc1,7.2,1,Clean phenol - active
+CCN,4.7,1,Clean ethylamine - active
+CCCO,5.3,1,Clean propanol - active
+c1ccncc1,6.8,1,Clean pyridine - active
+CC(C)CC,4.6,1,Clean methylbutane - active
+CCCCO,5.0,1,Clean butanol - active
+c1cccnc1,6.5,1,Clean pyridine isomer - active
+CC(C)(C)O,4.4,1,Clean tert-butanol - active
+CCCCCC,4.2,0,Clean hexane - inactive
+C[C@H](O)CC,5.9,1,R-stereoisomer - active (stereo pair 1)
+C[C@@H](O)CC,3.1,0,S-stereoisomer - inactive (stereo pair 1 - activity cliff due to stereochem)
+CC(O)CC,4.5,1,No stereochemistry - active
+CC[C@H](C)O,6.2,1,R-stereoisomer 2 - active (stereo pair 2)
+CC[C@@H](C)O,2.8,0,S-stereoisomer 2 - inactive (stereo pair 2 - activity cliff)
+INVALID_SMILES_123,,0,Invalid SMILES string
+C(C)(C)(C)(C)C,3.5,0,Invalid valence
+c1ccccc,4.1,0,Unclosed ring
+CC(=O)O.Na,5.4,1,Sodium salt (needs desalting)
+c1ccccc1.HCl,6.0,1,HCl salt (needs desalting)
+CCN.Cl,4.8,1,Chloride salt
+CC(C)N.Br,5.1,1,Bromide salt
+Nc1ccccc1.H2SO4,6.3,1,Sulfate salt
+CCO.O,5.2,1,Ethanol with water (needs defragmentation)
+c1ccccc1.CCO,6.1,1,Benzene with ethanol (needs defragmentation)
+CC(=O)C.O.O,4.9,1,Acetone with water
+c1ccccc1.CCCCO,6.0,1,Benzene with butanol
+CC[NH3+],5.7,1,Protonated amine (needs neutralization)
+CC(=O)[O-],5.6,1,Carboxylate anion (needs neutralization)
+c1cc[n+]cc1,6.4,1,Pyridinium cation
+[O-]c1ccccc1,6.2,1,Phenoxide anion
+c1ccccc1,6.1,1,Benzene duplicate 1 (exact duplicate)
+c1ccccc1,6.1,1,Benzene duplicate 2 (exact duplicate)
+CCO,5.2,1,Ethanol duplicate 1 (exact duplicate)
+CCO,5.2,1,Ethanol duplicate 2 (exact duplicate)
+O=C1C=CC(=O)C=C1,8.5,1,Para-quinone PAINS alert
+Oc1ccc(O)cc1,8.2,1,Hydroquinone PAINS alert
+O=C1C(=O)c2ccccc2C1=O,8.7,1,Naphthoquinone PAINS
+O=C1c2ccccc2C(=O)c2ccccc21,8.9,1,Anthraquinone PAINS
+Oc1ccccc1O,7.8,1,Catechol PAINS
+Oc1ccc(O)cc1,7.9,1,Para-diphenol PAINS
+O=C1CSC(=S)N1,8.1,1,Rhodanine PAINS
+O=C1CSC(=S)N1c2ccccc2,8.3,1,N-phenyl rhodanine PAINS
+C=CC(=O)C,7.5,1,Methyl vinyl ketone Michael acceptor PAINS
+C=CC(=O)c1ccccc1,7.7,1,Phenyl vinyl ketone PAINS
+O=C(C=Cc1ccccc1)c2ccccc2,8.0,1,Chalcone PAINS
+c1ccc(N=Nc2ccccc2)cc1,7.3,1,Azobenzene PAINS
+c1ccc(N=Nc2ccc(O)cc2)cc1,7.4,1,Hydroxy azobenzene PAINS
+Nc1ccc([N+](=O)[O-])cc1,7.1,1,Nitroaniline PAINS
+Sc1ccccc1,6.9,1,Thiophenol PAINS
+c1ccc(N=C=S)cc1,7.0,1,Phenyl isothiocyanate PAINS
+[2H]C([2H])([2H])O,,1,Deuterated methanol (isotope)
+[13C]CO,,1,C13-labeled ethanol (isotope)
+CC([18F])CC,,1,F18-labeled compound (isotope)
+c1ccccc1[Fe],,1,Phenyl-iron complex (metal)
+[Cu+2].c1ccccc1,,1,Copper-benzene complex (metal)
+CC[Mg]Cl,,1,Grignard reagent (metal)
+CC1CCC(C(=O)O)CC1C,9.2,1,Large lipophilic molecule - high activity
+CCCCCCCCCCCCCCCCCC,2.1,0,Very long chain - low activity (lipophilicity issue)
+C(C(C(C(C(C(C(C(C(C(C(C)))))))))))),,0,Extremely long nested branching
+CC(C)(C)C(C)(C)C(C)(C)C,1.8,0,Highly branched - low activity
+c1ccc2c(c1)ccc3c2ccc4c3cccc4,3.9,0,Large aromatic system (anthracene-like)
+c1ccc(cc1)c2ccccc2,5.8,1,Biphenyl - moderate activity
+c1ccc(cc1)c2ccc(cc2)c3ccccc3,4.3,0,Terphenyl - steric bulk issue
+Cc1cc(C)cc(C)c1,5.4,1,Trimethylbenzene
+CC(=O)Nc1ccc(O)cc1,6.7,1,Acetaminophen analog - active
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,5.6,1,Caffeine analog - active
+c1ccc2c(c1)nc(N)s2,6.3,1,Benzothiazole derivative
+CC1=CC=C(C=C1)C(=O)O,5.9,1,Toluic acid - active
+c1ccc(cc1)CC(=O)O,6.0,1,Phenylacetic acid - active
+c1ccc(cc1)CCC(=O)O,5.7,1,Hydrocinnamic acid - active (activity cliff with next)
+c1ccc(cc1)CCCC(=O)O,3.4,0,Phenylbutyric acid - inactive (one extra CH2 = big drop)
+CCCCCCCCCCCC(=O)O,2.5,0,Lauric acid - long chain low activity
+CC(C)CCCC(C)CCCC(C)CCCC(C)C,1.9,0,Pristane - very long branched
+O=C(O)C1CCCCC1,5.5,1,Cyclohexanecarboxylic acid
+c1ccc2c(c1)cccc2C(=O)O,6.1,1,Naphthoic acid
+CC(C)(C)c1ccc(O)cc1,5.2,1,Para-tert-butylphenol
+Cc1ccc(O)c(C)c1,5.3,1,Dimethylphenol
+c1ccc(cc1)Oc2ccccc2,5.8,1,Diphenyl ether
+CC(=O)Oc1ccccc1C(=O)O,6.4,1,Aspirin - active
+COc1ccccc1C(C)=O,5.9,1,Methoxyacetophenone
+c1ccc(cc1)C(=O)c2ccccc2,6.6,1,Benzophenone - active
+NC(=O)c1ccccc1,5.4,1,Benzamide
+c1ccc(cc1)S(=O)(=O)O,5.7,1,Benzenesulfonic acid
+CC1=CC(=O)C=CC1=O,7.6,1,Methylquinone
+c1cc(ccc1N)S(=O)(=O)O,5.8,1,Sulfanilic acid
+CC(=O)c1ccc(O)cc1,6.5,1,Hydroxyacetophenone
+c1ccc(cc1)C=Cc2ccccc2,6.2,1,Stilbene
+c1ccc2c(c1)ccc(c2)O,6.8,1,Naphthol
+COc1ccc(cc1)C=O,6.0,1,Anisaldehyde
+c1ccc(cc1)C#N,5.5,1,Benzonitrile
+CC(=O)c1cccc(c1)C(=O)C,6.1,1,Diacetylbenzene
+Nc1ccc(cc1)c2ccc(N)cc2,6.9,1,Benzidine derivative
+c1ccc2c(c1)nc(n2)N,6.4,1,Aminobenzimidazole
+CC(C)(C)c1ccccc1,4.8,1,Tert-butylbenzene
+c1ccc(cc1)CCc2ccccc2,5.9,1,Dibenzyl
+c1ccc(cc1)C(c2ccccc2)c3ccccc3,5.1,1,Triphenylmethane derivative
+Nc1nc(N)nc(n1)N,5.6,1,Melamine derivative
+c1cnc2c(c1)cccn2,6.3,1,Quinazoline core
+CC(=O)N(C)C,4.9,1,Dimethylacetamide
+CCOC(=O)C,4.7,1,Ethyl acetate
+c1ccc(cc1)N(c2ccccc2)c3ccccc3,5.4,1,Triphenylamine
+CC1(C)CCCC(C)(C)N1,4.5,1,TEMPO derivative
+c1ccc2c(c1)C(=O)c3ccccc3C2=O,7.8,1,Anthracenedione
+COc1cc(C=O)ccc1O,6.7,1,Vanillin - active
+c1ccc(cc1)C(=O)N,5.8,1,Benzamide
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,5.3,1,Ibuprofen analog
+c1ccc2c(c1)nc[nH]2,6.0,1,Benzimidazole core
+CC(C)(C)OC(=O)N,4.6,1,Boc-protected amine
+c1ccc(cc1)C(=O)OC,5.7,1,Methyl benzoate
+CC(=O)c1ccccc1O,6.3,1,Hydroxyacetophenone isomer
+c1ccc(cc1)C(=O)c2ccc(cc2)C(=O)O,6.8,1,Benzophenone carboxylic acid
+CC(C)(C)c1cc(O)cc(c1)C(C)(C)C,4.9,1,Di-tert-butylphenol
+NC(=S)N,5.2,1,Thiourea
+c1ccc(cc1)N=Nc2ccc(cc2)S(=O)(=O)O,7.2,1,Azo sulfonate
+,,0,Empty row - missing SMILES
+,4.5,1,Missing SMILES with activity
+CC(C)C,,Missing label
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC,1.2,0,Triacontane - extremely long chain (MW outlier)
+CC(C(C(C(C(C(C(C(C(C(C(C))))))))))))C)C)C)C)C)C)C,1.5,0,Extremely nested structure
+[H][C@]12CC[C@H](O)[C@@]1(C)CC[C@@H]1[C@@]2(C)CC[C@]2(C)[C@H](CC[C@@]12C)C(C)CCCC(C)C,7.8,1,Cholesterol-like (complex stereochemistry)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCC(=O)O,2.0,0,Very long fatty acid (poor solubility)

@@ -138,6 +138,7 @@ def test_dataset(session_workdir):
     return filename, str(manifest_path)
 
 
+@pytest.mark.slow
 def test_generate_scaffold_report_basic(test_dataset):
     """Test basic scaffold report generation and output structure."""
     filename, manifest_path = test_dataset
@@ -169,6 +170,7 @@ def test_generate_scaffold_report_basic(test_dataset):
               ['SCAFFOLD ANALYSIS REPORT', 'OVERVIEW', 'DISTRIBUTION'])
 
 
+@pytest.mark.slow
 def test_generate_scaffold_report_with_activity(test_dataset):
     """Test scaffold report with both classification and regression activity."""
     filename, manifest_path = test_dataset
@@ -199,6 +201,7 @@ def test_generate_scaffold_report_with_activity(test_dataset):
     assert 'mean' in json_report_reg['activity_enrichment']['overall_stats']
 
 
+@pytest.mark.slow
 def test_generate_scaffold_report_scaffold_types(test_dataset):
     """Test report generation with different scaffold types."""
     filename, manifest_path = test_dataset
@@ -213,6 +216,7 @@ def test_generate_scaffold_report_scaffold_types(test_dataset):
         assert 'SCAFFOLD ANALYSIS REPORT' in result['report']
 
 
+@pytest.mark.slow
 def test_generate_scaffold_report_outputs_and_structure(test_dataset):
     """Test report outputs (dataset, JSON structure, diversity metrics)."""
     filename, manifest_path = test_dataset

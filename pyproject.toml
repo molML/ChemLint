@@ -33,3 +33,6 @@ where = ["src"]
 filterwarnings = [
     "ignore::DeprecationWarning:rdkit.*",
 ]
+markers = [
+    "slow: marks tests as slow (taking longer than 1 second) (deselect with '-m \"not slow\"')",
+]

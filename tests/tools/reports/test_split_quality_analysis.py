@@ -95,6 +95,7 @@ def random_classification_result(random_splits):
 # TESTS - Using cached results for speed
 # ============================================================================
 
+@pytest.mark.slow
 def test_regression_comprehensive(random_regression_result):
     """Comprehensive test with regression labels (reuses cached result)."""
     result = random_regression_result
@@ -147,6 +148,7 @@ def test_regression_comprehensive(random_regression_result):
     assert '_' in result['output_filename']
 
 
+@pytest.mark.slow
 def test_classification_comprehensive(random_classification_result):
     """Comprehensive test with classification labels (reuses cached result)."""
     result = random_classification_result
@@ -161,6 +163,7 @@ def test_classification_comprehensive(random_classification_result):
     assert isinstance(issues['activity_distribution_different'], bool)
 
 
+@pytest.mark.slow
 def test_parameter_variations(random_splits):
     """Test various parameter combinations in a single analysis."""
     result = analyze_split_quality(

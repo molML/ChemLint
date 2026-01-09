@@ -34,7 +34,7 @@ def train_single_ml_model(
     Returns:
         Dict with output_filename, model_algorithm, n_features
     """
-    from molml_mcp.tools.ml.trad_ml_models import get_available_models
+    from molml_mcp.tools.ml.trad_ml.singular_models import get_available_models
     
     # Load training data
     train_df = _load_resource(project_manifest_path, train_input_filename)
@@ -158,7 +158,7 @@ def train_ml_models_cross_validation(
         Dict with output_filename, n_models, cv_strategy, model_algorithm
     """
     from molml_mcp.tools.ml.cross_validation import get_cv_splits
-    from molml_mcp.tools.ml.trad_ml_models import get_available_models
+    from molml_mcp.tools.ml.trad_ml.singular_models import get_available_models
     
     # Load data
     df = _load_resource(project_manifest_path, input_filename)
@@ -337,7 +337,7 @@ def _train_ml_model(
     Raises:
         ValueError: If model_algorithm is not found
     """
-    from molml_mcp.tools.ml.trad_ml_models import get_model_function
+    from molml_mcp.tools.ml.trad_ml.singular_models import get_model_function
     import inspect
     
     # Get the training function for the specified model

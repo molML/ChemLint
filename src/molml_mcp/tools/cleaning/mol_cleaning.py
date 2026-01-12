@@ -6,49 +6,12 @@ from molml_mcp.constants import SMARTS_COMMON_SALTS
 
 
 def get_SMILES_standardization_guidelines() -> str:
-    """
-    Return comprehensive guidelines for the default SMILES standardization protocol.
-
-    It is STRONGLY recommended to stick to these steps unless you have a specific reason to deviate.
-    
-    This function provides detailed documentation of the recommended 11-step molecular
-    standardization pipeline designed for general-purpose molecular machine learning
-    applications. The protocol prioritizes structural cleanup, functional group 
-    standardization, chemical canonicalization, and final validation.
+    """Return comprehensive guidelines for the default SMILES standardization protocol.
     
     Returns
     -------
     str
-        Multi-line string containing:
-        - Complete protocol description with all 11 steps
-        - Rationale for each step and their ordering
-        - Mandatory policy decisions (e.g., stereochemistry flattening)
-        - Optional steps (isotope removal, metal disconnection) with guidance
-        - Critical dependencies and warnings
-        - Use case recommendations
-    
-    Examples
-    --------
-    # Get the standardization guidelines
-    guidelines = get_SMILES_standardization_guidelines()
-    print(guidelines)
-    
-    # Use for documentation or client suggestions
-    protocol_info = get_SMILES_standardization_guidelines()
-    
-    Notes
-    -----
-    This function is intended to provide standardization guidance to MCP clients
-    even if they don't use the automated pipeline functions. It serves as both
-    documentation and a reference for manual implementation of the protocol.
-    
-    The protocol is designed for GENERAL-PURPOSE ML applications. Specific use cases
-    (drug discovery, SAR studies, metallodrug analysis, isotope tracing) may require
-    modifications to the default policy decisions.
-    
-    See Also
-    --------
-    default_SMILES_standardization_pipeline_dataset : Automated implementation of this protocol
+        Multi-line string with 11-step protocol, rationale, policy decisions, and use case recommendations.
     """
     
     guidelines = """
@@ -392,53 +355,17 @@ END OF PROTOCOL
 
 
 def canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Convert SMILES strings to their canonical form.
-    
-    This function processes a list of SMILES strings and converts each to its 
-    canonical representation using RDKit. Canonicalization ensures that equivalent 
-    molecular structures have identical SMILES representations, which is essential 
-    for deduplication, comparison, and downstream processing.
+    """Convert SMILES strings to canonical form using RDKit.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to canonicalize.
+        SMILES strings to canonicalize.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - canonical_smiles : list[str]
-            Canonicalized SMILES strings. Length matches input list.
-            Failed conversions return the original SMILES or None.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Canonicalization successful
-            - "Failed: <reason>": An error occurred (e.g., invalid SMILES)
-    
-    Examples
-    --------
-    # Canonicalize a list of SMILES
-    smiles = ["CCO", "C(C)O", "c1ccccc1"]
-    canonical, comments = canonicalize_smiles(smiles)
-    # Returns: ["CCO", "CCO", "c1ccccc1"], ["Passed", "Passed", "Passed"]
-    
-    # Invalid SMILES handling
-    smiles = ["CCO", "invalid", "c1ccccc1"]
-    canonical, comments = canonicalize_smiles(smiles)
-    # Returns with "Failed: <reason>" in comments for invalid entry
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Failed conversions are handled gracefully with error messages in comments
-    - Canonicalization is idempotent: canonical SMILES remain unchanged
-    - Output lists have the same length and order as input list
-    
-    See Also
-    --------
-    canonicalize_smiles_dataset : For dataset-level canonicalization
+        (canonical_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     canonic, comment = [], []
     for smi in smiles:
@@ -456,59 +383,26 @@ def canonicalize_smiles_dataset(
     output_filename: str,
     explanation: str = "Canonicalize all SMILES strings"
 ) -> dict:
-    """
-    Canonicalize all SMILES strings in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by canonicalizing SMILES strings in the 
-    specified column. It adds two new columns to the dataframe: one containing the 
-    canonicalized SMILES and another with comments logged during the canonicalization 
-    process (e.g., invalid SMILES, conversion failures).
+    """Canonicalize SMILES strings in a dataset column.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., 'dataset_raw_A3F2B1D4').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be canonicalized.
+        Column with SMILES to canonicalize.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., 'dataset_cleaned').
+        Output filename (without extension).
     explanation : str
-        Brief description of the canonicalization performed.
+        Description of operation.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with canonicalized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            canonicalization (e.g., number of failed conversions, invalid SMILES).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - suggestions : str
-            Recommendations for additional cleaning steps that may be beneficial.
-        - question_to_user : str
-            Question directed at the user/client regarding next steps for handling 
-            problematic entries.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_canonicalization': Contains the canonicalized SMILES strings.
-    - 'comments_after_canonicalization': Contains any comments or warnings from the 
-      canonicalization process.
+        output_filename, n_rows, columns, comments (counts), preview, note, suggestions, question_to_user.
+        Adds columns: smiles_after_canonicalization, comments_after_canonicalization.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -536,66 +430,19 @@ def canonicalize_smiles_dataset(
 
 
 def remove_salts(smiles: list[str], salt_smarts: str = SMARTS_COMMON_SALTS) -> tuple[list[str], list[str]]:
-    """
-    Remove common salt ions from a list of SMILES strings.
-    
-    This function strips common salt counterions (Cl, Na, Mg, Ca, K, Br, Zn, Ag, Al, 
-    Li, I, O, N, H) from molecular structures. It processes a list of SMILES strings
-    and returns cleaned versions without salt counterions.
-    
-    **IMPORTANT**: The default salt pattern works well for most use cases and should 
-    typically NOT be changed. Only modify `salt_smarts` if you have specific requirements 
-    for a specialized dataset (e.g., organometallic compounds where metals are part of 
-    the active structure).
+    """Remove common salt ions from SMILES strings.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. Each may contain salt counterions.
-    salt_smarts : str, optional
-        SMARTS pattern defining which atoms/ions to remove.
-        **Default: "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"**
-        This default covers common pharmaceutical salts and should be used in most cases.
-        Only change this if you have a specific reason (e.g., you want to keep certain 
-        ions, or you're working with unusual salt forms).
+        SMILES strings to process.
+    salt_smarts : str
+        SMARTS pattern for salts. Default: "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]". Do not change unless specialized use case.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - new_smiles : list[str]
-            SMILES strings with salts removed. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Salt removal successful
-            - "Failed: <reason>": An error occurred (e.g., invalid SMILES)
-    
-    Examples
-    --------
-    # Remove common salts (typical usage - don't change salt_smarts)
-    smiles = ["CC(=O)O.Na", "c1ccccc1.HCl", "CCO"]
-    clean_smiles, comments = remove_salts(smiles)
-    # Returns: ["CC(=O)O", "c1ccccc1", "CCO"], ["Passed", "Passed", "Passed"]
-    
-    # Only change salt_smarts if you have a specific reason:
-    # (e.g., removing only chloride and bromide)
-    smiles = ["CC(=O)O.Na", "c1ccccc1.Cl"]
-    clean_smiles, comments = remove_salts(smiles, salt_smarts="[Cl,Br]")
-    # Returns: ["CC(=O)O.Na", "c1ccccc1"], ["Passed", "Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - The default pattern removes the most common pharmaceutical salt counterions
-    - If a molecule consists ONLY of salt ions, the result may be empty or fail
-    - For complex salt forms, multiple passes may be needed
-    - The function preserves the largest fragment if multiple fragments remain after 
-      salt removal
-    - Output lists have the same length and order as input list
-    
-    See Also
-    --------
-    remove_salts_dataset: For dataset-level salt removal
+        (desalted_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     new_smiles, comments = [], []
     for smi in smiles:
@@ -614,80 +461,28 @@ def remove_salts_dataset(
     explanation: str = "Remove salt counterions from molecules",
     salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> dict:
-    """
-    Remove common salt ions from SMILES strings in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by removing salt counterions from SMILES 
-    strings in the specified column. It adds two new columns to the dataframe: one 
-    containing the desalted SMILES and another with comments logged during the salt 
-    removal process (e.g., invalid SMILES, processing failures).
-    
-    **IMPORTANT**: The default salt pattern works well for most use cases and should 
-    typically NOT be changed. Only modify `salt_smarts` if you have specific requirements 
-    (e.g., organometallic compounds where metals are part of the active structure).
+    """Remove salt ions from SMILES in a dataset column.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be desalted.
-    salt_smarts : str, optional
-        SMARTS pattern defining which atoms/ions to remove.
-        **Default: "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"**
-        This default covers common pharmaceutical salts and should be used in most cases.
-        Only change this if you have a specific reason.
+        Column with SMILES to desalt.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the salt removal performed.
+        Description of operation.
+    salt_smarts : str
+        SMARTS pattern for salts. Default: common pharmaceutical salts. Do not change unless specialized use case.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with desalted data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            salt removal (e.g., number of successful removals, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the comment system.
-        - suggestions : str
-            Recommendations for additional cleaning steps that may be beneficial.
-        - question_to_user : str
-            Question directed at the user/client regarding next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_salt_removal': Contains the desalted SMILES strings.
-    - 'comments_after_salt_removal': Contains any comments or warnings from the 
-      salt removal process.
-    
-    Examples
-    --------
-    # Typical usage with default salt pattern
-    result = remove_salts_dataset(input_filename="dataset_raw_A3F2B1D4", 
-                                   column_name="smiles")
-    
-    See Also
-    --------
-    remove_salts : For processing a list of SMILES strings
-    canonicalize_smiles_dataset : For dataset-level canonicalization
+        output_filename, n_rows, columns, comments (counts), preview, note, suggestions, question_to_user.
+        Adds columns: smiles_after_salt_removal, comments_after_salt_removal.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -715,61 +510,17 @@ def remove_salts_dataset(
 
 
 def remove_common_solvents(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Remove known common solvent fragments from a list of SMILES strings.
-    
-    This function processes fragmented SMILES strings and removes fragments that match
-    a curated list of common laboratory solvents (e.g., water, ethanol, DMF, DMSO).
-    It intelligently handles edge cases where all fragments are solvents or no solvents
-    are present.
+    """Remove common solvent fragments from SMILES strings.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. May contain fragmented SMILES (with '.').
+        SMILES strings to process. May contain fragmented SMILES.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - new_smiles : list[str]
-            SMILES strings with common solvent fragments removed. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Pass": No fragments or no solvents found
-            - "Removed solvents": Successfully removed solvent fragments
-            - "All fragments are common solvents, kept original SMILES": All fragments 
-              were solvents, so original kept (assumed molecule of interest)
-            - "SMILES string is fragmented, but found no common solvents": Has fragments 
-              but none match the solvent list
-    
-    Examples
-    --------
-    # Remove ethanol from benzene
-    smiles = ["c1ccccc1.CCO", "CCO", "CC(=O)O.O"]
-    clean, comments = remove_common_solvents(smiles)
-    # Returns: ["c1ccccc1", "CCO", "CC(=O)O.O"], 
-    #          ["Removed solvents", "Pass", "All fragments are common solvents..."]
-    
-    # Non-solvent fragments
-    smiles = ["CC(=O)O.CC(=O)N"]
-    clean, comments = remove_common_solvents(smiles)
-    # Returns: ["CC(=O)N"], ["Removed solvents"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Only removes fragments that exactly match the common solvent list
-    - If all fragments are solvents, keeps the original (assumes it's the target molecule)
-    - Single-fragment SMILES are returned unchanged
-    - Output lists have the same length and order as input list
-    - The solvent list includes common lab solvents: water, alcohols, DMF, DMSO, 
-      acetonitrile, pyridine, and many others
-    
-    See Also
-    --------
-    remove_common_solvents_dataset : For dataset-level solvent removal
-    remove_salts : For removing salt counterions
+        (cleaned_smiles, comments). Comments: "Pass", "Removed solvents", "All fragments are common solvents...", or "SMILES string is fragmented...".
     """
     new_smiles, comments = [], []
     for smi in smiles:
@@ -787,72 +538,26 @@ def remove_common_solvents_dataset(
     output_filename: str,
     explanation: str = "Remove common solvent molecules"
 ) -> dict:
-    """
-    Remove known common solvent fragments from SMILES strings in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by removing common laboratory solvent
-    fragments from SMILES strings in the specified column. It adds two new columns to 
-    the dataframe: one containing the SMILES with solvents removed and another with 
-    comments logged during the removal process.
+    """Remove common solvent fragments from SMILES in a dataset column.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be processed.
+        Column with SMILES to process.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the solvent removal performed.
+        Description of operation.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with solvent-free data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            solvent removal (e.g., number of successful removals, no changes).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the comment system.
-        - suggestions : str
-            Recommendations for additional cleaning steps that may be beneficial.
-        - question_to_user : str
-            Question directed at the user/client regarding next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_solvent_removal': Contains the SMILES with solvent fragments removed.
-    - 'comments_after_solvent_removal': Contains any comments or warnings from the 
-      removal process.
-    
-    Examples
-    --------
-    # Typical usage
-    result = remove_common_solvents_dataset(input_filename="dataset_raw_A3F2B1D4", 
-                                            column_name="smiles")
-    
-    See Also
-    --------
-    remove_common_solvents : For processing a list of SMILES strings
-    remove_salts_dataset : For dataset-level salt removal
-    canonicalize_smiles_dataset : For dataset-level canonicalization
+        output_filename, n_rows, columns, comments (counts), preview, note, suggestions, question_to_user.
+        Adds columns: smiles_after_solvent_removal, comments_after_solvent_removal.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -978,98 +683,30 @@ def defragment_smiles_dataset(
     explanation: str = "Remove disconnected fragments from SMILES",
     keep_largest_fragment: bool = True
 ) -> dict:
-    """
-    Remove smaller fragments from SMILES strings in a specified column of a tabular dataset.
+    """Remove smaller fragments from SMILES in a dataset column.
     
-    This function processes a tabular dataset by defragmenting SMILES strings in the 
-    specified column. It adds two new columns to the dataframe: one containing the 
-    defragmented SMILES and another with comments logged during the defragmentation 
-    process.
-    
-    **STRONGLY RECOMMENDED**: Remove common salts and solvents BEFORE running this function using 
-    `remove_common_solvents_dataset()` and `remove_common_salts_dataset()`. This ensures that you 
-    don't accidentally keep a solvent as the "largest fragment" when it happens to be larger than 
-    your molecule of interest.
-    
-    **IMPORTANT LIMITATION**: By default, this function keeps the largest fragment based 
-    on SMILES string length, which is NOT bulletproof. Use with caution and verify results.
+    WARNING: Remove salts/solvents BEFORE this. Uses SMILES string length (imperfect heuristic).
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be defragmented.
-    keep_largest_fragment : bool, optional
-        If True (default), keeps the largest fragment based on SMILES string length.
-        If False, returns the original SMILES unchanged if fragments are detected.
+        Column with SMILES to defragment.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the defragmentation performed.
+        Description of operation.
+    keep_largest_fragment : bool
+        If True, keeps largest fragment. If False, keeps original if fragmented.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with defragmented data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            defragmentation (e.g., number of successful defragmentations, unresolved).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the comment system.
-        - warning : str
-            Important warning about the limitations of the largest-fragment heuristic.
-        - suggestions : str
-            Recommendations for additional cleaning steps that may be beneficial.
-        - question_to_user : str
-            Question directed at the user/client regarding next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_defragmentation': Contains the defragmented SMILES strings.
-    - 'comments_after_defragmentation': Contains any comments or warnings from the 
-      defragmentation process.
-    
-    Warnings
-    --------
-    The largest-fragment heuristic based on string length is NOT bulletproof. Always 
-    verify that the correct fragment was kept, especially for:
-    - Molecules with similar-sized fragments
-    - Drug-protein or drug-nucleic acid complexes
-    - Coordination complexes where ligands might be larger than metal centers
-    
-    Examples
-    --------
-    # Typical usage (after removing common solvents)
-    # Step 1: Remove solvents first
-    result1 = remove_common_solvents_dataset(input_filename="dataset_raw_A3F2B1D4", 
-                                             column_name="smiles_after_salt_removal")
-    # Step 2: Then defragment
-    result2 = defragment_smiles_dataset(input_filename=result1["output_filename"], 
-                                        column_name="smiles_after_solvent_removal")
-    
-    See Also
-    --------
-    defragment_smiles : For processing a list of SMILES strings
-    remove_common_solvents_dataset : Should be run BEFORE this function
-    remove_salts_dataset : For dataset-level salt removal
-    canonicalize_smiles_dataset : For dataset-level canonicalization
+        output_filename, n_rows, columns, comments (counts), preview, note, warning, suggestions, question_to_user.
+        Adds columns: smiles_after_defragmentation, comments_after_defragmentation.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -1098,84 +735,19 @@ def defragment_smiles_dataset(
 
 
 def neutralize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Neutralize charged molecules by converting them to their neutral forms.
+    """Neutralize charged molecules to neutral forms (amines, carboxylic acids, etc.).
     
-    This function processes a list of SMILES strings and neutralizes charged functional 
-    groups using a set of predefined chemical transformation patterns. Common neutralizations 
-    include: protonated amines → neutral amines, carboxylate anions → carboxylic acids, 
-    protonated imidazoles → neutral imidazoles, and thiolate anions → thiols.
-    
-    **IMPORTANT**: The output SMILES are both neutralized AND canonicalized. No additional 
-    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
-    with canonical=True is automatically applied to the neutralized structures.
+    Output is neutralized AND canonicalized.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to neutralize. May contain charged species.
+        SMILES strings to neutralize.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - neutralized_smiles : list[str]
-            Neutralized AND canonicalized SMILES strings. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Neutralization successful (or no charges found)
-            - "Failed: Invalid SMILES string": Could not parse SMILES
-            - "Failed: <reason>": An error occurred during neutralization
-    
-    Examples
-    --------
-    # Neutralize a protonated amine
-    smiles = ["CC[NH3+]"]
-    neutral, comments = neutralize_smiles(smiles)
-    # Returns: ["CCN"], ["Passed"]
-    
-    # Neutralize a carboxylate
-    smiles = ["CC(=O)[O-]"]
-    neutral, comments = neutralize_smiles(smiles)
-    # Returns: ["CC(=O)O"], ["Passed"]
-    
-    # Multiple charged groups
-    smiles = ["CC[NH3+].[O-]C(=O)C"]
-    neutral, comments = neutralize_smiles(smiles)
-    # Returns: ["CCN.CC(=O)O"], ["Passed"]
-    
-    # Already neutral molecule (no change)
-    smiles = ["c1ccccc1"]
-    neutral, comments = neutralize_smiles(smiles)
-    # Returns: ["c1ccccc1"], ["Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is BOTH neutralized AND canonicalized - no additional canonicalization needed
-    - Neutralization patterns include:
-      * Protonated amines ([N+;!H0]) → neutral amines (N)
-      * Protonated imidazoles ([n+;H]) → neutral imidazoles (n)
-      * Carboxylates/alkoxides ([O-]) → alcohols/acids (O)
-      * Thiolates ([S-]) → thiols (S)
-    - The function applies transformations iteratively until no more matches are found
-    - Molecules without charged groups are returned unchanged (but still canonicalized)
-    - Output lists have the same length and order as input list
-    - Based on neutralization patterns adapted from Hans de Winter's RDKit contributions
-    
-    Warnings
-    --------
-    - Some charged species are intentional (e.g., quaternary ammonium salts, zwitterions)
-      and may lose chemical meaning when neutralized
-    - For zwitterionic amino acids or betaines, neutralization may not preserve the 
-      original chemical structure appropriately
-    - Always verify that neutralization is appropriate for your specific use case
-    
-    See Also
-    --------
-    neutralize_smiles : For processing a list of SMILES strings
-    canonicalize_smiles : For canonicalization without neutralization
-    remove_salts : For removing salt counterions
+        (neutralized_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     from molml_mcp.tools.core_mol.smiles_ops import _initialise_neutralisation_reactions, _neutralize_smiles
     
@@ -1197,114 +769,26 @@ def neutralize_smiles_dataset(
     output_filename: str,
     explanation: str = "Neutralize charges in molecules"
 ) -> dict:
-    """
-    Neutralize charged molecules in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by neutralizing charged functional groups 
-    in SMILES strings in the specified column. It adds two new columns to the dataframe: 
-    one containing the neutralized SMILES and another with comments logged during the 
-    neutralization process.
-    
-    **IMPORTANT**: The output SMILES are both neutralized AND canonicalized. No additional 
-    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
-    with canonical=True is automatically applied to all neutralized structures.
-    
-    Common neutralizations include:
-    - Protonated amines → neutral amines
-    - Carboxylate anions → carboxylic acids
-    - Protonated imidazoles → neutral imidazoles
-    - Thiolate anions → thiols
+    """Neutralize charged molecules in a dataset column. Output is neutralized AND canonicalized.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be neutralized.
+        Column with SMILES to neutralize.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the neutralization performed.
+        Description of operation.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with neutralized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            neutralization (e.g., number of successful neutralizations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the comment system and canonicalization behavior.
-        - warning : str
-            Important warnings about cases where neutralization may not be appropriate.
-        - suggestions : str
-            Recommendations for additional cleaning steps that may be beneficial.
-        - question_to_user : str
-            Question directed at the user/client regarding next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_neutralization': Contains the neutralized AND canonicalized SMILES strings.
-    - 'comments_after_neutralization': Contains any comments or warnings from the 
-      neutralization process.
-    
-    Neutralization patterns (adapted from Hans de Winter's RDKit contributions):
-    - Protonated amines ([N+;!H0]) → neutral amines (N)
-    - Protonated imidazoles ([n+;H]) → neutral imidazoles (n)
-    - Carboxylates/alkoxides ([O-]) → alcohols/acids (O)
-    - Thiolates ([S-]) → thiols (S)
-    
-    Warnings
-    --------
-    Some charged species are intentional and may lose chemical meaning when neutralized:
-    - Quaternary ammonium salts (e.g., choline, betaine)
-    - Zwitterionic amino acids at physiological pH
-    - Permanently charged drug molecules (e.g., some muscle relaxants)
-    - Ionic liquids where charge is essential to structure
-    
-    Always verify that neutralization is appropriate for your specific use case.
-    
-    Examples
-    --------
-    # Typical usage after salt removal and defragmentation
-    result = neutralize_smiles_dataset(input_filename="dataset_raw_A3F2B1D4", 
-                                       column_name="smiles_after_defragmentation")
-    
-    # Or as part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
-    # Step 2: Remove solvents
-    result2 = remove_common_solvents_dataset(input_filename=result1["output_filename"], 
-                                             column_name="smiles_after_salt_removal")
-    # Step 3: Defragment
-    result3 = defragment_smiles_dataset(input_filename=result2["output_filename"], 
-                                        column_name="smiles_after_solvent_removal")
-    # Step 4: Neutralize (already canonicalized, no additional step needed)
-    result4 = neutralize_smiles_dataset(input_filename=result3["output_filename"], 
-                                        column_name="smiles_after_defragmentation")
-    
-    See Also
-    --------
-    neutralize_smiles : For processing a list of SMILES strings
-    canonicalize_smiles_dataset : For canonicalization without neutralization
-    remove_salts_dataset : For dataset-level salt removal
-    defragment_smiles_dataset : For dataset-level defragmentation
+        output_filename, n_rows, columns, comments (counts), preview, note, warning, suggestions, question_to_user.
+        Adds columns: smiles_after_neutralization, comments_after_neutralization.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -1341,98 +825,29 @@ def standardize_stereochemistry(
     only_unassigned: bool = True,
     random_seed: int = 42
 ) -> tuple[list[str], list[str]]:
-    """
-    Standardize stereochemistry in a list of SMILES strings with flexible handling options.
-    
-    This function provides comprehensive stereochemistry handling with three policies:
-    keep (preserve existing), assign (enumerate and select), or flatten (remove all).
-    This is useful for standardizing molecular representations based on your specific 
-    analysis requirements.
-    
-    **IMPORTANT**: The output SMILES are always canonicalized. No additional 
-    canonicalization step is needed after running this function.
+    """Standardize stereochemistry: keep, assign, or flatten. Output is always canonicalized.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. May contain stereochemical information.
-    stereo_policy : str, optional
-        Policy for handling stereochemistry. Options:
-        - "keep" (default): Preserve existing stereochemistry, canonicalize
-        - "assign": Enumerate stereoisomers and select one based on assign_policy
-        - "flatten": Remove all stereochemistry (chiral centers + E/Z bonds)
-    assign_policy : str, optional
-        When stereo_policy="assign", how to select from enumerated isomers:
-        - "first" (default): Select first enumerated stereoisomer
-        - "random": Randomly select one stereoisomer
-        - "lowest": Select stereoisomer with lowest MMFF94/UFF energy
-    max_isomers : int, optional
-        Maximum number of stereoisomers to enumerate (default: 32)
-    try_embedding : bool, optional
-        Try 3D embedding to prune degenerate stereoisomers (default: False)
-    only_unassigned : bool, optional
-        Only enumerate unassigned stereocenters if True (default: True)
-    random_seed : int, optional
-        Random seed for reproducibility (default: 42)
+        SMILES strings to process.
+    stereo_policy : str
+        "keep" (preserve), "assign" (enumerate & select), or "flatten" (remove all).
+    assign_policy : str
+        For stereo_policy="assign": "first", "random", or "lowest" (energy-based).
+    max_isomers : int
+        Max stereoisomers to enumerate.
+    try_embedding : bool
+        Try 3D embedding to prune degenerate stereoisomers.
+    only_unassigned : bool
+        Only enumerate unassigned stereocenters.
+    random_seed : int
+        Random seed for reproducibility.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - standardized_smiles : list[str]
-            SMILES strings with standardized stereochemistry. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Standardization successful
-            - "Failed: Invalid SMILES string": Could not parse SMILES
-            - "Failed: <reason>": An error occurred during processing
-    
-    Examples
-    --------
-    # Keep existing stereochemistry
-    smiles = ["C[C@H](O)CC", "C[C@@H](O)CC"]
-    std, comments = standardize_stereochemistry(smiles, stereo_policy="keep")
-    # Returns: ["C[C@H](O)CC", "C[C@@H](O)CC"], ["Passed", "Passed"]
-    
-    # Flatten all stereochemistry
-    smiles = ["C[C@H](O)CC", "C[C@@H](O)CC"]
-    std, comments = standardize_stereochemistry(smiles, stereo_policy="flatten")
-    # Returns: ["CC(O)CC", "CC(O)CC"], ["Passed", "Passed"]
-    # Note: Both enantiomers become identical after flattening
-    
-    # Assign stereochemistry to unspecified centers
-    smiles = ["CC(O)C(=O)O"]
-    std, comments = standardize_stereochemistry(smiles, stereo_policy="assign", assign_policy="first")
-    # Returns: ["C[C@H](O)C(=O)O"], ["Passed"]
-    
-    # Assign with energy-based selection
-    smiles = ["CC(O)C(N)C"]
-    std, comments = standardize_stereochemistry(smiles, stereo_policy="assign", assign_policy="lowest")
-    # Returns lowest-energy stereoisomer
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is ALWAYS canonicalized - no additional canonicalization needed
-    - Three stereo_policy options:
-      * "keep": Preserves existing stereochemistry (@ and / symbols)
-      * "assign": Enumerates and selects stereoisomers for unspecified centers
-      * "flatten": Removes all stereochemistry completely
-    - When using "assign" with "lowest", conformer energy calculation may be slow
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - Flattening: Loss of stereochemical information may not be appropriate for:
-      * Drug molecules where stereochemistry affects activity
-      * Structure-activity relationship studies
-    - Assigning: Automated stereoisomer selection may not reflect biological relevance
-    - This operation modifies molecular representation - verify appropriateness for your use case
-    
-    See Also
-    --------
-    standardize_stereochemistry_dataset : For dataset-level stereochemistry standardization
-    canonicalize_smiles : For canonicalization that preserves stereochemistry
+        (standardized_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     from molml_mcp.tools.core_mol.smiles_ops import _standardize_stereo_smiles
     
@@ -1466,136 +881,38 @@ def standardize_stereochemistry_dataset(
     only_unassigned: bool = True,
     random_seed: int = 42
 ) -> dict:
-    """
-    Standardize stereochemistry in SMILES strings in a specified column of a tabular dataset.
-    
-    This function provides comprehensive stereochemistry handling with three policies:
-    keep (preserve existing), assign (enumerate and select), or flatten (remove all).
-    It adds two new columns to the dataframe: one containing the standardized SMILES 
-    and another with comments logged during the standardization process.
-    
-    **IMPORTANT**: The output SMILES are always canonicalized. No additional 
-    canonicalization step is needed after running this function.
+    """Standardize stereochemistry in dataset: keep, assign, or flatten. Output always canonicalized.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be standardized.
-    stereo_policy : str, optional
-        Policy for handling stereochemistry. Options:
-        - "keep" (default): Preserve existing stereochemistry, canonicalize
-        - "assign": Enumerate stereoisomers and select one based on assign_policy
-        - "flatten": Remove all stereochemistry (chiral centers + E/Z bonds)
-    assign_policy : str, optional
-        When stereo_policy="assign", how to select from enumerated isomers:
-        - "first" (default): Select first enumerated stereoisomer
-        - "random": Randomly select one stereoisomer
-        - "lowest": Select stereoisomer with lowest MMFF94/UFF energy
-    max_isomers : int, optional
-        Maximum number of stereoisomers to enumerate (default: 32)
-    try_embedding : bool, optional
-        Try 3D embedding to prune degenerate stereoisomers (default: False)
-    only_unassigned : bool, optional
-        Only enumerate unassigned stereocenters if True (default: True)
-    random_seed : int, optional
-        Random seed for reproducibility (default: 42)
+        Column with SMILES to process.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the stereochemistry standardization performed.
+        Description of operation.
+    stereo_policy : str
+        "keep", "assign", or "flatten".
+    assign_policy : str
+        For assign: "first", "random", or "lowest".
+    max_isomers : int
+        Max stereoisomers to enumerate.
+    try_embedding : bool
+        Try 3D embedding.
+    only_unassigned : bool
+        Only enumerate unassigned stereocenters.
+    random_seed : int
+        Random seed.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with standardized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            stereochemistry standardization (e.g., number of successful operations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation and canonicalization behavior.
-        - suggestions : str
-            Recommendations for next steps.
-        - question_to_user : str
-            Question directed at the user/client regarding stereoisomer handling.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_stereo_standardization': Contains the standardized SMILES, canonicalized.
-    - 'comments_after_stereo_standardization': Contains any comments or warnings from the 
-      standardization process.
-    
-    Three stereo_policy options:
-    - "keep": Preserves existing stereochemistry (@ and / symbols)
-    - "assign": Enumerates and selects stereoisomers for unspecified centers
-    - "flatten": Removes all stereochemistry (chiral centers + E/Z bonds)
-    
-    Warnings
-    --------
-    - Flattening: Loss of stereochemical information may impact drug activity analysis
-    - Assigning: Automated selection may not reflect biological relevance
-    - Energy-based selection (assign_policy="lowest") can be computationally expensive
-    
-    Examples
-    --------
-    # Keep existing stereochemistry (default)
-    result = standardize_stereochemistry_dataset(
-        input_filename="dataset_raw_A3F2B1D4",
-        column_name="smiles_after_neutralization",
-        stereo_policy="keep"
-    )
-    
-    # Flatten all stereochemistry
-    result = standardize_stereochemistry_dataset(
-        input_filename="dataset_raw_A3F2B1D4",
-        column_name="smiles_after_neutralization",
-        stereo_policy="flatten"
-    )
-    
-    # Assign stereochemistry with random selection
-    result = standardize_stereochemistry_dataset(
-        input_filename="dataset_raw_A3F2B1D4",
-        column_name="smiles_after_neutralization",
-        stereo_policy="assign",
-        assign_policy="random",
-        random_seed=42
-    )
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
-    # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Standardize stereochemistry
-    result3 = standardize_stereochemistry_dataset(
-        input_filename=result2["output_filename"], 
-        column_name="smiles_after_neutralization",
-        stereo_policy="flatten"  # or "keep" or "assign"
-    )
-    
-    See Also
-    --------
-    standardize_stereochemistry : For processing a list of SMILES strings
-    canonicalize_smiles_dataset : For canonicalization that preserves stereochemistry
-    neutralize_smiles_dataset : For charge neutralization
+        output_filename, n_rows, columns, comments, preview, note, suggestions, question_to_user.
+        Adds columns: smiles_after_stereo_standardization, comments_after_stereo_standardization.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -1637,87 +954,17 @@ def standardize_stereochemistry_dataset(
 
 
 def remove_isotopes(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Remove isotopic labels from a list of SMILES strings.
-    
-    This function processes a list of SMILES strings and removes all isotopic labels,
-    converting isotopically-labeled atoms to their default (most common) isotope forms.
-    For example, deuterium ([2H]), carbon-13 ([13C]), and fluorine-18 ([18F]) are 
-    converted to their standard forms.
-    
-    **IMPORTANT**: The output SMILES are de-isotoped AND canonicalized. No additional 
-    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
-    with canonical=True is automatically applied.
+    """Remove isotopic labels (e.g., [2H], [13C], [18F]). Output is de-isotoped AND canonicalized.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. May contain isotopic labels.
+        SMILES strings to process.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - clean_smiles : list[str]
-            SMILES strings without isotopic labels, canonicalized. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Isotope removal successful (or no isotopes present)
-            - "Failed: Invalid SMILES string": Could not parse SMILES
-            - "Failed: <reason>": An error occurred during processing
-    
-    Examples
-    --------
-    # Remove carbon-13 and fluorine-18 labels
-    smiles = ["[13CH3][18F]"]
-    clean, comments = remove_isotopes(smiles)
-    # Returns: ["CCF"], ["Passed"]
-    
-    # Remove deuterium label
-    smiles = ["CC([2H])O", "CCO"]
-    clean, comments = remove_isotopes(smiles)
-    # Returns: ["CCO", "CCO"], ["Passed", "Passed"]
-    
-    # Mixed isotope labels
-    smiles = ["[13C]C([2H])([2H])[18O]"]
-    clean, comments = remove_isotopes(smiles)
-    # Returns: ["CCO"], ["Passed"]
-    
-    # Already unlabeled molecule (no change)
-    smiles = ["c1ccccc1", "CCO"]
-    clean, comments = remove_isotopes(smiles)
-    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is BOTH de-isotoped AND canonicalized - no additional canonicalization needed
-    - Removes ALL isotopic labels:
-      * Deuterium ([2H]) → hydrogen (H)
-      * Tritium ([3H]) → hydrogen (H)
-      * Carbon-13 ([13C]) → carbon-12 (C)
-      * Carbon-14 ([14C]) → carbon-12 (C)
-      * Nitrogen-15 ([15N]) → nitrogen-14 (N)
-      * Oxygen-18 ([18O]) → oxygen-16 (O)
-      * Fluorine-18 ([18F]) → fluorine-19 (F)
-      * And all other isotopic variants
-    - Molecules without isotopic labels are returned unchanged (but canonicalized)
-    - Stereochemistry is preserved during isotope removal
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - Loss of isotopic information may not be appropriate for all applications:
-      * Radiolabeled compounds used in pharmacokinetic studies
-      * NMR spectroscopy experiments requiring specific isotope labels
-      * Mass spectrometry studies tracking isotope incorporation
-      * Metabolic flux analysis using isotope tracers
-    - This operation is irreversible - isotope labels cannot be recovered
-    
-    See Also
-    --------
-    remove_isotopes_dataset : For dataset-level isotope removal
-    canonicalize_smiles : For canonicalization without isotope removal
+        (de_isotoped_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     from molml_mcp.tools.core_mol.smiles_ops import _remove_isotopes
     
@@ -1737,107 +984,26 @@ def remove_isotopes_dataset(
     output_filename: str,
     explanation: str = "Remove isotope labels from molecules"
 ) -> dict:
-    """
-    Remove isotopic labels from SMILES strings in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by removing all isotopic labels from SMILES 
-    strings in the specified column. It adds two new columns to the dataframe: one 
-    containing the de-isotoped SMILES and another with comments logged during the removal 
-    process.
-    
-    **IMPORTANT**: The output SMILES are de-isotoped AND canonicalized. No additional 
-    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
-    with canonical=True is automatically applied.
+    """Remove isotopic labels from SMILES in dataset. Output is de-isotoped AND canonicalized.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be de-isotoped.
+        Column with SMILES to process.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the isotope removal performed.
+        Description of operation.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with de-isotoped data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            isotope removal (e.g., number of successful operations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation and canonicalization behavior.
-        - warning : str
-            Important warnings about loss of isotopic information.
-        - suggestions : str
-            Recommendations for next steps.
-        - question_to_user : str
-            Question directed at the user/client regarding isotope handling.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_isotope_removal': Contains the SMILES without isotopic labels, canonicalized.
-    - 'comments_after_isotope_removal': Contains any comments or warnings from the 
-      removal process.
-    
-    All isotopic labels are removed:
-    - Deuterium ([2H]), tritium ([3H])
-    - Carbon-13 ([13C]), carbon-14 ([14C])
-    - Nitrogen-15 ([15N])
-    - Oxygen-18 ([18O])
-    - Fluorine-18 ([18F])
-    - All other isotopic variants
-    
-    Stereochemistry is preserved during isotope removal.
-    
-    Warnings
-    --------
-    Loss of isotopic information may significantly impact certain analyses:
-    - Radiolabeling studies (e.g., PET tracers with [18F])
-    - NMR experiments requiring deuterium or carbon-13 labels
-    - Mass spectrometry isotope tracing experiments
-    - Metabolic flux analysis using stable isotopes
-    - This operation is irreversible
-    
-    Examples
-    --------
-    # Typical usage when isotope labels are not relevant
-    result = remove_isotopes_dataset(input_filename="dataset_raw_A3F2B1D4", 
-                                     column_name="smiles_after_neutralization")
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
-    # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Remove isotopes if not needed
-    result3 = remove_isotopes_dataset(input_filename=result2["output_filename"], 
-                                      column_name="smiles_after_neutralization")
-    
-    See Also
-    --------
-    remove_isotopes : For processing a list of SMILES strings
-    canonicalize_smiles_dataset : For canonicalization without isotope removal
-    neutralize_smiles_dataset : For charge neutralization
+        output_filename, n_rows, columns, comments, preview, note, warning, suggestions, question_to_user.
+        Adds columns: smiles_after_isotope_removal, comments_after_isotope_removal.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -1866,85 +1032,19 @@ def remove_isotopes_dataset(
 
 
 def canonicalize_tautomers(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Canonicalize tautomeric forms of molecules in a list of SMILES strings.
+    """Canonicalize tautomers to standard forms. Output is tautomer-canonicalized AND canonicalized.
     
-    This function processes a list of SMILES strings and standardizes each to RDKit's 
-    canonical tautomer representation. This ensures that different tautomeric forms of 
-    the same molecule are represented by the same SMILES string, which is essential for 
-    deduplication, comparison, and ensuring that tautomers are treated as equivalent 
-    structures in downstream analyses.
-    
-    **IMPORTANT**: The output SMILES are tautomer-canonicalized AND canonicalized. No 
-    additional canonicalization step is needed after running this function, as RDKit's 
-    MolToSmiles with canonical=True is automatically applied.
+    WARNING: Can REMOVE or CHANGE stereochemistry (RDKit limitation).
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. May contain different tautomeric forms.
+        SMILES strings to process.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - canonical_tautomers : list[str]
-            Tautomer-canonicalized SMILES strings. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Tautomer canonicalization successful
-            - "Failed: Invalid SMILES string": Could not parse SMILES
-            - "Failed: <reason>": An error occurred during processing
-    
-    Examples
-    --------
-    # Canonicalize keto-enol tautomers
-    smiles = ["O=C1NC=CC=C1", "OC1=NC=CC=C1"]
-    canonical, comments = canonicalize_tautomers(smiles)
-    # Returns: ["O=C1NC=CC=C1", "O=C1NC=CC=C1"], ["Passed", "Passed"]
-    # Note: Both tautomers become identical
-    
-    # Canonicalize amide-imidic acid tautomers
-    smiles = ["CC(=O)N", "CC(O)=N"]
-    canonical, comments = canonicalize_tautomers(smiles)
-    # Returns: ["CC(=O)N", "CC(=O)N"], ["Passed", "Passed"]
-    
-    # Already canonical tautomer (no change)
-    smiles = ["c1ccccc1", "CCO"]
-    canonical, comments = canonicalize_tautomers(smiles)
-    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is BOTH tautomer-canonicalized AND canonicalized - no additional steps needed
-    - Uses RDKit's TautomerEnumerator with canonical tautomer selection
-    - Common tautomerizations handled:
-      * Keto-enol tautomers
-      * Imine-enamine tautomers
-      * Amide-imidic acid tautomers
-      * Lactam-lactim tautomers
-      * Nitroso-oxime tautomers
-    - Different tautomers of the same molecule will have identical output SMILES
-    - Molecules without tautomeric forms are returned unchanged (but canonicalized)
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - **CRITICAL**: Tautomer canonicalization can REMOVE or CHANGE stereochemistry. 
-      This is a known RDKit limitation. If stereochemistry is important for your 
-      analysis, consider running this step BEFORE stereochemistry standardization, 
-      or skip tautomer canonicalization entirely.
-    - Tautomer canonicalization may affect analysis where specific tautomeric forms 
-      are biologically or chemically relevant
-    - The canonical tautomer selected may not be the predominant form under specific 
-      conditions (pH, solvent, etc.)
-    - Some edge cases with complex tautomeric systems may not be handled perfectly
-    
-    See Also
-    --------
-    canonicalize_tautomers_dataset : For dataset-level tautomer canonicalization
-    canonicalize_smiles : For standard canonicalization without tautomer handling
+        (canonical_tautomers, comments). Comments: "Passed" or "Failed: <reason>".
     """
     from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_tautomer_smiles
     
@@ -1964,112 +1064,28 @@ def canonicalize_tautomers_dataset(
     output_filename: str,
     explanation: str = "Canonicalize tautomers to standard forms"
 ) -> dict:
-    """
-    Canonicalize tautomeric forms of molecules in a specified column of a tabular dataset.
+    """Canonicalize tautomers in dataset. Output is tautomer-canonicalized AND canonicalized.
     
-    This function processes a tabular dataset by standardizing SMILES strings to their 
-    canonical tautomer representations in the specified column. It adds two new columns 
-    to the dataframe: one containing the tautomer-canonicalized SMILES and another with 
-    comments logged during the canonicalization process.
-    
-    **IMPORTANT**: The output SMILES are tautomer-canonicalized AND canonicalized. No 
-    additional canonicalization step is needed after running this function, as RDKit's 
-    MolToSmiles with canonical=True is automatically applied.
-    
-    This ensures that different tautomeric forms of the same molecule are represented 
-    by the same SMILES string, which is essential for:
-    - Deduplication of datasets where tautomers should be treated as equivalent
-    - Machine learning where tautomers should have the same representation
-    - Consistent database searches and comparisons
+    WARNING: Can REMOVE or CHANGE stereochemistry (RDKit limitation).
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to be canonicalized.
+        Column with SMILES to process.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the tautomer canonicalization performed.
+        Description of operation.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with tautomer-canonicalized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            tautomer canonicalization (e.g., number of successful operations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation and canonicalization behavior.
-        - warning : str
-            Important warnings about tautomer canonicalization.
-        - suggestions : str
-            Recommendations for next steps.
-        - question_to_user : str
-            Question directed at the user/client regarding tautomer handling.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_tautomer_canonicalization': Contains the tautomer-canonicalized SMILES.
-    - 'comments_after_tautomer_canonicalization': Contains any comments or warnings from 
-      the canonicalization process.
-    
-    Common tautomerizations handled:
-    - Keto-enol tautomers
-    - Imine-enamine tautomers
-    - Amide-imidic acid tautomers
-    - Lactam-lactim tautomers
-    - Nitroso-oxime tautomers
-    
-    Warnings
-    --------
-    - The canonical tautomer selected may not be the predominant form under specific 
-      experimental conditions (pH, solvent, temperature)
-    - For some molecules, the biologically active form may be a non-canonical tautomer
-    - Tautomer canonicalization may affect structure-activity relationships if specific 
-      tautomeric forms have different activities
-    
-    Examples
-    --------
-    # Typical usage after basic cleaning steps
-    result = canonicalize_tautomers_dataset(
-        input_filename="dataset_raw_A3F2B1D4", 
-        column_name="smiles_after_neutralization"
-    )
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
-    # Step 2: Neutralize
-    result2 = neutralize_smiles_dataset(input_filename=result1["output_filename"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Canonicalize tautomers
-    result3 = canonicalize_tautomers_dataset(input_filename=result2["output_filename"], 
-                                             column_name="smiles_after_neutralization")
-    
-    See Also
-    --------
-    canonicalize_tautomers : For processing a list of SMILES strings
-    canonicalize_smiles_dataset : For standard canonicalization without tautomer handling
-    neutralize_smiles_dataset : For charge neutralization
-    standardize_stereochemistry_dataset : For stereochemistry handling
+        output_filename, n_rows, columns, comments, preview, note, warning, suggestions, question_to_user.
+        Adds columns: smiles_after_tautomer_canonicalization, comments_after_tautomer_canonicalization.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -2158,86 +1174,17 @@ def normalize_functional_groups_dataset(
 
 
 def reionize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Reionize molecules to their preferred charge distribution using RDKit's Reionizer.
-    
-    This function processes a list of SMILES strings and adjusts their charge distribution 
-    to a chemically preferred form. Reionization is particularly useful for handling 
-    zwitterions, molecules with multiple ionizable sites, and ensuring consistent charge 
-    states across a dataset. It should typically be applied AFTER functional group 
-    normalization but BEFORE charge neutralization.
-    
-    **IMPORTANT**: The output SMILES are reionized AND canonicalized. No additional 
-    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
-    with canonical=True is automatically applied.
-    
-    Common reionizations include:
-    - Amino acids: Correcting zwitterionic forms to appropriate charge states
-    - Multi-ionizable compounds: Setting charges to preferred positions
-    - Protonation state correction: Ensuring chemically reasonable charge distribution
-    - pH-dependent ionization: Standardizing to a consistent protonation state
+    """Reionize molecules to preferred charge distribution. Output is reionized AND canonicalized.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to reionize. Should ideally be already normalized.
+        SMILES strings to process.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - reionized_smiles : list[str]
-            Reionized canonical SMILES strings. Length matches input list.
-            Failed reionizations return None.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Reionization successful
-            - "Failed: Invalid SMILES string": Input could not be parsed
-            - "Failed: Reionization error: <details>": An error occurred during reionization
-    
-    Examples
-    --------
-    # Reionize a zwitterionic amino acid
-    smiles = ["C([C@@H](C(=O)[O-])[NH3+])O"]
-    reionized, comments = reionize_smiles(smiles)
-    # Returns with adjusted charge distribution
-    
-    # Handle molecules with multiple ionizable sites
-    smiles = ["c1ccc(cc1)C(=O)[O-]", "c1ccc(cc1)[NH3+]"]
-    reionized, comments = reionize_smiles(smiles)
-    # Returns with preferred charge states
-    
-    # Already optimally ionized (may return unchanged)
-    smiles = ["c1ccccc1", "CCO"]
-    reionized, comments = reionize_smiles(smiles)
-    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is BOTH reionized AND canonicalized - no additional canonicalization needed
-    - Best applied after functional group normalization (normalize_functional_groups)
-    - Should be applied BEFORE neutralization if you want controlled charge states
-    - Expects "reasonable" molecular structures (not highly unusual valence states)
-    - Particularly useful for:
-      * Zwitterionic compounds (amino acids, betaines)
-      * Molecules with multiple ionizable groups
-      * Ensuring consistent protonation states
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - Reionization may change the charge state in ways that don't match specific 
-      experimental conditions (pH, solvent, temperature)
-    - For molecules with complex ionization patterns, the "preferred" state may not 
-      match biological or experimental relevance
-    - Zwitterions may be converted to neutral or differently charged forms
-    
-    See Also
-    --------
-    reionize_smiles_dataset : Dataset version of this function
-    normalize_functional_groups : Should be run BEFORE reionization
-    neutralize_smiles : For complete charge removal (applied AFTER reionization)
+        (reionized_smiles, comments). Comments: "Passed" or "Failed: <reason>".
     """
     results = [_reionize_smiles(smi) for smi in smiles]
     reionized_smiles = [smi for smi, _ in results]
@@ -2293,95 +1240,19 @@ def reionize_smiles_dataset(
 
 
 def disconnect_metals_smiles(smiles: list[str], drop_inorganics: bool = False) -> tuple[list[str], list[str]]:
-    """
-    Disconnect metal-ligand coordinate bonds in a list of SMILES strings.
-    
-    This function processes a list of SMILES strings and disconnects coordinate bonds 
-    between metal atoms and ligands using RDKit's MetalDisconnector. This is useful for 
-    standardizing organometallic compounds, metal complexes, and coordination compounds 
-    by breaking dative/coordinate bonds while preserving the organic ligand structures.
-    
-    **IMPORTANT**: The output SMILES have disconnected metals AND are canonicalized. 
-    No additional canonicalization step is needed after running this function.
-    
-    Common applications include:
-    - Metal complexes: Separating metal centers from organic ligands
-    - Organometallic compounds: Isolating the organic portion
-    - Coordination compounds: Breaking coordinate bonds to metals
-    - Drug discovery: Focusing on organic ligands without metal coordination
+    """Disconnect metal-ligand bonds. Output is disconnected AND canonicalized.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process. May contain metal-ligand bonds.
-    drop_inorganics : bool, optional
-        If True, molecules without carbon atoms (purely inorganic) are filtered out 
-        and returned as None with a failure comment. Default is False.
+        SMILES strings to process.
+    drop_inorganics : bool
+        If True, filter out molecules without carbon.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - disconnected_smiles : list[str]
-            SMILES strings with metal-ligand bonds disconnected, canonicalized. 
-            Length matches input list. Dropped inorganics return None.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Metal disconnection successful (or no metals present)
-            - "Failed: Invalid SMILES string": Input could not be parsed
-            - "Failed: Inorganic molecule (no carbon atoms)": Removed due to drop_inorganics=True
-            - "Failed: Metal disconnection error: <details>": An error occurred during processing
-    
-    Examples
-    --------
-    # Disconnect a simple metal complex
-    smiles = ["[Fe](Cl)(Cl)(Cl)(Cl)(Cl)Cl"]
-    disconnected, comments = disconnect_metals_smiles(smiles)
-    # Returns with metal-ligand bonds broken
-    
-    # Organometallic with organic ligand
-    smiles = ["c1ccccc1[Fe]"]
-    disconnected, comments = disconnect_metals_smiles(smiles)
-    # Returns benzene separated from iron
-    
-    # Drop purely inorganic molecules
-    smiles = ["[Fe]Cl6", "c1ccccc1", "[Na]Cl"]
-    disconnected, comments = disconnect_metals_smiles(smiles, drop_inorganics=True)
-    # Returns: [None, "c1ccccc1", None] with appropriate failure comments for inorganics
-    
-    # Already metal-free molecule (no change)
-    smiles = ["c1ccccc1", "CCO"]
-    disconnected, comments = disconnect_metals_smiles(smiles)
-    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Output is BOTH metal-disconnected AND canonicalized - no additional steps needed
-    - Breaks dative/coordinate bonds between metals and ligands
-    - Does NOT remove metal atoms themselves (unless drop_inorganics=True for inorganics)
-    - Typical workflow position: After defragmentation, before or after functional group normalization
-    - Particularly useful for:
-      * Organometallic chemistry datasets
-      * Drug discovery focusing on organic scaffolds
-      * Removing metal artifacts from screening libraries
-      * Standardizing metal-containing compounds
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - Metal coordination may be essential for biological activity in some cases:
-      * Metallodrugs where metal is part of the active compound
-      * Enzyme inhibitors that coordinate to metal centers
-      * Porphyrins and other metal-cofactor systems
-    - Disconnection removes structural information about metal coordination geometry
-    - When drop_inorganics=True, purely inorganic salts and minerals are lost
-    
-    See Also
-    --------
-    disconnect_metals_smiles_dataset : Dataset version of this function
-    defragment_smiles : For removing disconnected fragments after metal disconnection
-    remove_salts : For removing salt counterions
+        (disconnected_smiles, comments). Comments: "Passed", "Failed: <reason>", or "Failed: Inorganic...".
     """
     results = [_disconnect_metals_smiles(smi, drop_inorganics=drop_inorganics) for smi in smiles]
     disconnected_smiles = [smi for smi, _ in results]
@@ -2397,128 +1268,28 @@ def disconnect_metals_smiles_dataset(
     explanation: str = "Disconnect metal-ligand coordinate bonds",
     drop_inorganics: bool = False
 ) -> dict:
-    """
-    Disconnect metal-ligand coordinate bonds in a specified column of a tabular dataset.
-    
-    This function processes a tabular dataset by disconnecting coordinate bonds between 
-    metal atoms and ligands in SMILES strings. It adds two new columns to the dataframe: 
-    one containing the metal-disconnected SMILES and another with comments logged during 
-    the disconnection process.
-    
-    **IMPORTANT**: The output SMILES have disconnected metals AND are canonicalized. 
-    No additional canonicalization step is needed after running this function.
-    
-    This is useful for:
-    - Standardizing organometallic and coordination compound datasets
-    - Isolating organic ligands from metal complexes
-    - Removing metal coordination artifacts from screening libraries
-    - Focusing analysis on organic scaffolds without metal centers
+    """Disconnect metal-ligand bonds in dataset. Output is disconnected AND canonicalized.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to process.
-    drop_inorganics : bool, optional
-        If True, molecules without carbon atoms (purely inorganic) are filtered out 
-        and returned as None. Default is False.
+        Column with SMILES to process.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the metal disconnection performed.
+        Description of operation.
+    drop_inorganics : bool
+        If True, filter out molecules without carbon.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with metal-disconnected data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            metal disconnection (e.g., number of successful operations, failures, dropped inorganics).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation.
-        - warning : str
-            Important warnings about metal disconnection.
-        - suggestions : str
-            Recommendations for next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_metal_disconnection': Contains the SMILES with disconnected metal bonds.
-    - 'comments_after_metal_disconnection': Contains any comments or warnings from the 
-      disconnection process.
-    
-    Typical workflow position:
-    1. Remove salts
-    2. Remove solvents
-    3. Defragment (or after metal disconnection)
-    4. **Disconnect metals** ← This step
-    5. Defragment again (to remove disconnected metal fragments if desired)
-    6. Normalize functional groups
-    7. Reionize/neutralize
-    8. Canonicalize tautomers
-    
-    Warnings
-    --------
-    - Metal coordination may be essential for activity in metallodrugs
-    - Disconnection loses information about coordination geometry
-    - Purely inorganic molecules are dropped when drop_inorganics=True
-    - Consider whether metal-free ligands are appropriate for your analysis
-    
-    Examples
-    --------
-    # Typical usage after defragmentation
-    result = disconnect_metals_smiles_dataset(
-        input_filename="dataset_raw_A3F2B1D4", 
-        column_name="smiles_after_defragmentation"
-    )
-    
-    # Drop purely inorganic molecules
-    result = disconnect_metals_smiles_dataset(
-        input_filename="dataset_raw_A3F2B1D4", 
-        column_name="smiles_after_defragmentation",
-        drop_inorganics=True
-    )
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(input_filename="dataset_raw", column_name="smiles")
-    # Step 2: Defragment
-    result2 = defragment_smiles_dataset(input_filename=result1["output_filename"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Disconnect metals
-    result3 = disconnect_metals_smiles_dataset(input_filename=result2["output_filename"], 
-                                               column_name="smiles_after_defragmentation",
-                                               drop_inorganics=False)
-    # Step 4: Defragment again to remove disconnected metal fragments
-    result4 = defragment_smiles_dataset(input_filename=result3["output_filename"], 
-                                        column_name="smiles_after_metal_disconnection")
-    # Step 5: Normalize functional groups
-    result5 = normalize_functional_groups_dataset(input_filename=result4["output_filename"], 
-                                                   column_name="smiles_after_defragmentation")
-    
-    See Also
-    --------
-    disconnect_metals_smiles : For processing a list of SMILES strings
-    defragment_smiles_dataset : Should be run AFTER metal disconnection to remove fragments
-    remove_salts_dataset : For removing salt counterions
-    normalize_functional_groups_dataset : For functional group standardization
+        output_filename, n_rows, columns, comments, preview, note, warning, suggestions.
+        Adds columns: smiles_after_metal_disconnection, comments_after_metal_disconnection.
     """
     df = _load_resource(project_manifest_path, input_filename)
     
@@ -2548,82 +1319,17 @@ def disconnect_metals_smiles_dataset(
 
 
 def validate_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Validate a list of SMILES strings for correctness and chemical sanity.
-    
-    This function performs lightweight validation to check whether SMILES strings can be 
-    parsed by RDKit, pass sanitization checks, and represent valid molecular structures. 
-    This is useful as a final quality control step after cleaning, or to filter out 
-    problematic molecules before processing.
-    
-    Validation checks include:
-    - Parseable by RDKit (MolFromSmiles succeeds)
-    - Passes RDKit's sanitization (valence, aromaticity, etc.)
-    - Contains at least one atom (not empty)
-    - No parsing exceptions
-    
-    **Note**: This function returns the ORIGINAL SMILES strings unchanged (not canonicalized).
-    Use this for validation purposes, not for standardization.
+    """Validate SMILES for parseability and sanitization. Returns ORIGINAL SMILES unchanged.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to validate.
+        SMILES strings to validate.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - validated_smiles : list[str]
-            Original SMILES strings if valid, None if invalid. Length matches input list.
-        - comments : list[str]
-            Comments for each SMILES indicating validation status. Length matches input list.
-            - "Passed": SMILES is valid
-            - "Failed: Invalid SMILES string": Could not parse SMILES
-            - "Failed: Empty molecule (0 atoms)": Molecule has no atoms
-            - "Failed: Exception during parsing: <details>": An error occurred during parsing
-    
-    Examples
-    --------
-    # Validate valid SMILES
-    smiles = ["CCO", "c1ccccc1", "CC(=O)O"]
-    validated, comments = validate_smiles(smiles)
-    # Returns: ["CCO", "c1ccccc1", "CC(=O)O"], ["Passed", "Passed", "Passed"]
-    
-    # Detect invalid SMILES
-    smiles = ["CCO", "invalid_smiles", "c1ccccc"]
-    validated, comments = validate_smiles(smiles)
-    # Returns: ["CCO", None, None] with failure comments for invalid entries
-    
-    # Detect empty molecules
-    smiles = ["", "CCO"]
-    validated, comments = validate_smiles(smiles)
-    # Returns with appropriate failure for empty string
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Returns ORIGINAL SMILES unchanged - does NOT canonicalize
-    - Useful for quality control and filtering
-    - Best applied:
-      * As a final validation step after cleaning pipeline
-      * Before expensive computations or database insertions
-      * To identify problematic molecules for manual review
-    - Validation is lightweight (just parsing + sanitization)
-    - Does NOT check for chemical reasonableness beyond RDKit's sanitization
-    - Output lists have the same length and order as input list
-    
-    Warnings
-    --------
-    - This function only validates RDKit parseability, not chemical realism
-    - Some chemically unreasonable structures may still pass validation
-    - Does not check for specific structural features or drug-likeness
-    - Passing validation does not guarantee the molecule is scientifically meaningful
-    
-    See Also
-    --------
-    validate_smiles_dataset : Dataset version of this function
-    canonicalize_smiles : For standardization (which includes implicit validation)
+        (validated_smiles, comments). Validated_smiles: original if valid, None if invalid. Comments: "Passed" or "Failed: <reason>".
     """
     results = [_validate_smiles(smi) for smi in smiles]
     validated_smiles = [smi for smi, _ in results]
@@ -2787,54 +1493,29 @@ def default_SMILES_standardization_pipeline(
     drop_inorganics: bool = False,
     salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> tuple[list[str], list[str]]:
-    """
-    Apply the default SMILES standardization protocol to a list of SMILES strings.
-    
-    This function implements the complete 11-step (or 12-step with metal disconnection)
-    standardization pipeline optimized for general-purpose molecular machine learning.
-    It returns clean SMILES with concise, non-redundant comments.
-    
-    **RECOMMENDED**: Use this function for standardizing SMILES lists. For dataset-level
-    operations with full audit trails, use `default_SMILES_standardization_pipeline_dataset()`.
+    """Apply 11-step SMILES standardization protocol. Returns concise comments.
     
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to standardize.
-    stereo_policy : str, optional
-        Stereochemistry handling policy (default: "flatten"):
-        - "flatten": Remove all stereochemistry (general ML use case)
-        - "keep": Preserve existing stereochemistry (SAR/drug discovery)
-        - "assign": Enumerate and assign undefined stereocenters
-    skip_isotope_removal : bool, optional
-        Whether to skip removing isotope labels (default: False).
-        Set to True for radiolabeling/NMR/mass spec studies.
-    skip_tautomer_canonicalization : bool, optional
-        Whether to skip tautomer canonicalization (default: False).
-        Set to True when specific tautomeric forms are important or to
-        protect stereochemistry (tautomer canonicalization can remove/change
-        stereochemistry - known RDKit limitation).
-    enable_metal_disconnection : bool, optional
-        Whether to disconnect metal-ligand bonds (default: False).
-        Set to True for coordination chemistry analysis.
-    drop_inorganics : bool, optional
-        When enable_metal_disconnection=True, whether to drop purely inorganic fragments
-        (default: False).
-    salt_smarts : str, optional
-        SMARTS pattern for salt removal (default: SMARTS_COMMON_SALTS).
-        **WARNING**: Only change for specialized datasets (e.g., organometallics).
+        SMILES strings to standardize.
+    stereo_policy : str
+        "flatten" (default), "keep", or "assign".
+    skip_isotope_removal : bool
+        Skip removing isotopes (default: False).
+    skip_tautomer_canonicalization : bool
+        Skip tautomer canonicalization (default: False). Set True to protect stereochemistry.
+    enable_metal_disconnection : bool
+        Disconnect metal-ligand bonds (default: False).
+    drop_inorganics : bool
+        Drop inorganics when disconnecting metals.
+    salt_smarts : str
+        SMARTS for salt removal. Do not change unless specialized use case.
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - standardized_smiles : list[str]
-            Fully standardized SMILES strings. Length matches input list.
-        - comments : list[str]
-            Concise, non-redundant comments for each SMILES. Length matches input list.
-            Only reports issues, warnings, or notable transformations.
-            Successfully standardized molecules: "Standardized"
-            Molecules with issues: "<step>: <issue>" (e.g., "Validation: Invalid SMILES")
+        (standardized_smiles, comments). Comments: "Standardized" or "<step>: <issue>".
     
     Examples
     --------
@@ -3005,73 +1686,40 @@ def default_SMILES_standardization_pipeline_dataset(
     drop_inorganics: bool = False,
     salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> dict:
-    """
-    Apply the default SMILES standardization protocol to a dataset with full audit trail.
+    """Apply 11-step standardization protocol to dataset with full audit trail. Adds comment columns for every step.
     
-    This function implements the complete 11-step (or 12-step with metal disconnection)
-    standardization pipeline optimized for general-purpose molecular machine learning.
-    It processes a tabular dataset and adds comment columns for EVERY step, plus a final
-    'standardized_smiles' column.
-    
-    **RECOMMENDED**: Use this function for dataset-level standardization with complete
-    documentation of all transformations. For simple list operations, use
-    `default_SMILES_standardization_pipeline()`.
+    WARNING: Tautomer canonicalization can REMOVE/CHANGE stereochemistry. Check comments_after_tautomer_canonicalization.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., \'dataset_raw_A3F2B1D4\').
+        Input dataset filename.
     column_name : str
-        Name of the column containing SMILES strings to standardize.
-    stereo_policy : str, optional
-        Stereochemistry handling policy (default: "flatten"):
-        - "flatten": Remove all stereochemistry (general ML use case)
-        - "keep": Preserve existing stereochemistry (SAR/drug discovery)
-        - "assign": Enumerate and assign undefined stereocenters
-    remove_isotopes : bool, optional
-        Whether to remove isotope labels (default: True).
-        Set to False for radiolabeling/NMR/mass spec studies.
-    disconnect_metals : bool, optional
-        Whether to disconnect metal-ligand bonds (default: False).
-        Set to True for coordination chemistry analysis.
-    drop_inorganics : bool, optional
-        When disconnect_metals=True, whether to drop purely inorganic fragments
-        (default: False).
-    salt_smarts : str, optional
-        SMARTS pattern for salt removal (default: SMARTS_COMMON_SALTS).
-        **WARNING**: Only change for specialized datasets (e.g., organometallics).
+        Column with SMILES to standardize.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to project manifest.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., \'dataset_cleaned\').
+        Output filename (without extension).
     explanation : str
-        Brief description of the standardization pipeline performed.
+        Description of operation.
+    stereo_policy : str
+        "flatten" (default), "keep", or "assign".
+    skip_isotope_removal : bool
+        Skip removing isotopes.
+    skip_tautomer_canonicalization : bool
+        Skip tautomer canonicalization (protects stereochemistry).
+    enable_metal_disconnection : bool
+        Disconnect metal-ligand bonds.
+    drop_inorganics : bool
+        Drop inorganics when disconnecting metals.
+    salt_smarts : str
+        SMARTS for salt removal. Do not change unless specialized.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with standardized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names (includes comments for each step).
-        - preview : list of dict
-            Preview of the first 5 rows of the final dataset.
-        - protocol_summary : dict
-            Summary of the protocol settings used:
-            - stereo_policy, skip_isotope_removal, skip_tautomer_canonicalization, 
-              enable_metal_disconnection, drop_inorganics
-        - final_validation : dict
-            Validation statistics (n_valid, n_invalid, validation_rate)
-        - note : str
-            Explanation of the standardization process.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
+        output_filename, n_rows, columns, preview, protocol_summary, final_validation, note, suggestions.
+        Adds many intermediate columns with comments for each step, plus 'standardized_smiles'.
     
     Examples
     --------
@@ -3418,36 +2066,34 @@ def check_smiles_for_pains_dataset(
 
 
 def get_all_cleaning_tools():
-    """Return a list of all molecular cleaning tools."""
+    """Return a list of all molecular cleaning tools exposed to MCP server.
+    
+    Only exposes dataset-level functions and selected SMILES-level functions:
+    - canonicalize_smiles, validate_smiles, default_SMILES_standardization_pipeline
+    """
     return [
-        default_SMILES_standardization_pipeline,
-        default_SMILES_standardization_pipeline_dataset,
+        # Guidelines
         get_SMILES_standardization_guidelines,
+        
+        # SMILES-level functions (selected)
         canonicalize_smiles,
-        canonicalize_smiles_dataset,
-        remove_salts,
-        remove_salts_dataset,
-        remove_common_solvents,
-        remove_common_solvents_dataset,
-        defragment_smiles,
-        defragment_smiles_dataset,
-        neutralize_smiles,
-        neutralize_smiles_dataset,
-        standardize_stereochemistry,
-        standardize_stereochemistry_dataset,
-        remove_isotopes,
-        remove_isotopes_dataset,
-        canonicalize_tautomers,
-        canonicalize_tautomers_dataset,
-        normalize_functional_groups,
-        normalize_functional_groups_dataset,
-        reionize_smiles,
-        reionize_smiles_dataset,
-        disconnect_metals_smiles,
-        disconnect_metals_smiles_dataset,
         validate_smiles,
+        default_SMILES_standardization_pipeline,
+        
+        # Dataset-level functions
+        default_SMILES_standardization_pipeline_dataset,
+        canonicalize_smiles_dataset,
+        remove_salts_dataset,
+        remove_common_solvents_dataset,
+        defragment_smiles_dataset,
+        neutralize_smiles_dataset,
+        standardize_stereochemistry_dataset,
+        remove_isotopes_dataset,
+        canonicalize_tautomers_dataset,
+        normalize_functional_groups_dataset,
+        reionize_smiles_dataset,
+        disconnect_metals_smiles_dataset,
         validate_smiles_dataset,
-        check_smiles_for_pains,
         check_smiles_for_pains_dataset,
     ]
 

@@ -869,6 +869,216 @@ def test_combine_datasets_horizontal(session_workdir, request):
     assert result_aligned["n_columns"] == 4
 
 
+def test_merge_datasets_on_smiles(session_workdir, request):
+    """Test merging datasets based on SMILES structures."""
+    from molml_mcp.tools.core.dataset_ops import merge_datasets_on_smiles
+    from molml_mcp.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
+    
+    # Setup
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Create left dataset (bioactivity data)
+    left_data = pd.DataFrame({
+        "smiles": ["CCO", "CC(C)O", "c1ccccc1", "CCCC"],
+        "activity": [5.2, 6.1, 7.3, 4.8],
+        "source": ["A", "A", "B", "B"]
+    })
+    left_file = _store_resource(left_data, manifest_path, "left_bio", "Bioactivity data", 'csv')
+    
+    # Create right dataset (descriptors) - with some overlap
+    right_data = pd.DataFrame({
+        "canonical_smiles": ["CCO", "c1ccccc1", "CC(C)C", "CCCCC"],  # Different notation for isopropanol
+        "mw": [46.07, 78.11, 58.12, 72.15],
+        "logp": [-0.3, 1.6, 0.8, 2.3]
+    })
+    right_file = _store_resource(right_data, manifest_path, "right_desc", "Descriptor data", 'csv')
+    
+    # Test 1: Inner join with canonicalization (default)
+    result_inner = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="merged_inner",
+        explanation="Inner join bioactivity with descriptors",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="inner"
+    )
+    
+    assert "output_filename" in result_inner
+    assert result_inner["n_rows_left"] == 4
+    assert result_inner["n_rows_right"] == 4
+    assert result_inner["n_matched"] == 2  # CCO and benzene match
+    assert result_inner["n_rows"] == 2  # Only matched molecules
+    assert result_inner["merge_type"] == "inner"
+    assert result_inner["canonicalized"] is True
+    assert result_inner["smiles_column"] == "smiles"
+    
+    # Verify data
+    df_inner = _load_resource(manifest_path, result_inner["output_filename"])
+    assert len(df_inner) == 2
+    assert "smiles" in df_inner.columns
+    assert "activity" in df_inner.columns
+    assert "mw" in df_inner.columns
+    assert set(df_inner["smiles"]) == {"CCO", "c1ccccc1"}
+    
+    # Test 2: Left join - keep all left molecules
+    result_left = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="merged_left",
+        explanation="Left join to keep all bioactivity data",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="left"
+    )
+    
+    assert result_left["n_rows"] == 4  # All left molecules kept
+    df_left = _load_resource(manifest_path, result_left["output_filename"])
+    assert len(df_left) == 4
+    # Check that unmatched molecules have NaN for right columns
+    butane_row = df_left[df_left["smiles"] == "CCCC"].iloc[0]
+    assert pd.isna(butane_row["mw"])
+    
+    # Test 3: Right join - keep all right molecules
+    result_right = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="merged_right",
+        explanation="Right join to keep all descriptor data",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="right"
+    )
+    
+    assert result_right["n_rows"] == 4  # All right molecules kept
+    df_right = _load_resource(manifest_path, result_right["output_filename"])
+    assert len(df_right) == 4
+    # Check that unmatched molecules have NaN for left columns
+    isobutane_row = df_right[df_right["smiles"] == "CC(C)C"].iloc[0]
+    assert pd.isna(isobutane_row["activity"])
+    
+    # Test 4: Outer join - keep all molecules
+    result_outer = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="merged_outer",
+        explanation="Outer join to keep everything",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="outer"
+    )
+    
+    assert result_outer["n_rows"] == 6  # 4 unique from left + 2 unique from right
+    df_outer = _load_resource(manifest_path, result_outer["output_filename"])
+    assert len(df_outer) == 6
+    
+    # Test 5: Merge without canonicalization
+    result_no_canon = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="merged_no_canon",
+        explanation="Merge without canonicalization",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="inner",
+        canonicalize=False
+    )
+    
+    assert result_no_canon["canonicalized"] is False
+    # Without canonicalization, fewer matches (exact string matching only)
+    df_no_canon = _load_resource(manifest_path, result_no_canon["output_filename"])
+    assert len(df_no_canon) <= 2
+    
+    # Test 6: Overlapping column names with suffixes
+    left_overlap = pd.DataFrame({
+        "smiles": ["CCO", "CC(C)O"],
+        "value": [10, 20],
+        "label": ["A", "B"]
+    })
+    left_overlap_file = _store_resource(left_overlap, manifest_path, "left_overlap", "Left overlap", 'csv')
+    
+    right_overlap = pd.DataFrame({
+        "smiles": ["CCO", "CC(C)O"],
+        "value": [100, 200],  # Same column name as left
+        "type": ["X", "Y"]
+    })
+    right_overlap_file = _store_resource(right_overlap, manifest_path, "right_overlap", "Right overlap", 'csv')
+    
+    result_suffix = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_overlap_file,
+        right_filename=right_overlap_file,
+        output_filename="merged_suffix",
+        explanation="Test suffix handling",
+        left_smiles_col="smiles",
+        right_smiles_col="smiles",
+        how="inner",
+        suffixes=("_left", "_right")
+    )
+    
+    df_suffix = _load_resource(manifest_path, result_suffix["output_filename"])
+    assert "value_left" in df_suffix.columns
+    assert "value_right" in df_suffix.columns
+    assert df_suffix.loc[0, "value_left"] == 10
+    assert df_suffix.loc[0, "value_right"] == 100
+    
+    # Test 7: Invalid SMILES column name should raise error
+    with pytest.raises(ValueError, match="not found"):
+        merge_datasets_on_smiles(
+            project_manifest_path=manifest_path,
+            left_filename=left_file,
+            right_filename=right_file,
+            output_filename="should_fail",
+            explanation="Should fail",
+            left_smiles_col="nonexistent_col",
+            right_smiles_col="canonical_smiles",
+            how="inner"
+        )
+    
+    # Test 8: Invalid merge type should raise error
+    with pytest.raises(ValueError, match="Invalid how"):
+        merge_datasets_on_smiles(
+            project_manifest_path=manifest_path,
+            left_filename=left_file,
+            right_filename=right_file,
+            output_filename="should_fail",
+            explanation="Should fail",
+            left_smiles_col="smiles",
+            right_smiles_col="canonical_smiles",
+            how="invalid_type"
+        )
+    
+    # Test 9: Handle invalid SMILES gracefully
+    left_invalid = pd.DataFrame({
+        "smiles": ["CCO", "INVALID_SMILES", "c1ccccc1"],
+        "activity": [5.2, 6.1, 7.3]
+    })
+    left_invalid_file = _store_resource(left_invalid, manifest_path, "left_invalid", "Invalid SMILES", 'csv')
+    
+    result_invalid = merge_datasets_on_smiles(
+        project_manifest_path=manifest_path,
+        left_filename=left_invalid_file,
+        right_filename=right_file,
+        output_filename="merged_invalid",
+        explanation="Handle invalid SMILES",
+        left_smiles_col="smiles",
+        right_smiles_col="canonical_smiles",
+        how="inner"
+    )
+    
+    # Should succeed but drop invalid SMILES
+    df_invalid = _load_resource(manifest_path, result_invalid["output_filename"])
+    assert len(df_invalid) == 2  # Only valid matches
+
+
 def test_get_all_dataset_tools():
     """Test getting all dataset tools."""
     from molml_mcp.tools.core.dataset_ops import get_all_dataset_tools

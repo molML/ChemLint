@@ -1360,6 +1360,267 @@ def combine_datasets_horizontal(
     }
 
 
+def merge_datasets_on_smiles(
+    project_manifest_path: str,
+    left_filename: str,
+    right_filename: str,
+    output_filename: str,
+    explanation: str,
+    left_smiles_col: str,
+    right_smiles_col: str,
+    how: str = 'inner',
+    canonicalize: bool = True,
+    suffixes: tuple = ('_x', '_y')
+) -> dict:
+    """
+    Merge two datasets based on SMILES molecular structures.
+    
+    Performs SQL-like join operations on datasets using SMILES as the key.
+    Automatically canonicalizes SMILES for reliable matching by default.
+    
+    Use Cases:
+    - Combine bioactivity data from different sources
+    - Merge computed properties with experimental measurements
+    - Join descriptor sets with activity labels
+    - Integrate datasets from different databases
+    
+    Parameters
+    ----------
+    project_manifest_path : str
+        Path to the manifest.json file tracking all project resources.
+    left_filename : str
+        Filename of the left dataset (with unique ID).
+    right_filename : str
+        Filename of the right dataset (with unique ID).
+    output_filename : str
+        Base name for the output file (unique ID will be appended).
+    explanation : str
+        Human-readable description of the merge operation.
+    left_smiles_col : str
+        Name of the SMILES column in the left dataset.
+    right_smiles_col : str
+        Name of the SMILES column in the right dataset.
+    how : {'inner', 'left', 'right', 'outer'}, default='inner'
+        Type of merge to perform:
+        - 'inner': Only keep molecules present in both datasets
+        - 'left': Keep all left molecules, add right data where available
+        - 'right': Keep all right molecules, add left data where available
+        - 'outer': Keep all molecules from both datasets
+    canonicalize : bool, default=True
+        If True, canonicalize SMILES before merging for reliable matching.
+        Uses RDKit's canonical SMILES representation.
+    suffixes : tuple, default=('_x', '_y')
+        Suffixes to apply to overlapping column names (left, right).
+        Example: 'activity' becomes 'activity_x' and 'activity_y'.
+    
+    Returns
+    -------
+    dict
+        {
+            "output_filename": str,
+            "n_rows": int,
+            "n_rows_left": int,          # Original left row count
+            "n_rows_right": int,         # Original right row count
+            "n_matched": int,            # Molecules found in both
+            "merge_type": str,           # Join type used
+            "canonicalized": bool,       # Whether SMILES were canonicalized
+            "smiles_column": str,        # Name of SMILES column in output
+            "columns": list[str],
+            "preview": list[dict]
+        }
+    
+    Raises
+    ------
+    ValueError
+        If SMILES columns don't exist in datasets.
+        If invalid merge type specified.
+        If canonicalization fails for SMILES.
+    
+    Notes
+    -----
+    - Canonicalization is strongly recommended for reliable matching
+    - Invalid SMILES are dropped during canonicalization
+    - Output uses 'smiles' as the merged SMILES column name
+    - Overlapping columns (except SMILES) get suffixes applied
+    
+    Examples
+    --------
+    >>> merge_datasets_on_smiles(
+    ...     project_manifest_path="project/manifest.json",
+    ...     left_filename="bioactivity_ABC123.csv",
+    ...     right_filename="descriptors_XYZ789.csv",
+    ...     output_filename="merged_data",
+    ...     explanation="Merge bioactivity with molecular descriptors",
+    ...     left_smiles_col="smiles",
+    ...     right_smiles_col="canonical_smiles",
+    ...     how="inner"
+    ... )
+    """
+    import pandas as pd
+    from rdkit import Chem
+    
+    # Validate merge type
+    valid_how = ['inner', 'left', 'right', 'outer']
+    if how not in valid_how:
+        raise ValueError(f"Invalid how='{how}'. Must be one of {valid_how}")
+    
+    # Load datasets
+    df_left = _load_resource(project_manifest_path, left_filename)
+    df_right = _load_resource(project_manifest_path, right_filename)
+    
+    # Store original row counts
+    n_rows_left = len(df_left)
+    n_rows_right = len(df_right)
+    
+    # Validate SMILES columns exist
+    if left_smiles_col not in df_left.columns:
+        raise ValueError(
+            f"Left SMILES column '{left_smiles_col}' not found. "
+            f"Available: {list(df_left.columns)}"
+        )
+    if right_smiles_col not in df_right.columns:
+        raise ValueError(
+            f"Right SMILES column '{right_smiles_col}' not found. "
+            f"Available: {list(df_right.columns)}"
+        )
+    
+    # Prepare left dataset
+    df_left_merge = df_left.copy()
+    if canonicalize:
+        # Canonicalize left SMILES
+        def canon_smiles(smi):
+            if pd.isna(smi):
+                return None
+            try:
+                mol = Chem.MolFromSmiles(str(smi))
+                if mol is None:
+                    return None
+                return Chem.MolToSmiles(mol)
+            except:
+                return None
+        
+        df_left_merge['_smiles_canon'] = df_left_merge[left_smiles_col].apply(canon_smiles)
+        # Drop rows with invalid SMILES
+        n_invalid_left = df_left_merge['_smiles_canon'].isna().sum()
+        if n_invalid_left > 0:
+            print(f"Warning: Dropped {n_invalid_left} rows from left dataset with invalid SMILES")
+        df_left_merge = df_left_merge.dropna(subset=['_smiles_canon'])
+        merge_key_left = '_smiles_canon'
+    else:
+        merge_key_left = left_smiles_col
+    
+    # Prepare right dataset
+    df_right_merge = df_right.copy()
+    if canonicalize:
+        # Canonicalize right SMILES
+        df_right_merge['_smiles_canon'] = df_right_merge[right_smiles_col].apply(canon_smiles)
+        # Drop rows with invalid SMILES
+        n_invalid_right = df_right_merge['_smiles_canon'].isna().sum()
+        if n_invalid_right > 0:
+            print(f"Warning: Dropped {n_invalid_right} rows from right dataset with invalid SMILES")
+        df_right_merge = df_right_merge.dropna(subset=['_smiles_canon'])
+        merge_key_right = '_smiles_canon'
+    else:
+        merge_key_right = right_smiles_col
+    
+    # Calculate number of matched molecules (before merge)
+    left_smiles_set = set(df_left_merge[merge_key_left].dropna())
+    right_smiles_set = set(df_right_merge[merge_key_right].dropna())
+    n_matched = len(left_smiles_set & right_smiles_set)
+    
+    # Perform merge
+    merged_df = pd.merge(
+        df_left_merge,
+        df_right_merge,
+        left_on=merge_key_left,
+        right_on=merge_key_right,
+        how=how,
+        suffixes=suffixes
+    )
+    
+    # Clean up merge keys and create final SMILES column
+    if canonicalize:
+        # Use canonical SMILES as the output
+        merged_df['smiles'] = merged_df['_smiles_canon']
+        
+        # Drop original SMILES columns if they still exist
+        cols_to_drop = ['_smiles_canon']
+        if left_smiles_col in merged_df.columns and left_smiles_col != 'smiles':
+            cols_to_drop.append(left_smiles_col)
+        if right_smiles_col in merged_df.columns and right_smiles_col != 'smiles':
+            cols_to_drop.append(right_smiles_col)
+        # Handle suffixed versions
+        if f"{left_smiles_col}{suffixes[0]}" in merged_df.columns:
+            cols_to_drop.append(f"{left_smiles_col}{suffixes[0]}")
+        if f"{right_smiles_col}{suffixes[1]}" in merged_df.columns:
+            cols_to_drop.append(f"{right_smiles_col}{suffixes[1]}")
+        
+        merged_df = merged_df.drop(columns=cols_to_drop)
+    else:
+        # Use left SMILES as primary, fill with right where needed
+        if merge_key_left != merge_key_right:
+            # Different column names - both will exist in merged result
+            # Use left as primary, fill with right for right-only rows
+            if merge_key_left in merged_df.columns and merge_key_right in merged_df.columns:
+                merged_df['smiles'] = merged_df[merge_key_left].fillna(merged_df[merge_key_right])
+                cols_to_drop = [c for c in [merge_key_left, merge_key_right] if c in merged_df.columns and c != 'smiles']
+            elif merge_key_left in merged_df.columns:
+                merged_df['smiles'] = merged_df[merge_key_left]
+                cols_to_drop = [merge_key_left] if merge_key_left != 'smiles' else []
+            elif merge_key_right in merged_df.columns:
+                merged_df['smiles'] = merged_df[merge_key_right]
+                cols_to_drop = [merge_key_right] if merge_key_right != 'smiles' else []
+            else:
+                # Should not happen, but just in case
+                merged_df['smiles'] = None
+                cols_to_drop = []
+            
+            merged_df = merged_df.drop(columns=cols_to_drop, errors='ignore')
+        else:
+            # Same column name - just rename it if needed
+            if merge_key_left in merged_df.columns:
+                if merge_key_left != 'smiles':
+                    merged_df = merged_df.rename(columns={merge_key_left: 'smiles'})
+            else:
+                # Column might have gotten a suffix if there were overlaps
+                if f"{merge_key_left}{suffixes[0]}" in merged_df.columns:
+                    merged_df = merged_df.rename(columns={f"{merge_key_left}{suffixes[0]}": 'smiles'})
+                    # Drop the right version if it exists
+                    if f"{merge_key_right}{suffixes[1]}" in merged_df.columns:
+                        merged_df = merged_df.drop(columns=[f"{merge_key_right}{suffixes[1]}"])
+                elif f"{merge_key_right}{suffixes[1]}" in merged_df.columns:
+                    # Use right if left doesn't exist
+                    merged_df = merged_df.rename(columns={f"{merge_key_right}{suffixes[1]}": 'smiles'})
+
+
+    
+    # Reorder columns to put SMILES first
+    cols = ['smiles'] + [col for col in merged_df.columns if col != 'smiles']
+    merged_df = merged_df[cols]
+    
+    # Store result
+    output_filename_stored = _store_resource(
+        merged_df,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
+    
+    return {
+        "output_filename": output_filename_stored,
+        "n_rows": len(merged_df),
+        "n_rows_left": n_rows_left,
+        "n_rows_right": n_rows_right,
+        "n_matched": n_matched,
+        "merge_type": how,
+        "canonicalized": canonicalize,
+        "smiles_column": "smiles",
+        "columns": list(merged_df.columns),
+        "preview": merged_df.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -1377,5 +1638,6 @@ def get_all_dataset_tools():
         keep_columns,
         transform_column,
         combine_datasets_vertical,
-        combine_datasets_horizontal
+        combine_datasets_horizontal,
+        merge_datasets_on_smiles
     ]

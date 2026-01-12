@@ -10,6 +10,7 @@ from molml_mcp.tools.core.dataset_ops import (
     drop_from_dataset,
     keep_from_dataset,
     combine_datasets_horizontal,
+    merge_datasets_on_smiles,
     get_all_dataset_tools,
 )
 from molml_mcp.tools.core.filtering import (
@@ -44,6 +45,7 @@ __all__ = [
     'drop_from_dataset',
     'keep_from_dataset',
     'combine_datasets_horizontal',
+    'merge_datasets_on_smiles',
     'get_all_dataset_tools',
     'filter_by_property_range',
     'filter_by_lipinski_ro5',

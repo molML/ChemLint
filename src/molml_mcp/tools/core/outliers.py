@@ -29,45 +29,19 @@ def detect_outliers_zscore(
     threshold: float = 3.0
 ) -> Dict:
     """
-    Detect outliers using Z-score method (standard score).
-    
-    The Z-score method identifies outliers as values that deviate from the mean
-    by more than a specified number of standard deviations. Default threshold is 3,
-    meaning values beyond ±3 standard deviations are flagged as outliers.
-    
-    Formula: z = (x - μ) / σ
-    Outlier if: |z| > threshold
-    
-    Assumes data is approximately normally distributed. For non-normal data,
-    consider using Modified Z-score or IQR method instead.
+    Detect outliers using Z-score method. Formula: z = (x - μ) / σ. Outlier if |z| > threshold.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names to check for outliers
-        output_filename: Name for output dataset
-        explanation: Description of this outlier detection operation
+        project_manifest_path: Path to manifest.json
+        columns: Columns to check for outliers
+        output_filename: Output dataset name
+        explanation: Description of operation
         threshold: Number of standard deviations (default: 3.0)
         
     Returns:
-        Dictionary containing:
-            - output_filename: New resource filename
-            - n_rows: Total number of rows
-            - columns_checked: Columns that were analyzed
-            - outliers_per_column: Dict mapping column to number of outliers
-            - total_outliers: Total rows with at least one outlier
-            - outlier_columns_added: List of new boolean columns added
-            - threshold: Z-score threshold used
-            - summary: Human-readable summary
-            
-    Example:
-        >>> result = detect_outliers_zscore(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     ["pIC50", "molecular_weight"],
-        ...     "dataset_zscore_filtered",
-        ...     "Z-score outlier detection with threshold=3"
-        ... )
+        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column, 
+        total_outliers, outlier_columns_added, threshold, preview, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -150,46 +124,20 @@ def detect_outliers_modified_zscore(
     threshold: float = 3.5
 ) -> Dict:
     """
-    Detect outliers using Modified Z-score method (robust to outliers).
-    
-    The Modified Z-score uses median and median absolute deviation (MAD) instead
-    of mean and standard deviation, making it more robust to existing outliers.
-    This is preferred when data may already contain outliers or is not normally distributed.
-    
-    Formula: M = 0.6745 × (x - median) / MAD
-    where MAD = median(|x - median|)
-    Outlier if: |M| > threshold
-    
-    The constant 0.6745 makes MAD comparable to standard deviation for normal distributions.
-    Default threshold is 3.5 (common convention for modified Z-score).
+    Detect outliers using Modified Z-score (robust to outliers). 
+    Formula: M = 0.6745 × (x - median) / MAD, where MAD = median(|x - median|). Outlier if |M| > threshold.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names to check for outliers
-        output_filename: Name for output dataset
-        explanation: Description of this outlier detection operation
+        project_manifest_path: Path to manifest.json
+        columns: Columns to check for outliers
+        output_filename: Output dataset name
+        explanation: Description of operation
         threshold: Modified Z-score threshold (default: 3.5)
         
     Returns:
-        Dictionary containing:
-            - output_filename: Resource filename
-            - n_rows: Total number of rows
-            - columns_checked: Columns that were analyzed
-            - outliers_per_column: Dict mapping column to number of outliers
-            - total_outliers: Total rows with at least one outlier
-            - outlier_columns_added: List of new boolean columns added
-            - threshold: Modified Z-score threshold used
-            - summary: Human-readable summary
-            
-    Example:
-        >>> result = detect_outliers_modified_zscore(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     ["pIC50", "logP"],
-        ...     "dataset_modified_zscore",
-        ...     "Modified Z-score outlier detection"
-        ... )
+        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
+        total_outliers, outlier_columns_added, threshold, preview, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -271,48 +219,20 @@ def detect_outliers_iqr(
     multiplier: float = 1.5
 ) -> Dict:
     """
-    Detect outliers using Interquartile Range (IQR) method.
-    
-    The IQR method is a non-parametric approach that flags values as outliers if they
-    fall outside the range [Q1 - k×IQR, Q3 + k×IQR], where:
-    - Q1 is the 25th percentile
-    - Q3 is the 75th percentile
-    - IQR = Q3 - Q1
-    - k is the multiplier (default: 1.5)
-    
-    The default multiplier of 1.5 is standard in exploratory data analysis (Tukey's method).
-    Use 3.0 for a more conservative threshold (far outliers).
-    
-    This method does not assume normality and is robust to extreme values.
+    Detect outliers using IQR method. Outliers fall outside [Q1 - k×IQR, Q3 + k×IQR].
+    Non-parametric, robust to extremes. Use k=1.5 for outliers, k=3.0 for far outliers.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names to check for outliers
-        output_filename: Name for output dataset
-        explanation: Description of this outlier detection operation
-        multiplier: IQR multiplier (default: 1.5 for outliers, 3.0 for far outliers)
+        project_manifest_path: Path to manifest.json
+        columns: Columns to check for outliers
+        output_filename: Output dataset name
+        explanation: Description of operation
+        multiplier: IQR multiplier k (default: 1.5)
         
     Returns:
-        Dictionary containing:
-            - output_filename: Resource filename
-            - n_rows: Total number of rows
-            - columns_checked: Columns that were analyzed
-            - outliers_per_column: Dict mapping column to number of outliers
-            - total_outliers: Total rows with at least one outlier
-            - outlier_columns_added: List of new boolean columns added
-            - bounds_per_column: Dict with lower and upper bounds for each column
-            - multiplier: IQR multiplier used
-            - summary: Human-readable summary
-            
-    Example:
-        >>> result = detect_outliers_iqr(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     ["pIC50", "molecular_weight"],
-        ...     "dataset_iqr_filtered",
-        ...     "IQR outlier detection with 1.5x multiplier"
-        ... )
+        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
+        total_outliers, outlier_columns_added, bounds_per_column, multiplier, preview, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -402,49 +322,20 @@ def detect_outliers_grubbs(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Detect outliers using Grubbs' test (parametric test for single outlier).
-    
-    Grubbs' test (also called maximum normed residual test) is a statistical test
-    used to detect a single outlier in a univariate dataset that follows an
-    approximately normal distribution. It tests the hypothesis that the most extreme
-    value is an outlier.
-    
-    Test statistic: G = max|x_i - mean| / std
-    The critical value depends on sample size and significance level.
-    
-    IMPORTANT: This test assumes normality. Use Shapiro-Wilk or similar test first
-    to verify normality assumption. For non-normal data, use IQR or Modified Z-score.
-    
-    This test detects only ONE outlier per run. If you expect multiple outliers,
-    use the Generalized ESD test instead.
+    Detect outliers using Grubbs' test (single outlier, assumes normality).
+    Test statistic: G = max|x_i - mean| / std. Detects ONE outlier per run.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names to check for outliers
-        output_filename: Name for output dataset
-        explanation: Description of this outlier detection operation
+        project_manifest_path: Path to manifest.json
+        columns: Columns to check for outliers
+        output_filename: Output dataset name
+        explanation: Description of operation
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - output_filename: Resource filename
-            - n_rows: Total number of rows
-            - columns_checked: Columns that were analyzed
-            - outliers_per_column: Dict mapping column to outlier info (index, value, G-statistic, p-value)
-            - total_outliers: Total rows with at least one outlier
-            - outlier_columns_added: List of new boolean columns added
-            - alpha: Significance level used
-            - summary: Human-readable summary
-            
-    Example:
-        >>> result = detect_outliers_grubbs(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     ["pIC50"],
-        ...     "dataset_grubbs_filtered",
-        ...     "Grubbs test for single outlier"
-        ... )
+        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
+        total_outliers, outlier_columns_added, alpha, preview, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -561,53 +452,21 @@ def detect_outliers_gesd(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Detect outliers using Generalized Extreme Studentized Deviate (ESD) test.
-    
-    The Generalized ESD test is an extension of Grubbs' test that can detect
-    multiple outliers in a univariate dataset. It performs a series of tests,
-    removing the most extreme value at each step, up to a maximum number of outliers.
-    
-    Procedure:
-    1. Specify maximum number of outliers to detect (k)
-    2. Iteratively calculate test statistic and remove most extreme value
-    3. Compare against critical values to determine actual number of outliers
-    
-    IMPORTANT: This test assumes normality. Use normality tests first to verify.
-    For non-normal data, use IQR or Modified Z-score instead.
-    
-    The test is more powerful than running Grubbs' test multiple times because
-    it accounts for masking effects (where one outlier can hide another).
+    Detect outliers using Generalized ESD test (multiple outliers, assumes normality).
+    Extension of Grubbs' test that iteratively removes extreme values up to max_outliers.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names to check for outliers
-        output_filename: Name for output dataset
-        explanation: Description of this outlier detection operation
-        max_outliers: Maximum number of outliers to detect (default: 10)
+        project_manifest_path: Path to manifest.json
+        columns: Columns to check for outliers
+        output_filename: Output dataset name
+        explanation: Description of operation
+        max_outliers: Maximum outliers to detect (default: 10)
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - output_filename: Resource filename
-            - n_rows: Total number of rows
-            - columns_checked: Columns that were analyzed
-            - outliers_per_column: Dict with detected outliers info per column
-            - total_outliers: Total rows with at least one outlier
-            - outlier_columns_added: List of new boolean columns added
-            - max_outliers: Maximum outliers parameter
-            - alpha: Significance level used
-            - summary: Human-readable summary
-            
-    Example:
-        >>> result = detect_outliers_gesd(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     ["pIC50", "logP"],
-        ...     "dataset_gesd_filtered",
-        ...     "Generalized ESD test for multiple outliers",
-        ...     max_outliers=5
-        ... )
+        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
+        total_outliers, outlier_columns_added, max_outliers, alpha, preview, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -737,11 +596,7 @@ def detect_outliers_gesd(
 
 def get_all_outlier_detection_tools():
     """
-    Returns a list of all MCP-exposed outlier detection functions for server registration.
-    
-    Includes:
-    - Statistical methods: Z-score, Modified Z-score, IQR
-    - Parametric tests: Grubbs' test, Generalized ESD test
+    Returns all MCP-exposed outlier detection functions.
     """
     return [
         detect_outliers_zscore,

@@ -22,7 +22,6 @@ from molml_mcp.tools.core import (
 from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset, deduplicate_dataset
 from molml_mcp.tools.core_mol import get_all_scaffold_tools, get_all_complexity_tools, get_all_activity_cliff_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
-from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
 from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
 from molml_mcp.tools.core_mol.data_splitting import random_split_dataset, scaffold_split_dataset, stratified_split_dataset, cluster_based_split_dataset
 from molml_mcp.tools.core_mol.similarity import (
@@ -94,9 +93,6 @@ for tool_func in get_all_activity_cliff_tools():
 # Add substructure matching tools
 for tool_func in get_all_substructure_matching_tools():
     mcp.add_tool(tool_func)
-
-# Add stereoisomer smiles_ops tool
-mcp.add_tool(enumerate_stereo_isomers_smiles)
 
 # Add descriptor tools
 mcp.add_tool(list_rdkit_descriptors)

@@ -12,23 +12,35 @@ from typing import Any, Dict, List, Optional
 
 def store_csv_from_path(file_path: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
     """
-    Import a CSV file from disk and add it into the project manifest. Call this when the user provided a CSV file path.
+    🚀 ENTRY POINT: Import a CSV file from a filesystem path into the project.
+    
+    ⚠️ USE THIS FUNCTION when the user provides a file path like "/path/to/data.csv"
+    
+    This is the PRIMARY way to bring external CSV files into the MCP project system.
+    After calling this function, use the returned output_filename for all subsequent
+    operations (NOT the original file_path).
+
+    When user says: "Use /Users/me/compounds.csv", call this function!!!
     
     Parameters
     ----------
     file_path : str
-        Absolute path to CSV file
+        Full filesystem path to the CSV file (e.g., "/Users/name/data.csv")
     project_manifest_path : str
-        Absolute path to manifest.json
+        Path to the project's manifest.json file
     filename : str
-        Name for stored dataset (no extension)
+        Descriptive name for the dataset (no .csv extension needed)
     explanation : str
-        Brief description
+        Brief description of what this dataset contains
 
     Returns
     -------
     dict
-        Contains output_filename, n_rows, columns, preview
+        Contains:
+        - output_filename: Use this for all future operations on this dataset
+        - n_rows: Number of rows loaded
+        - columns: List of column names
+        - preview: First 5 rows
     """
     import pandas as pd
 

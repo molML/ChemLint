@@ -1123,7 +1123,7 @@ def merge_datasets_on_smiles(
     }
 
 
-def read_txt(input_filename: str, project_manifest_path: str) -> Dict[str, str]:
+def read_txt(input_filename: str, project_manifest_path: str) -> Dict[str, Any]:
     """
     Read a text file from project resources and return its contents.
     

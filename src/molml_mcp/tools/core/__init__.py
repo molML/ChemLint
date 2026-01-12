@@ -11,6 +11,8 @@ from molml_mcp.tools.core.dataset_ops import (
     keep_from_dataset,
     combine_datasets_horizontal,
     merge_datasets_on_smiles,
+    read_txt,
+    read_json,
     get_all_dataset_tools,
 )
 from molml_mcp.tools.core.filtering import (
@@ -46,6 +48,8 @@ __all__ = [
     'keep_from_dataset',
     'combine_datasets_horizontal',
     'merge_datasets_on_smiles',
+    'read_txt',
+    'read_json',
     'get_all_dataset_tools',
     'filter_by_property_range',
     'filter_by_lipinski_ro5',

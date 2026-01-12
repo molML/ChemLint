@@ -18,59 +18,25 @@ def filter_by_property_range(
     explanation: str
 ) -> dict:
     """
-    Filter dataset by property ranges. Molecules must pass ALL criteria (AND logic).
-    Ranges are inclusive: min ≤ value ≤ max.
+    Filter dataset by property ranges (AND logic, inclusive min/max).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     property_ranges : dict[str, tuple[float, float]]
-        Dictionary mapping column names to (min, max) tuples.
-        Example: {'MolWt': (200, 500), 'TPSA': (0, 140)}
+        Dict mapping columns to (min, max) tuples
     output_filename : str
-        Base name for the output filtered dataset.
+        Output dataset name (no extension)
     explanation : str
-        Description of this filtering operation.
+        Brief description
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, percent_retained,
-        filters_applied (per-filter statistics), columns, preview, and note.
-    
-    Examples
-    --------
-    Lipinski's Rule of Five:
-    
-        result = filter_by_property_range(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            property_ranges={
-                'MolWt': (0, 500),
-                'MolLogP': (-5, 5),
-                'NumHDonors': (0, 5),
-                'NumHAcceptors': (0, 10)
-            },
-            output_filename='lipinski_filtered',
-            explanation='Lipinski filtering'
-        )
-    
-    Multiple property windows:
-    
-        result = filter_by_property_range(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            property_ranges={
-                'MolWt': (200, 500),
-                'TPSA': (0, 140),
-                'MolLogP': (-2, 5)
-            },
-            output_filename='filtered_druglike',
-            explanation='Drug-like filtering'
-        )
+        Contains output_filename, n_input, n_output, n_removed, percent_retained, filters_applied, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -159,48 +125,25 @@ def filter_by_lipinski_ro5(
     explanation: str
 ) -> dict:
     """
-    Filter dataset by Lipinski's Rule of Five criteria.
-    
-    Calculates required properties on-the-fly from SMILES and filters molecules that pass ALL criteria:
-    - Molecular weight ≤ 500 Da
-    - LogP ≤ 5
-    - H-bond donors ≤ 5
-    - H-bond acceptors ≤ 10
+    Filter by Lipinski's Rule of Five (MW≤500, LogP≤5, HBD≤5, HBA≤10).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
+        Output dataset name (no extension)
     explanation : str
-        Description of this filtering operation.
+        Brief description
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, percent_retained,
-        filters_applied (per-filter statistics), lipinski_properties_added (list of properties),
-        columns, preview, and note.
-    
-    Examples
-    --------
-    Apply Lipinski filtering:
-    
-        result = filter_by_lipinski_ro5(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='lipinski_compliant',
-            explanation='Lipinski Rule of Five filtering'
-        )
-        
-        print(f"Retained {result['percent_retained']:.1f}% of molecules")
-        print(f"Properties added: {result['lipinski_properties_added']}")
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, filters_applied, lipinski_properties_added, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -316,45 +259,25 @@ def filter_by_veber_rules(
     explanation: str
 ) -> dict:
     """
-    Filter dataset by Veber's rules for oral bioavailability.
-    
-    Calculates required properties on-the-fly from SMILES and filters molecules that pass ALL criteria:
-    - Topological polar surface area (TPSA) ≤ 140 Ų
-    - Number of rotatable bonds ≤ 10
+    Filter by Veber's rules for oral bioavailability (TPSA≤140, RotBonds≤10).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
+        Output dataset name (no extension)
     explanation : str
-        Description of this filtering operation.
+        Brief description
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, percent_retained,
-        filters_applied (per-filter statistics), veber_properties_added (list of properties),
-        columns, preview, and note.
-    
-    Examples
-    --------
-    Apply Veber filtering:
-    
-        result = filter_by_veber_rules(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='veber_compliant',
-            explanation='Veber rules filtering'
-        )
-        
-        print(f"Retained {result['percent_retained']:.1f}% of molecules")
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, filters_applied, veber_properties_added, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -461,57 +384,27 @@ def filter_by_pains(
     action: str = 'drop'
 ) -> dict:
     """
-    Filter dataset by removing or keeping PAINS-flagged molecules.
-    
-    Screens molecules for PAINS (Pan-Assay INterference compoundS) patterns using RDKit.
-    PAINS are substructures that cause false positives in screening through non-specific
-    binding, aggregation, or assay interference.
+    Filter by PAINS (Pan-Assay INterference compoundS) patterns.
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
-    explanation : str, default='Remove PAINS flagged molecules'
-        Description of this filtering operation.
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
     action : str, default='drop'
-        Filter action: 'drop' removes PAINS hits, 'keep' retains only PAINS hits.
+        'drop' removes PAINS hits, 'keep' retains only PAINS hits
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_pains_flagged,
-        n_invalid_smiles, percent_retained, action, columns, preview, and note.
-    
-    Examples
-    --------
-    Remove PAINS-flagged molecules (default):
-    
-        result = filter_by_pains(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='pains_filtered',
-            action='drop'
-        )
-        
-        print(f"Removed {result['n_pains_flagged']} PAINS-flagged molecules")
-    
-    Keep only PAINS-flagged molecules for analysis:
-    
-        result = filter_by_pains(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='pains_only',
-            explanation='Extract PAINS hits for analysis',
-            action='keep'
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_pains_flagged, n_invalid_smiles, percent_retained, action, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -605,58 +498,27 @@ def filter_by_lead_likeness(
     strict: bool = True
 ) -> dict:
     """
-    Filter dataset by lead-likeness rules for hit-to-lead optimization.
-    
-    Calculates required properties on-the-fly from SMILES and filters molecules that pass:
-    - Molecular weight: 200-350 Da (strict) or 150-400 Da (lenient)
-    - LogP ≤ 3.5 (strict) or ≤ 4.0 (lenient)
-    - Rotatable bonds ≤ 7 (strict) or ≤ 10 (lenient)
-    - Number of rings ≥ 1 (at least one ring system required)
+    Filter by lead-likeness rules (strict: MW:200-350, LogP≤3.5, RotBonds≤7, Rings≥1).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
-    explanation : str, default='Filter by lead-likeness criteria'
-        Description of this filtering operation.
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
     strict : bool, default=True
-        If True, use strict lead-likeness criteria. If False, use lenient criteria.
+        Use strict (True) or lenient (False) criteria
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
-        percent_retained, criteria_applied, lead_properties_added, columns, preview, and note.
-    
-    Examples
-    --------
-    Apply strict lead-likeness filtering:
-    
-        result = filter_by_lead_likeness(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='lead_like',
-            strict=True
-        )
-        
-        print(f"Retained {result['percent_retained']:.1f}% of molecules")
-    
-    Apply lenient lead-likeness filtering:
-    
-        result = filter_by_lead_likeness(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='lead_like_lenient',
-            strict=False
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, criteria_mode, filters_applied, lead_properties_added, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -805,60 +667,27 @@ def filter_by_rule_of_three(
     strict: bool = True
 ) -> dict:
     """
-    Filter dataset by Rule of Three for fragment-based drug discovery.
-    
-    Calculates required properties on-the-fly from SMILES and filters molecules that pass:
-    - Molecular weight ≤ 300 Da (strict) or ≤ 350 Da (lenient)
-    - LogP ≤ 3 (strict) or ≤ 3.5 (lenient)
-    - H-bond donors ≤ 3 (strict) or ≤ 4 (lenient)
-    - H-bond acceptors ≤ 3 (strict) or ≤ 6 (lenient)
-    - Rotatable bonds ≤ 3 (strict) or ≤ 5 (lenient)
-    - TPSA ≤ 60 Ų (strict) or ≤ 90 Ų (lenient)
+    Filter by Rule of Three for fragments (strict: MW≤300, LogP≤3, HBD≤3, HBA≤3, RotBonds≤3, TPSA≤60).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
-    explanation : str, default='Filter by Rule of Three'
-        Description of this filtering operation.
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
     strict : bool, default=True
-        If True, use strict Rule of Three criteria. If False, use lenient criteria.
+        Use strict (True) or lenient (False) criteria
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
-        percent_retained, criteria_applied, ro3_properties_added, columns, preview, and note.
-    
-    Examples
-    --------
-    Apply strict Rule of Three filtering:
-    
-        result = filter_by_rule_of_three(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='ro3_fragments',
-            strict=True
-        )
-        
-        print(f"Retained {result['percent_retained']:.1f}% fragment-like molecules")
-    
-    Apply lenient Rule of Three filtering:
-    
-        result = filter_by_rule_of_three(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='ro3_lenient',
-            strict=False
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, criteria_mode, filters_applied, ro3_properties_added, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -1004,59 +833,27 @@ def filter_by_qed(
     min_qed: float = 0.5
 ) -> dict:
     """
-    Filter dataset by QED (Quantitative Estimate of Drug-likeness) score.
-    
-    Calculates QED descriptor on-the-fly from SMILES and filters molecules with QED ≥ min_qed.
-    QED is a composite score (0-1) combining MW, LogP, HBA, HBD, PSA, rotatable bonds,
-    aromatic rings, and structural alerts. Higher scores indicate more drug-like molecules.
+    Filter by QED (Quantitative Estimate of Drug-likeness) score (0-1 scale).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     output_filename : str
-        Base name for the output filtered dataset.
-    explanation : str, default='Filter by QED score'
-        Description of this filtering operation.
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
     min_qed : float, default=0.5
-        Minimum QED score threshold (0-1). Typical values:
-        - 0.5: Moderate drug-likeness
-        - 0.6: Good drug-likeness
-        - 0.7: High drug-likeness
+        Minimum QED threshold (0-1)
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
-        percent_retained, min_qed_threshold, mean_qed, median_qed, columns, preview, and note.
-    
-    Examples
-    --------
-    Filter by moderate QED threshold:
-    
-        result = filter_by_qed(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='qed_filtered',
-            min_qed=0.5
-        )
-        
-        print(f"Retained {result['percent_retained']:.1f}% with QED ≥ 0.5")
-    
-    Filter by high drug-likeness threshold:
-    
-        result = filter_by_qed(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            output_filename='high_qed',
-            min_qed=0.7
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, min_qed_threshold, mean_qed, median_qed, columns, warning, note
     """
     from rdkit.Chem import QED
     
@@ -1162,75 +959,29 @@ def filter_by_scaffold(
     smiles_column: str = 'smiles'
 ) -> dict:
     """
-    Filter dataset by Bemis-Murcko scaffold membership.
-    
-    Filters molecules based on whether their Bemis-Murcko scaffold matches any scaffold
-    in the provided list. If the dataset already has a 'scaffold_bemis_murcko' column,
-    it will be used. Otherwise, scaffolds will be calculated on-the-fly from SMILES.
+    Filter by Bemis-Murcko scaffold membership.
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     output_filename : str
-        Base name for the output filtered dataset.
+        Output dataset name (no extension)
     scaffold_smiles_list : list[str]
-        List of scaffold SMILES to filter by. Molecules matching any scaffold will be kept/dropped.
-    explanation : str, default='Filter by scaffold'
-        Description of this filtering operation.
+        List of scaffold SMILES to filter by
+    explanation : str
+        Brief description
     action : str, default='keep'
-        Filter action: 'keep' retains molecules matching scaffolds, 'drop' removes them.
+        'keep' retains matching scaffolds, 'drop' removes them
     smiles_column : str, default='smiles'
-        Name of column containing SMILES strings (only used if scaffold column doesn't exist).
+        SMILES column name (used if scaffold column missing)
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_matching_scaffold,
-        n_invalid_smiles, n_no_scaffold, percent_retained, action, scaffolds_used,
-        scaffold_column_existed, columns, and note.
-    
-    Examples
-    --------
-    Keep only molecules with specific scaffolds:
-    
-        result = filter_by_scaffold(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='benzene_scaffolds',
-            scaffold_smiles_list=['c1ccccc1'],  # Benzene scaffold
-            action='keep'
-        )
-        
-        print(f"Kept {result['n_matching_scaffold']} molecules with benzene scaffold")
-    
-    Remove molecules with unwanted scaffolds:
-    
-        result = filter_by_scaffold(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='no_pyridine',
-            scaffold_smiles_list=['c1ccncc1'],  # Pyridine scaffold
-            explanation='Remove pyridine-containing molecules',
-            action='drop'
-        )
-    
-    Filter by multiple scaffolds:
-    
-        result = filter_by_scaffold(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='aromatic_cores',
-            scaffold_smiles_list=[
-                'c1ccccc1',           # Benzene
-                'c1ccc2ccccc2c1',     # Naphthalene
-                'c1ccc2cc3ccccc3cc2c1'  # Anthracene
-            ],
-            explanation='Keep molecules with aromatic scaffolds',
-            action='keep'
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_matching_scaffold, n_invalid_smiles, n_no_scaffold, percent_retained, action, scaffolds_used, scaffold_column_existed, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -1382,84 +1133,29 @@ def filter_by_functional_groups(
     forbidden: list[str] | None = None
 ) -> dict:
     """
-    Filter dataset by presence/absence of functional groups.
-    
-    Uses functional group pattern matching to filter molecules based on required and/or
-    forbidden functional groups. Molecules must contain ALL required groups and NONE of
-    the forbidden groups to pass the filter.
-    
-    Detects 58 functional group patterns including:
-    - Carbonyls: Carbonyl group, Aldehyde, Ketone, Ester, Amide, Carboxylic acid
-    - Nitrogen groups: Primary/Secondary/Tertiary amine, Amide, Urea, Guanidine, Nitro
-    - Oxygen groups: Hydroxyl, Ether, Ester, Epoxide
-    - Sulfur groups: Thiol, Sulfide, Sulfone, Sulfonamide
-    - Aromatics: Benzene ring, Pyridine, Imidazole, Furan, Thiophene
-    - Halogens: Fluorine, Chlorine, Bromine, Iodine
-    - And many more...
+    Filter by functional group presence/absence (58 patterns detected).
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset.
+        Input dataset filename
     smiles_column : str
-        Name of the column containing SMILES strings.
+        SMILES column name
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json
     output_filename : str
-        Base name for the output filtered dataset.
-    explanation : str, default='Filter by functional groups'
-        Description of this filtering operation.
-    required : list[str] or None, default=None
-        List of functional group names that MUST be present (AND logic).
-        If None or empty, no required groups constraint.
-    forbidden : list[str] or None, default=None
-        List of functional group names that MUST NOT be present (AND logic).
-        If None or empty, no forbidden groups constraint.
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
+    required : list[str] | None
+        Functional groups that MUST be present (AND logic)
+    forbidden : list[str] | None
+        Functional groups that MUST NOT be present (AND logic)
     
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
-        percent_retained, required_groups, forbidden_groups, filter_summary,
-        columns, and note.
-    
-    Examples
-    --------
-    Filter for molecules with carboxylic acids but no amines:
-    
-        result = filter_by_functional_groups(
-            input_filename='molecules_AB12CD34.csv',
-            smiles_column='smiles',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='acids_no_amines',
-            explanation='Carboxylic acids without amine groups',
-            required=['Carboxylic acid'],
-            forbidden=['Primary amine', 'Secondary amine', 'Tertiary amine']
-        )
-        
-        print(f"Kept {result['n_output']} molecules with required groups")
-    
-    Filter for molecules with both hydroxyl and carbonyl:
-    
-        result = filter_by_functional_groups(
-            input_filename='molecules_AB12CD34.csv',
-            smiles_column='smiles',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='hydroxyl_carbonyl',
-            required=['Hydroxyl', 'Carbonyl group'],
-            forbidden=None
-        )
-    
-    Filter out halogenated compounds:
-    
-        result = filter_by_functional_groups(
-            input_filename='molecules_AB12CD34.csv',
-            smiles_column='smiles',
-            project_manifest_path='/path/to/manifest.json',
-            output_filename='no_halogens',
-            required=None,
-            forbidden=['Fluorine', 'Chlorine', 'Bromine', 'Iodine']
-        )
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, required_groups, forbidden_groups, filter_summary, columns, warning, note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)

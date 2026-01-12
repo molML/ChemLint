@@ -187,29 +187,7 @@ def _edit_distance_similarity(smiles_list: List[str]) -> np.ndarray:
     """
     Compute normalized edit distance similarity matrix for SMILES strings.
     
-    Edit distance (Levenshtein distance) measures the minimum number of character-level
-    edits needed to transform one string into another. This is normalized by the maximum
-    possible distance (length of longer string) to give a similarity score between 0 and 1.
-    
-    Normalized similarity = 1 - (edit_distance / max_length)
-    
-    Where max_length = max(len(s1), len(s2))
-    
-    **Use Cases**:
-    - Quick structural similarity without generating fingerprints
-    - Scaffold/substructure detection
-    - Identifying molecules with similar SMILES patterns
-    - Preprocessing or sanity checks
-    
-    **Limitations**:
-    - Sensitive to SMILES canonicalization (ensure consistent format)
-    - Different SMILES can represent same molecule
-    - Does not capture 3D or chemical similarity
-    - Slower than fingerprint-based methods for large datasets (O(N²×L²) complexity)
-    
-    **Performance**: For N molecules with average SMILES length L:
-    - Time: O(N² × L²) - use for N < 1000
-    - For larger datasets, use fingerprint-based methods instead
+    Similarity = 1 - (edit_distance / max_length)
     
     Parameters
     ----------
@@ -219,16 +197,7 @@ def _edit_distance_similarity(smiles_list: List[str]) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Symmetric similarity matrix of shape (n_molecules, n_molecules).
-        Values range from 0 (completely different) to 1 (identical).
-        Diagonal values are always 1.0.
-        
-    Example
-    -------
-    >>> smiles_list = ['CCO', 'CCCO', 'c1ccccc1']
-    >>> sim_matrix = _edit_distance_similarity(smiles_list)
-    >>> sim_matrix[0, 1]  # CCO vs CCCO: edit distance=1, max_len=4
-    0.75  # 1 - (1/4) = 0.75
+        Symmetric similarity matrix (n_molecules × n_molecules), values 0-1, diagonal = 1.0.
     """
     n_molecules = len(smiles_list)
     similarity_matrix = np.zeros((n_molecules, n_molecules))
@@ -323,123 +292,33 @@ def compute_similarity_matrix(
     """
     Compute pairwise similarity matrix for molecules using precomputed molecular fingerprints.
     
-    Calculates an NxN similarity matrix for all molecule pairs in the dataset. The matrix is symmetric
-    with diagonal values of 1.0 (each molecule has perfect similarity to itself).
-    
-    **Available Similarity Metrics:**
-    
-    - **tanimoto** (default, RECOMMENDED): Tanimoto coefficient (Jaccard index)
-      - USE WITH: Binary fingerprints (ECFP, MACCS, RDKit FP, Morgan)
-      - PERFORMANCE: Optimized with RDKit C++ implementation (~5x faster)
-      - BEST FOR: Molecular similarity - the de facto standard in cheminformatics
-    
-    - **dice**: Dice coefficient
-      - USE WITH: Binary fingerprints
-      - Similar to Tanimoto but with different normalization (2ab/(a+b) vs ab/(a+b-ab))
-    
-    - **cosine**: Cosine similarity
-      - USE WITH: Any continuous-valued vectors (count fingerprints, descriptors)
-      - Measures angle between vectors, insensitive to magnitude
-    
-    - **euclidean**: Euclidean distance-based similarity (1/(1+distance))
-      - USE WITH: Continuous-valued descriptors or count fingerprints
-      - Sensitive to feature magnitude and scale
-    
-    - **manhattan**: Manhattan distance-based similarity (1/(1+distance))
-      - USE WITH: Continuous-valued descriptors or count fingerprints
-      - Less sensitive to outliers than Euclidean
-    
-    - **edit_distance**: Normalized Levenshtein distance on SMILES strings
-      - USE WITH: SMILES strings directly (no feature vectors needed!)
-      - PERFORMANCE: O(N²×L²) - slower than fingerprints for large datasets
-      - BEST FOR: Quick similarity checks, scaffold matching, N < 1000 molecules
-      - NOTE: Sensitive to SMILES canonicalization - ensure consistent format
-    
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset containing SMILES strings.
+        Input dataset filename.
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json.
     smiles_column : str
-        Name of the column containing SMILES strings.
+        Column containing SMILES strings.
     feature_vectors_filename : str
-        Filename of the precomputed feature vectors (joblib format).
-        Must be a dictionary mapping SMILES to numpy arrays (fingerprints/descriptors).
-        NOT REQUIRED for 'edit_distance' metric (works directly on SMILES).
+        Precomputed feature vectors (joblib format, SMILES→arrays). Not required for 'edit_distance'.
     output_filename : str
-        Base name for the output similarity matrix (extension added automatically).
+        Base name for output matrix.
     explanation : str
-        Description of what this similarity computation represents.
+        Description for manifest.
     similarity_metric : str, default='tanimoto'
-        Similarity metric to use:
-        - 'tanimoto': For binary fingerprints (RECOMMENDED for molecules)
-        - 'dice': For binary fingerprints
-        - 'cosine': For count fingerprints or continuous descriptors
-        - 'euclidean': For continuous descriptors
-        - 'manhattan': For continuous descriptors
-        - 'edit_distance': For SMILES strings directly (no feature vectors needed)
+        Metric: 'tanimoto' (binary FPs), 'dice' (binary FPs), 'cosine' (continuous),
+        'euclidean' (continuous), 'manhattan' (continuous), 'edit_distance' (SMILES strings).
     
     Returns
     -------
     dict
-        Dictionary containing:
-        - output_filename: Stored similarity matrix filename
-        - n_molecules: Number of molecules
-        - matrix_shape: Dimensions (N, N)
-        - similarity_metric: Metric used
-        - mean_similarity: Average pairwise similarity (excluding self-similarity)
-        - median_similarity: Median pairwise similarity
-        - min_similarity: Minimum similarity value
-        - max_similarity: Maximum similarity value (excluding diagonal)
-        - note: Summary with usage suggestions
+        Contains output_filename, n_molecules, matrix_shape, similarity_metric, mean/median/min/max_similarity, note.
     
     Raises
     ------
     ValueError
-        - If smiles_column doesn't exist in the dataset
-        - If feature vectors are missing for any molecules
-        - If an invalid similarity_metric is specified
-    
-    Examples
-    --------
-    Compute Tanimoto similarity for binary ECFP fingerprints:
-    
-        result = compute_similarity_matrix(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='ecfp_fingerprints_XY56ZW78.joblib',
-            output_filename='tanimoto_similarity',
-            explanation='Tanimoto similarity for drug-like molecules',
-            similarity_metric='tanimoto'
-        )
-    
-    Compute cosine similarity for continuous descriptors:
-    
-        result = compute_similarity_matrix(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='rdkit_descriptors_XY56ZW78.joblib',
-            output_filename='cosine_similarity',
-            explanation='Cosine similarity based on physicochemical descriptors',
-            similarity_metric='cosine'
-        )
-    
-    Notes
-    -----
-    - **Binary fingerprints**: Use tanimoto (recommended) or dice
-    - **Count/continuous features**: Use cosine, euclidean, or manhattan
-    - **Tanimoto**: Optimized with RDKit's C++ implementation for ~5x speedup
-    - **Matrix storage**: Saved as joblib (efficient for large matrices)
-    - **Symmetry**: Matrix is symmetric with diagonal = 1.0
-       
-    See Also
-    --------
-    smiles_to_ecfp_dataset : Generate ECFP fingerprints
-    smiles_to_maccs_dataset : Generate MACCS keys fingerprints
-    smiles_to_rdkit_fp_dataset : Generate RDKit topological fingerprints
+        If smiles_column missing, feature vectors missing, or invalid similarity_metric.
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -526,107 +405,35 @@ def find_k_nearest_neighbors(
     """
     Find k most similar molecules for one or more query molecules.
     
-    Computes similarities between query molecule(s) and all molecules in the dataset on-the-fly,
-    without precomputing a full similarity matrix. Returns the k nearest neighbors for each query.
-    
-    **Performance**: 
-    - Single query on 10,000 molecules: ~1-2 seconds
-    - Multiple queries: Linear scaling (Q queries = Qx1-2 seconds)
-    - For <100 queries: This function is optimal
-    - For >100 queries (>1% of dataset): Consider precomputing full similarity matrix instead
-    
-    **Note**: Not recommended for very large numbers of queries (Q > 100). For batch processing
-    many molecules, consider computing a full similarity matrix once and doing lookups instead.
-    
     Parameters
     ----------
     query_smiles : list of str
-        List of SMILES strings for query molecule(s). Use a single-item list for one query.
+        Query SMILES strings.
     input_filename : str
-        Filename of the dataset containing molecules to search.
+        Dataset filename to search.
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json.
     smiles_column : str
-        Name of the column containing SMILES strings.
+        Column containing SMILES strings.
     feature_vectors_filename : str
-        Filename of the precomputed feature vectors (joblib format).
+        Precomputed feature vectors (joblib).
     k : int, default=10
-        Number of nearest neighbors to return per query.
+        Number of nearest neighbors per query.
     similarity_metric : str, default='tanimoto'
-        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', or 'manhattan'.
+        Metric: 'tanimoto', 'dice', 'cosine', 'euclidean', 'manhattan'.
     exclude_self : bool, default=True
-        If True and query_smiles exists in dataset, exclude it from results.
+        Exclude query from results if in dataset.
     
     Returns
     -------
     dict
-        Dictionary containing:
-        - n_queries: Number of query molecules
-        - k: Number of neighbors per query
-        - n_candidates: Total molecules searched per query
-        - similarity_metric: Metric used
-        - results: List of dicts (one per query) with keys:
-            - query_smiles: The query SMILES
-            - neighbors: List of neighbor dicts with:
-                - smiles: SMILES of neighbor
-                - similarity: Similarity score
-                - rank: Rank (1 = most similar)
-            - mean_similarity: Average similarity to k neighbors
-        - note: Summary with usage suggestions
+        Contains n_queries, k, n_candidates, similarity_metric, results (list of dicts with query_smiles,
+        neighbors list, mean_similarity), note.
     
     Raises
     ------
     ValueError
-        - If any query_smiles not found in feature_vectors
-        - If k is larger than number of available molecules
-        - If an invalid similarity_metric is specified
-    
-    Examples
-    --------
-    Find neighbors for a single molecule:
-    
-        result = find_k_nearest_neighbors(
-            query_smiles=['CCO'],
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='ecfp_fingerprints_XY56ZW78.joblib',
-            k=10,
-            similarity_metric='tanimoto'
-        )
-        
-        # Access neighbors for the query
-        for neighbor in result['results'][0]['neighbors']:
-            print(f"Rank {neighbor['rank']}: {neighbor['smiles']} (similarity: {neighbor['similarity']:.3f})")
-    
-    Find neighbors for multiple molecules:
-    
-        result = find_k_nearest_neighbors(
-            query_smiles=['CCO', 'CCC', 'c1ccccc1'],
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='ecfp_fingerprints_XY56ZW78.joblib',
-            k=5
-        )
-        
-        # Iterate through each query's results
-        for query_result in result['results']:
-            print(f"Query: {query_result['query_smiles']}")
-            for neighbor in query_result['neighbors']:
-                print(f"  {neighbor['rank']}. {neighbor['smiles']} ({neighbor['similarity']:.3f})")
-    
-    Notes
-    -----
-    - **Small queries (<100)**: Use this function (optimal)
-    - **Large queries (>100)**: Consider precomputing full similarity matrix instead
-    - For binary fingerprints, use 'tanimoto' (default, recommended)
-    - All query molecules must exist in feature_vectors
-    - Computes QxN similarities where Q = number of queries, N = dataset size
-    
-    See Also
-    --------
-    compute_similarity_matrix : Precompute full NxN similarity matrix for batch queries
+        If query_smiles missing from feature_vectors, k too large, or invalid similarity_metric.
     """
     query_smiles_list = list(query_smiles)
     n_queries = len(query_smiles_list)
@@ -781,111 +588,37 @@ def add_similarity_statistics_dataset(
     """
     Add similarity statistics columns to a dataset based on pairwise molecular similarities.
     
-    Computes the full similarity matrix (like compute_similarity_matrix) but instead of storing
-    the matrix, calculates per-molecule statistics and adds them as new columns to the dataset.
-    Useful for analyzing molecular diversity, finding outliers, or filtering by similarity criteria.
-    
-    **Added Columns**:
-    - `mean_similarity`: Average similarity to all other molecules (excluding self)
-    - `median_similarity`: Median similarity to all other molecules
-    - `max_similarity`: Maximum similarity to any other molecule
-    - `min_similarity`: Minimum similarity to any other molecule
-    - `n_similar_above_threshold`: Count of molecules with similarity > similarity_threshold
+    Adds columns: mean_similarity, median_similarity, max_similarity, min_similarity, n_similar_above_threshold.
     
     Parameters
     ----------
     input_filename : str
-        Filename of the input dataset containing SMILES strings.
+        Input dataset filename.
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json.
     smiles_column : str
-        Name of the column containing SMILES strings.
+        Column containing SMILES strings.
     feature_vectors_filename : str
-        Filename of the precomputed feature vectors (joblib format).
-        Must be a dictionary mapping SMILES to numpy arrays (fingerprints/descriptors).
+        Precomputed feature vectors (joblib).
     output_filename : str
-        Base name for the output dataset (extension added automatically).
+        Base name for output dataset.
     explanation : str
-        Description of what this operation represents.
+        Description for manifest.
     similarity_metric : str, default='tanimoto'
-        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', or 'manhattan'.
+        Metric: 'tanimoto', 'dice', 'cosine', 'euclidean', 'manhattan'.
     similarity_threshold : float, default=0.8
-        Threshold for counting similar molecules. A new column `n_similar_above_threshold`
-        will count how many molecules have similarity > this value.
+        Threshold for counting similar molecules.
     
     Returns
     -------
     dict
-        Dictionary containing:
-        - output_filename: Stored dataset filename
-        - n_molecules: Number of molecules
-        - columns: List of column names in output
-        - new_columns: List of newly added similarity statistic columns
-        - similarity_metric: Metric used
-        - similarity_threshold: Threshold used for counting similar molecules
-        - overall_mean_similarity: Dataset-wide average pairwise similarity
-        - overall_median_similarity: Dataset-wide median pairwise similarity
-        - preview: First 5 rows as list of dicts
-        - note: Summary with usage suggestions
+        Contains output_filename, n_molecules, columns, new_columns, similarity_metric, similarity_threshold,
+        overall_mean/median_similarity, preview, note.
     
     Raises
     ------
     ValueError
-        - If smiles_column doesn't exist in the dataset
-        - If feature vectors are missing for any molecules
-        - If an invalid similarity_metric is specified
-    
-    Examples
-    --------
-    Add similarity statistics to a dataset:
-    
-        result = add_similarity_statistics_dataset(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='ecfp_fingerprints_XY56ZW78.joblib',
-            output_filename='molecules_with_sim_stats',
-            explanation='Added Tanimoto similarity statistics',
-            similarity_metric='tanimoto',
-            similarity_threshold=0.8
-        )
-        
-        # New columns added: mean_similarity, median_similarity, max_similarity, etc.
-        print(f"New columns: {result['new_columns']}")
-    
-    Filter for diverse molecules (low average similarity):
-    
-        # After adding statistics, load dataset and filter
-        df = pd.read_csv(result['output_filename'])
-        diverse = df[df['mean_similarity'] < 0.5]
-        print(f"Found {len(diverse)} diverse molecules")
-    
-    Use custom similarity threshold:
-    
-        # Count molecules with similarity > 0.9 (very high similarity)
-        result = add_similarity_statistics_dataset(
-            input_filename='molecules_AB12CD34.csv',
-            project_manifest_path='/path/to/manifest.json',
-            smiles_column='smiles',
-            feature_vectors_filename='ecfp_fingerprints_XY56ZW78.joblib',
-            output_filename='molecules_with_sim_stats',
-            explanation='High similarity threshold for near-duplicates',
-            similarity_threshold=0.9
-        )
-    
-    Notes
-    -----
-    - Computes full N×N similarity matrix internally (memory: O(N²))
-    - For large datasets (>10,000 molecules), this may require significant memory
-    - Statistics exclude self-similarity (diagonal values of 1.0)
-    - Use for diversity analysis, outlier detection, or dataset characterization
-    - Adjust similarity_threshold based on your similarity metric and use case
-    - Common thresholds: 0.7-0.9 for finding similar molecules, 0.5-0.7 for moderate similarity
-    
-    See Also
-    --------
-    compute_similarity_matrix : Store full similarity matrix for advanced analysis
-    find_k_nearest_neighbors : Find specific nearest neighbors for query molecules
+        If smiles_column missing, feature vectors missing, or invalid similarity_metric.
     """
     # Load dataset and feature vectors
     df = _load_resource(project_manifest_path, input_filename)
@@ -1007,143 +740,45 @@ def add_training_set_similarity_statistics(
     """
     Add similarity statistics to test molecules based on comparison to a training set.
     
-    For each molecule in the test dataset, computes similarities to all molecules in the training set
-    and adds statistics as new columns. This is useful for:
-    - **Applicability domain analysis**: Are test molecules similar to training molecules?
-    - **Novelty detection**: Identify test molecules that are very different from training data
-    - **Model confidence**: Lower similarity to training set may indicate less reliable predictions
-    - **Dataset shifts**: Quantify distribution differences between train and test sets
-    
-    **Added Columns**:
-    - `mean_similarity_to_train`: Average similarity to all training molecules
-    - `median_similarity_to_train`: Median similarity to training molecules
-    - `max_similarity_to_train`: Similarity to most similar training molecule (nearest neighbor)
-    - `min_similarity_to_train`: Similarity to least similar training molecule
-    - `mean_top_k_similarity_to_train`: Average similarity to k nearest training neighbors
-    - `nearest_train_smiles`: SMILES of the most similar training molecule
-    - `nearest_train_similarity`: Similarity score to nearest training molecule
+    Useful for applicability domain analysis and novelty detection.
+    Adds columns: mean/median/max/min_similarity_to_train, mean_top_k_similarity_to_train,
+    nearest_train_smiles, nearest_train_similarity.
     
     Parameters
     ----------
     test_input_filename : str
-        Filename of the test dataset containing SMILES strings.
+        Test dataset filename.
     train_input_filename : str
-        Filename of the training dataset containing SMILES strings.
+        Training dataset filename.
     project_manifest_path : str
-        Path to the project's manifest.json file.
+        Path to manifest.json.
     test_smiles_column : str
-        Name of the SMILES column in the test dataset.
+        SMILES column in test dataset.
     train_smiles_column : str
-        Name of the SMILES column in the training dataset.
+        SMILES column in training dataset.
     test_feature_vectors_filename : str
-        Filename of the precomputed feature vectors for test molecules (joblib format).
-        Dictionary mapping test SMILES to numpy arrays (fingerprints/descriptors).
+        Test feature vectors (joblib).
     train_feature_vectors_filename : str
-        Filename of the precomputed feature vectors for training molecules (joblib format).
-        Dictionary mapping training SMILES to numpy arrays (fingerprints/descriptors).
+        Training feature vectors (joblib).
     output_filename : str
-        Base name for the output test dataset with added statistics.
+        Base name for output test dataset.
     explanation : str
-        Description of what this operation represents.
+        Description for manifest.
     similarity_metric : str, default='tanimoto'
-        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', or 'manhattan'.
+        Metric: 'tanimoto', 'dice', 'cosine', 'euclidean', 'manhattan'.
     k_nearest : int, default=5
-        Number of nearest training neighbors to use for computing mean_top_k_similarity.
+        Number of nearest training neighbors for mean_top_k_similarity.
     
     Returns
     -------
     dict
-        Dictionary containing:
-        - output_filename: Stored test dataset filename with new columns
-        - n_test_molecules: Number of test molecules
-        - n_train_molecules: Number of training molecules
-        - columns: List of column names in output
-        - new_columns: List of newly added similarity statistic columns
-        - similarity_metric: Metric used
-        - k_nearest: Number of nearest neighbors used
-        - test_mean_similarity_to_train: Average of mean_similarity_to_train across all test molecules
-        - test_median_similarity_to_train: Median of mean_similarity_to_train across all test molecules
-        - min_test_similarity_to_train: Minimum similarity found (least similar test molecule)
-        - max_test_similarity_to_train: Maximum similarity found (most similar test molecule)
-        - n_test_below_threshold: Number of test molecules with max_similarity_to_train < 0.5 (novelty candidates)
-        - preview: First 5 rows as list of dicts
-        - note: Summary with interpretation guidance
+        Contains output_filename, n_test/train_molecules, columns, new_columns, similarity_metric, k_nearest,
+        test_mean/median_similarity_to_train, min/max_test_similarity_to_train, n_test_below_threshold, preview, note.
     
     Raises
     ------
     ValueError
-        - If SMILES columns don't exist in the datasets
-        - If feature vectors are missing for any molecules
-        - If k_nearest is larger than number of training molecules
-        - If an invalid similarity_metric is specified
-    
-    Examples
-    --------
-    Add training set similarity statistics to test molecules:
-    
-        result = add_training_set_similarity_statistics(
-            test_input_filename='test_molecules_AB12CD34.csv',
-            train_input_filename='train_molecules_EF56GH78.csv',
-            project_manifest_path='/path/to/manifest.json',
-            test_smiles_column='smiles',
-            train_smiles_column='smiles',
-            test_feature_vectors_filename='test_ecfp_XY56ZW78.joblib',
-            train_feature_vectors_filename='train_ecfp_AB12CD34.joblib',
-            output_filename='test_with_train_similarity',
-            explanation='Added training set similarity statistics for applicability domain',
-            similarity_metric='tanimoto',
-            k_nearest=5
-        )
-        
-        # Analyze results
-        print(f"Average test-train similarity: {result['test_mean_similarity_to_train']:.3f}")
-        print(f"Novel molecules (max similarity < 0.5): {result['n_test_below_threshold']}")
-    
-    Identify molecules outside applicability domain:
-    
-        # After adding statistics, filter for low-similarity test molecules
-        df = pd.read_csv(result['output_filename'])
-        
-        # Find molecules with low similarity to training set (potential extrapolation)
-        low_similarity = df[df['max_similarity_to_train'] < 0.5]
-        print(f"{len(low_similarity)} test molecules have low similarity to training set")
-        print(f"Consider these predictions less reliable due to extrapolation")
-    
-    Compare different similarity metrics:
-    
-        for metric in ['tanimoto', 'cosine', 'euclidean']:
-            result = add_training_set_similarity_statistics(
-                test_input_filename='test_molecules_AB12CD34.csv',
-                train_input_filename='train_molecules_EF56GH78.csv',
-                project_manifest_path='/path/to/manifest.json',
-                test_smiles_column='smiles',
-                train_smiles_column='smiles',
-                test_feature_vectors_filename='test_descriptors_XY56ZW78.joblib',
-                train_feature_vectors_filename='train_descriptors_AB12CD34.joblib',
-                output_filename=f'test_train_sim_{metric}',
-                explanation=f'Training similarity using {metric}',
-                similarity_metric=metric
-            )
-            print(f"{metric}: mean={result['test_mean_similarity_to_train']:.3f}")
-    
-    Notes
-    -----
-    - **Applicability domain**: Test molecules with max_similarity_to_train < 0.5 may be outside model's applicability
-    - **Memory usage**: Computes M×N similarity matrix where M=test size, N=train size (O(MN))
-    - **Interpretation**: Higher similarity to training set → more reliable predictions
-    - **Novelty detection**: Use max_similarity_to_train to identify novel/outlier molecules
-    - **Common thresholds**:
-        - max_similarity > 0.7: Test molecule well-represented in training set
-        - max_similarity 0.5-0.7: Moderate similarity, reasonable prediction confidence
-        - max_similarity < 0.5: Low similarity, prediction may be unreliable
-    - Test and training sets can use different feature vector files (e.g., computed separately)
-    - Both feature sets must use the same fingerprint/descriptor type and parameters
-    
-    See Also
-    --------
-    add_similarity_statistics_dataset : Compute within-dataset similarity statistics
-    find_k_nearest_neighbors : Find specific nearest neighbors for query molecules
-    compute_similarity_matrix : Precompute full similarity matrix
+        If SMILES columns missing, feature vectors missing, k_nearest too large, or invalid similarity_metric.
     """
     # Load datasets and feature vectors
     test_df = _load_resource(project_manifest_path, test_input_filename)

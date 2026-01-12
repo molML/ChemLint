@@ -18,40 +18,33 @@ def random_split_dataset(
     random_state: int = 42,
 ) -> dict:
     """
-    Randomly split a dataset into train, test, and optionally validation sets.
+    Randomly split dataset into train, test, and optionally validation sets.
     
     Parameters
     ----------
     project_manifest_path : str
-        Path to the project manifest JSON file.
+        Path to manifest.json
     input_filename : str
-        Base filename of the input dataset resource.
+        Input dataset filename
     train_df_output_filename : str
-        Base filename for the training set output.
+        Output name for training set
     test_df_output_filename : str
-        Base filename for the test set output.
+        Output name for test set
     val_df_output_filename : str | None
-        Base filename for the validation set output (required if val_size > 0).
+        Output name for validation set (required if val_size > 0)
     explanation : str
-        Brief description of this split operation.
+        Description of split operation
     test_size : float
-        Proportion of dataset for test set (0.0 to 1.0). Default 0.2 (20%).
+        Test set proportion (0.0-1.0), default 0.2
     val_size : float
-        Proportion of dataset for validation set (0.0 to 1.0). Default 0.0 (none).
+        Validation set proportion (0.0-1.0), default 0.0
     random_state : int
-        Random seed for reproducibility. Default 42.
+        Random seed, default 42
     
     Returns
     -------
     dict
-        {
-            "train_df_output_filename": str,
-            "n_train_rows": int,
-            "test_df_output_filename": str,
-            "n_test_rows": int,
-            "val_df_output_filename": str | None,
-            "n_val_rows": int
-        }
+        train/test/val_df_output_filename, n_train/test/val_rows
     """
     import pandas as pd
     
@@ -108,66 +101,25 @@ def stratified_split_dataset(
     random_state: int = 42
 ) -> dict:
     """
-    Split dataset while preserving label distribution across train/test/val sets.
-    
-    Automatically detects whether the task is classification or regression:
-    - Classification: Stratifies by class labels directly (e.g., 'active'/'inactive')
-    - Regression: Bins continuous values into quantiles, then stratifies (e.g., IC50, pKi)
-    
-    This ensures each split has similar label distributions, which is critical for:
-    - Imbalanced datasets (prevents train/test distribution mismatch)
-    - Small datasets (ensures representative sampling)
-    - Fair model evaluation (test set reflects real-world distribution)
-    
-    Can also stratify by molecular properties (e.g., molecular weight) by using
-    that property column as label_column.
+    Split dataset preserving label distribution (classification or regression).
+    Auto-detects task: bins continuous values for regression, stratifies classes directly.
     
     Args:
-        input_filename: Input CSV filename from manifest
-        label_column: Column name to stratify by (labels or properties)
+        input_filename: Input CSV filename
+        label_column: Column to stratify by (labels or properties)
         project_manifest_path: Path to manifest.json
-        train_output_filename: Output name for training set
-        test_output_filename: Output name for test set
-        val_output_filename: Output name for validation set (if val_ratio > 0)
-        explanation: Description of the split operation
-        train_ratio: Training set fraction (default: 0.8)
-        test_ratio: Test set fraction (default: 0.2)
-        val_ratio: Validation set fraction (default: 0.0)
-        n_bins: Number of bins for regression stratification (default: 5)
-        random_state: Random seed for reproducibility (default: 42)
+        train_output_filename: Training set output name
+        test_output_filename: Test set output name
+        val_output_filename: Validation set output name (if val_ratio > 0)
+        explanation: Description of split
+        train_ratio: Training fraction, default 0.8
+        test_ratio: Test fraction, default 0.2
+        val_ratio: Validation fraction, default 0.0
+        n_bins: Number of bins for regression, default 5
+        random_state: Random seed, default 42
     
     Returns:
-        dict with keys:
-            - train/test/val_output_filename: Output filenames
-            - n_train/test/val_rows: Row counts
-            - train/test/val_label_distribution: Label distributions (as percentages)
-            - is_regression: Whether regression binning was applied
-            - bin_edges: Bin boundaries (for regression only)
-            - note: Summary of the split
-    
-    Examples:
-        # Binary classification (80/20 split)
-        result = stratified_split_dataset(
-            input_filename="data_A1B2C3D4.csv",
-            label_column="active",
-            project_manifest_path="/path/to/manifest.json",
-            train_output_filename="train",
-            test_output_filename="test"
-        )
-        
-        # Regression with 3-way split (70/20/10)
-        result = stratified_split_dataset(
-            input_filename="data_A1B2C3D4.csv",
-            label_column="ic50_nm",
-            project_manifest_path="/path/to/manifest.json",
-            train_output_filename="train",
-            test_output_filename="test",
-            val_output_filename="val",
-            train_ratio=0.7,
-            test_ratio=0.2,
-            val_ratio=0.1,
-            n_bins=5
-        )
+        dict with train/test/val_output_filename, n_rows, label_distribution, is_regression, bin_edges, note
     """
     from sklearn.model_selection import train_test_split
     
@@ -273,92 +225,42 @@ def scaffold_split_dataset(
     handle_no_scaffold: str = 'assign_to_train'
 ) -> dict:
     """
-    Split dataset by molecular scaffolds to prevent data leakage.
-    
-    Groups molecules by scaffold and assigns entire scaffold groups to train/test/val
-    splits, ensuring molecules with the same scaffold don't appear across splits.
-    This prevents data leakage in molecular property prediction tasks.
+    Split by molecular scaffolds to prevent data leakage.
+    Assigns entire scaffold groups to splits, ensuring no scaffold appears across splits.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset resource.
+        Input dataset filename
     scaffold_column : str
-        Name of column containing scaffold identifiers (e.g., 'scaffold_bemis_murcko').
+        Column with scaffold IDs (e.g., 'scaffold_bemis_murcko')
     project_manifest_path : str
-        Path to the project manifest JSON file.
+        Path to manifest.json
     train_output_filename : str
-        Base filename for the training set output.
+        Training set output name
     test_output_filename : str
-        Base filename for the test set output.
+        Test set output name
     val_output_filename : str | None
-        Base filename for the validation set output (required if val_ratio > 0).
+        Validation set output name (required if val_ratio > 0)
     explanation : str
-        Brief description of this split operation.
+        Description of split
     train_ratio : float
-        Target proportion for training set (0.0 to 1.0). Default 0.8.
+        Training fraction, default 0.8
     test_ratio : float
-        Target proportion for test set (0.0 to 1.0). Default 0.2.
+        Test fraction, default 0.2
     val_ratio : float
-        Target proportion for validation set (0.0 to 1.0). Default 0.0.
+        Validation fraction, default 0.0
     method : str
-        Splitting method: 'random' or 'balanced'. Default 'balanced'.
-        - 'random': Shuffle scaffolds randomly, assign sequentially
-        - 'balanced': Greedy bin packing to balance split sizes
+        'random' or 'balanced' (greedy bin packing), default 'balanced'
     random_state : int
-        Random seed for reproducibility. Default 42.
+        Random seed, default 42
     handle_no_scaffold : str
-        How to handle molecules with no scaffold: 'assign_to_train' or 'random'.
-        Default 'assign_to_train'.
+        'assign_to_train' or 'random', default 'assign_to_train'
     
     Returns
     -------
     dict
-        Contains output filenames, row counts, scaffold counts, actual ratios,
-        overlap check status, and statistics for each split.
-    
-    Examples
-    --------
-    Balanced scaffold split (80/20):
-    
-        result = scaffold_split_dataset(
-            input_filename='molecules_AB12CD34.csv',
-            scaffold_column='scaffold_bemis_murcko',
-            project_manifest_path='/path/to/manifest.json',
-            train_output_filename='train',
-            test_output_filename='test',
-            method='balanced'
-        )
-        
-        print(f"Train: {result['n_train_rows']} molecules, {result['n_train_scaffolds']} scaffolds")
-        print(f"Test: {result['n_test_rows']} molecules, {result['n_test_scaffolds']} scaffolds")
-    
-    Three-way split with validation set:
-    
-        result = scaffold_split_dataset(
-            input_filename='molecules_AB12CD34.csv',
-            scaffold_column='scaffold_bemis_murcko',
-            project_manifest_path='/path/to/manifest.json',
-            train_output_filename='train',
-            test_output_filename='test',
-            val_output_filename='val',
-            train_ratio=0.7,
-            test_ratio=0.2,
-            val_ratio=0.1,
-            method='balanced'
-        )
-    
-    Random scaffold split:
-    
-        result = scaffold_split_dataset(
-            input_filename='molecules_AB12CD34.csv',
-            scaffold_column='scaffold_bemis_murcko',
-            project_manifest_path='/path/to/manifest.json',
-            train_output_filename='train',
-            test_output_filename='test',
-            method='random',
-            random_state=42
-        )
+        output filenames, row counts, scaffold counts, actual ratios, overlap check
     """
     # Validate inputs
     if method not in ['random', 'balanced']:
@@ -633,7 +535,13 @@ def cluster_based_split_dataset(
     random_state: int = 42,
     handle_noise: str = 'assign_to_train'
 ) -> dict:
-    """Split dataset by cluster assignments (mirrors scaffold_split_dataset)."""
+    """
+    Split by cluster assignments (similar to scaffold_split_dataset).
+    Assigns entire clusters to splits, handles DBSCAN noise points (cluster_id=-1).
+    
+    Parameters: Same as scaffold_split_dataset, but uses cluster_column and handle_noise.
+    Returns: dict with output filenames, row counts, cluster counts, overlap check.
+    """
     # Validate inputs
     if method not in ['random', 'balanced']:
         raise ValueError(f"method must be 'random' or 'balanced', got '{method}'")

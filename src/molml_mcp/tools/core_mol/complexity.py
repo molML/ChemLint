@@ -29,9 +29,7 @@ from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 
 
 def _calculate_smiles_branches(smiles: str) -> int:
-    """ Calculate the number of branches in a SMILES string.
-
-    A branch is defined as any occurrence of '(' in the SMILES string.
+    """ Count branches in SMILES string (occurrences of '(').
 
     :param smiles: SMILES string
     :return: Number of branches
@@ -41,21 +39,11 @@ def _calculate_smiles_branches(smiles: str) -> int:
 
 
 def _calculate_molecular_shannon_entropy(smiles: str) -> float | None:
-    """ Compute the shannon entropy of a molecular graph.
+    """ Compute Shannon entropy of molecular graph based on element distribution.
+    Formula: I = N*log2(N) - Σ(Ni*log2(Ni)), where N = total atoms, Ni = atoms of type i.
 
-    The Shannon entropy I for a molecule with N elements is:
-
-    :math:`I\ =\ Nlog_2\ N\ -\ \sum_(i=1)^n\of\beginN_i\ log_2\ N_i\ )\`
-
-    where n is the number of different sets of elements and Ni is the number of elements in the ith set of elements.
-
-    Bonchev, D., Kamenski, D., & Kamenska, V. (1976). Symmetry and information content of chemical structures.
-    Bulletin of Mathematical Biology, 38(2), 119-133.
-
-    Important caveat: homonuclear molecules (e.g. a buckyball) will yield a Shannon entropy of 0
-
-    :param mol: RDKit molecule
-    :return: Shannon Entropy of the molecular graph
+    :param smiles: SMILES string
+    :return: Shannon entropy of molecular graph
     """
 
     mol = Chem.MolFromSmiles(smiles)
@@ -84,15 +72,11 @@ def _calculate_molecular_shannon_entropy(smiles: str) -> float | None:
 
 
 def _calculate_smiles_shannon_entropy(smiles: str) -> float:
-    """ Calculate the Shannon entropy of a SMILES string by its tokens.
-    
-    Uses the proper SMILES tokenizer that handles multi-character tokens.
-    Start, end-of-sequence, and padding tokens are not considered.
-
-    :math:`H=\sum_{i=1}^{n}{p_i\log_2p_i}`
+    """ Calculate Shannon entropy of SMILES tokens.
+    Formula: H = -Σ(pi*log2(pi)), where pi = probability of token i.
 
     :param smiles: SMILES string
-    :return: Shannon Entropy
+    :return: Shannon entropy
     """
 
     tokens = _tokenize_smiles(smiles)
@@ -113,10 +97,7 @@ def _calculate_smiles_shannon_entropy(smiles: str) -> float:
 
 
 def _calculate_num_tokens(smiles: str) -> int:
-    """ Calculate the number of tokens in a SMILES string.
-    
-    Uses the proper SMILES tokenizer that handles multi-character tokens
-    (Cl, Br, @@, bracketed atoms, etc.).
+    """ Count tokens in SMILES string (handles multi-character tokens like Cl, Br, @@).
 
     :param smiles: SMILES string
     :return: Number of tokens
@@ -126,7 +107,11 @@ def _calculate_num_tokens(smiles: str) -> int:
 
 
 def _calculate_bertz_complexity(smiles: str, **kwargs) -> float | None:
-    """ Compute the Bertz complexity, which is a measure of molecular complexity """
+    """ Compute Bertz complexity (measures structural branching and connectivity).
+    
+    :param smiles: SMILES string
+    :return: BertzCT complexity score
+    """
 
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -136,16 +121,12 @@ def _calculate_bertz_complexity(smiles: str, **kwargs) -> float | None:
 
 
 def _calculate_bottcher_complexity(smiles: str, debug: bool = False) -> float | None:
-    """
+    """ Compute Böttcher complexity (atom-wise complexity measure).
+    Implementation based on github.com/boskovicgroup/bottchercomplexity
 
-    Böttcher complexity according to Zach Pearsons implementation
-    https://github.com/boskovicgroup/bottchercomplexity/tree/main
-
-    This complexity measure consists of the sum of several atom-wise parts
-
-    :param mol: RDkit mol
-    :param debug: bool to toggle some print statements
-    :return: Böttcher complexity
+    :param smiles: SMILES string
+    :param debug: Print intermediate values
+    :return: Böttcher complexity score
     """
 
     mol = Chem.MolFromSmiles(smiles)
@@ -390,45 +371,20 @@ def add_complexity_columns(
     explanation: str = "Dataset with molecular complexity metrics"
 ) -> Dict:
     """
-    Add one or more molecular complexity metric columns to a dataset.
+    Add molecular complexity metric columns to dataset.
     
-    Function that computes various complexity metrics from SMILES
-    and adds them as new columns to the dataset.
-    
-    Available metrics:
-    - 'branches': Number of branches in SMILES string
-    - 'num_tokens': Number of tokens in SMILES string (using proper tokenizer)
-    - 'molecular_entropy': Shannon entropy of molecular graph (element distribution)
-    - 'smiles_entropy': Shannon entropy of SMILES tokenization
-    - 'bertz': BertzCT complexity (structural branching and connectivity)
-    - 'bottcher': Böttcher complexity (comprehensive atom-wise complexity)
+    Available metrics: 'branches', 'num_tokens', 'molecular_entropy', 'smiles_entropy', 'bertz', 'bottcher'
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        smiles_column: Column name containing SMILES strings
-        metrics: List of metric names to compute (see available metrics above)
-        output_filename: Name for output dataset
+        input_filename: CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        smiles_column: Column with SMILES
+        metrics: List of metric names to compute
+        output_filename: Output dataset name
         explanation: Description for saved dataset
         
     Returns:
-        Dictionary containing:
-            - output_filename: Saved dataset filename
-            - n_rows: Number of rows processed
-            - columns_added: List of column names added
-            - n_failed: Number of SMILES that failed processing per metric
-            - preview: First 5 rows showing new columns
-            
-    Example:
-        >>> result = add_complexity_columns(
-        ...     "molecules.csv",
-        ...     "manifest.json",
-        ...     "SMILES",
-        ...     metrics=['bertz', 'smiles_entropy', 'branches'],
-        ...     output_filename="molecules_complexity"
-        ... )
-        >>> print(f"Added columns: {result['columns_added']}")
-        ['bertz', 'smiles_entropy', 'branches']
+        Dictionary with output_filename, n_rows, columns_added, n_failed, preview, summary
     """
     # Metric name to function mapping
     METRIC_FUNCTIONS = {
@@ -525,7 +481,7 @@ def add_complexity_columns(
 
 def get_all_complexity_tools():
     """
-    Returns a list of MCP-exposed molecular complexity functions for server registration.
+    Returns all MCP-exposed molecular complexity functions.
     """
     return [
         add_complexity_columns,

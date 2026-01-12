@@ -18,23 +18,6 @@ def get_pains_smarts() -> Dict[str, str]:
     Returns:
         dict: Mapping of pattern name to SMARTS string. Keys are pattern names like
               "anil_di_alk_F(14)", "ene_six_het_A(483)", etc. Values are SMARTS patterns.
-              
-    Example:
-        patterns = get_pains_smarts()
-        # Returns: {"anil_di_alk_F(14)": "c:1:c:c(:c:c:c:1...", ...}
-        
-        # Use with RDKit for filtering
-        from rdkit import Chem
-        mol = Chem.MolFromSmiles('O=C1C=CC(=O)C=C1')  # benzoquinone
-        
-        pains_matches = []
-        for name, smarts in patterns.items():
-            pattern = Chem.MolFromSmarts(smarts)
-            if pattern and mol.HasSubstructMatch(pattern):
-                pains_matches.append(name)
-        
-        print(f"Matched PAINS: {pains_matches}")
-        # Output: ['quinone_A(370)']
         
     Reference:
         Baell JB, Holloway GA. New Substructure Filters for Removal of Pan Assay 

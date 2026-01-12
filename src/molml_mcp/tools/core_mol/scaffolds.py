@@ -20,20 +20,10 @@ def _is_invalid_smiles(smi) -> bool:
 
 
 def _get_scaffold(smiles: str, scaffold_type: str = 'bemis_murcko') -> tuple[str | None, str]:
-    """ Get the molecular scaffold from a SMILES string. Supports three different scaffold types:
-            `bemis_murcko`: RDKit implementation of the bemis-murcko scaffold; a scaffold of rings and linkers, retains
-            some sidechains and ring-bonded substituents.
-            `generic`: Bemis-Murcko scaffold where all atoms are carbons & bonds are single, i.e., a molecular skeleton.
-            `cyclic_skeleton`: A molecular skeleton w/o any sidechains, only preserves ring structures and linkers.
-
-    Examples:
-        original molecule: 'CCCN(Cc1ccccn1)C(=O)c1cc(C)cc(OCCCON=C(N)N)c1'
-        Bemis-Murcko scaffold: 'O=C(NCc1ccccn1)c1ccccc1'
-        Generic RDKit: 'CC(CCC1CCCCC1)C1CCCCC1'
-        Cyclic skeleton: 'C1CCC(CCCC2CCCCC2)CC1'
+    """ Get the molecular scaffold from a SMILES string.
 
     :param smiles: SMILES string
-    :param scaffold_type: 'bemis_murcko' (default), 'generic', 'cyclic_skeleton'
+    :param scaffold_type: 'bemis_murcko' (rings + linkers), 'generic' (skeleton), 'cyclic_skeleton' (skeleton without sidechains)
     :return: Tuple of (scaffold SMILES or None, comment)
     """
     all_scaffs = ['bemis_murcko', 'generic', 'cyclic_skeleton']
@@ -89,56 +79,17 @@ def calculate_scaffolds(smiles: list[str], scaffold_type: str = 'bemis_murcko') 
     """
     Calculate molecular scaffolds for a list of SMILES strings.
     
-    This function extracts molecular scaffolds from a list of SMILES strings using 
-    one of three scaffold types: Bemis-Murcko, generic (skeleton), or cyclic skeleton.
-    Scaffolds represent the core ring systems and linkers of molecules, useful for 
-    clustering, diversity analysis, and scaffold hopping in drug discovery.
-    
     Parameters
     ----------
     smiles : list[str]
-        List of SMILES strings to process.
+        List of SMILES strings.
     scaffold_type : str, default='bemis_murcko'
-        Type of scaffold to extract. Options:
-        - 'bemis_murcko': Ring systems and linkers with some substituents retained
-        - 'generic': Molecular skeleton (all atoms as carbon, all bonds single)
-        - 'cyclic_skeleton': Skeleton without sidechains, only rings and linkers
+        Type: 'bemis_murcko' (rings + linkers), 'generic' (skeleton), 'cyclic_skeleton' (skeleton without sidechains).
     
     Returns
     -------
     tuple[list[str], list[str]]
-        A tuple containing:
-        - scaffolds : list[str]
-            Scaffold SMILES strings. Length matches input list.
-            Failed extractions or molecules without scaffolds return None.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Scaffold extraction successful
-            - "Failed: <reason>": An error occurred or no scaffold exists
-            - "Skipped: Invalid SMILES string": Input was invalid/NaN
-    
-    Examples
-    --------
-    # Extract Bemis-Murcko scaffolds
-    smiles = ["c1ccccc1CCO", "CCO", "c1ccc(cc1)C(=O)O"]
-    scaffolds, comments = calculate_scaffolds(smiles)
-    # Returns scaffolds for molecules with rings, None for aliphatic molecules
-    
-    # Extract generic scaffolds
-    scaffolds, comments = calculate_scaffolds(smiles, scaffold_type='generic')
-    
-    Notes
-    -----
-    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
-    - Molecules without ring systems will return None (no scaffold)
-    - Scaffolds are automatically canonicalized by RDKit
-    - All stereochemistry is removed from scaffolds
-    - Output lists have the same length and order as input list
-    
-    See Also
-    --------
-    calculate_scaffolds_dataset : For dataset-level scaffold calculation
-    _get_scaffold : Low-level helper function for single SMILES
+        scaffolds: Scaffold SMILES (None if failed); comments: status messages ("Passed" or "Failed: <reason>").
     """
     scaffold_list, comment_list = [], []
     for smi in smiles:
@@ -160,84 +111,31 @@ def calculate_scaffolds_dataset(
     """
     Calculate molecular scaffolds for all SMILES strings in a dataset column.
     
-    This function processes a tabular dataset by extracting molecular scaffolds from 
-    SMILES strings in the specified column. It adds two new columns to the dataframe: 
-    one containing the scaffold SMILES and another with comments logged during the 
-    scaffold extraction process.
-    
-    Scaffolds represent the core ring systems and linkers of molecules, making them 
-    valuable for:
-    - Scaffold diversity analysis
-    - Clustering by structural similarity
-    - Scaffold hopping in medicinal chemistry
-    - Series analysis in drug discovery
-    
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset (e.g., 'dataset_raw_A3F2B1D4').
+        Input CSV filename from manifest.
     column_name : str
-        Name of the column containing SMILES strings to process.
+        Column containing SMILES strings.
     project_manifest_path : str
-        Path to the project manifest file for tracking this resource.
+        Path to manifest.json.
     output_filename : str
-        Base filename for the stored resource without extension (e.g., 'dataset_scaffolds').
+        Base name for output file.
     scaffold_type : str, default='bemis_murcko'
-        Type of scaffold to extract. Options:
-        - 'bemis_murcko': Ring systems and linkers with some substituents retained
-        - 'generic': Molecular skeleton (all atoms as carbon, all bonds single)
-        - 'cyclic_skeleton': Skeleton without sidechains, only rings and linkers
+        Type: 'bemis_murcko' (rings + linkers), 'generic' (skeleton), 'cyclic_skeleton' (skeleton without sidechains).
     explanation : str
-        Brief description of the scaffold calculation performed.
+        Description for manifest logging.
     
     Returns
     -------
     dict
-        A dictionary containing:
-        - output_filename : str
-            Full filename with unique ID for the new resource with scaffold data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            scaffold extraction (e.g., number of failed extractions, molecules without scaffolds).
-        - n_scaffolds_found : int
-            Number of molecules with successfully extracted scaffolds.
-        - n_no_scaffold : int
-            Number of molecules without scaffolds (typically aliphatic molecules).
-        - scaffold_type : str
-            Type of scaffold that was calculated.
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Information about column naming and success/failure interpretation.
+        Contains output_filename, n_rows, columns, comments (dict with counts), n_scaffolds_found,
+        n_no_scaffold, scaffold_type, preview, and note.
     
     Raises
     ------
     ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Examples
-    --------
-    # Calculate Bemis-Murcko scaffolds for a dataset
-    result = calculate_scaffolds_dataset(
-        input_filename='cleaned_molecules_A3F2B1D4.csv',
-        column_name='smiles',
-        project_manifest_path='/path/to/manifest.json',
-        output_filename='molecules_with_scaffolds',
-        scaffold_type='bemis_murcko'
-    )
-    
-    # Calculate generic scaffolds (molecular skeletons)
-    result = calculate_scaffolds_dataset(
-        input_filename='cleaned_molecules_A3F2B1D4.csv',
-        column_name='smiles',
-        project_manifest_path='/path/to/manifest.json',
-        output_filename='molecules_with_skeletons',
-        scaffold_type='generic'
-    )
+        If column_name not found in dataset.
     
     Notes
     -----

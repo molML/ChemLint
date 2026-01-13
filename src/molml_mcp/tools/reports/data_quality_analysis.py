@@ -32,7 +32,7 @@ from molml_mcp.tools.featurization.simple_descriptors import calculate_simple_de
 from molml_mcp.tools.core.filtering import filter_by_pains, filter_by_lipinski_ro5, filter_by_veber_rules, filter_by_qed
 from molml_mcp.tools.cleaning.deduplication import find_duplicates_dataset
 from molml_mcp.tools.core.outliers import detect_outliers_iqr
-from molml_mcp.tools.reports.scaffold_report import generate_scaffold_report
+from molml_mcp.tools.reports.scaffold_analysis import generate_scaffold_report
 from molml_mcp.constants import COMMON_SOLVENTS, COMMON_SALT_SMILES
 
 

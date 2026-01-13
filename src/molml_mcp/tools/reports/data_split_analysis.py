@@ -2101,10 +2101,20 @@ def data_split_quality_analysis(
     max_examples: int = 10
 ) -> Dict:
     """
-    Comprehensive train/test/val split quality analysis producing human-readable text report.
+    🚀 PRIMARY TOOL FOR DATA SPLIT ANALYSIS & DATA LEAKAGE DETECTION 🚀
     
-    Generates both a detailed JSON report and a human-readable text report for data splitting
-    quality assessment. Detects data leakage, distribution biases, and splitting issues.
+    Comprehensive train/test/val split quality analysis with 8 diagnostic checks:
+    1. Split characteristics (sizes, ratios, class balance)
+    2. Exact duplicate detection (CRITICAL leakage)
+    3. Similarity-based leakage (high similarity pairs, activity cliffs)
+    4. Scaffold overlap (structural leakage)
+    5. Stereoisomer/tautomer leakage (subtle molecular variants)
+    6. Physicochemical property distributions (bias detection)
+    7. Activity/label distributions (target variable bias)
+    8. Functional group distributions (chemical space coverage)
+    
+    Produces both a detailed JSON report and a human-readable text report with
+    severity levels (OK, LOW, MEDIUM, HIGH, CRITICAL) for each issue found. 
     
     Parameters
     ----------

@@ -1557,12 +1557,31 @@ def data_quality_analysis(
     explanation: str = 'Generated comprehensive data quality report'
 ) -> Dict:
     """
-    Generate comprehensive data quality report for a molecular dataset.
+    🚀 PRIMARY TOOL FOR COMPREHENSIVE DATA QUALITY ASSESSMENT 🚀
     
-    Performs calculations and generates formatted text report covering dataset overview,
-    completeness, SMILES validity, PAINS, duplicates, physicochemical properties, drug-likeness
-    rules, outliers, activity distributions, scaffold diversity, functional groups, stereochemistry,
-    charge states, salts/fragments, special features, and cleaning recommendations.
+    Comprehensive molecular dataset quality analysis with 19 diagnostic sections:
+    1. **Dataset Overview**: Basic statistics and column information
+    2. **Data Completeness**: Missing value analysis per column
+    3. **SMILES Validity**: Invalid/unparseable molecular structures
+    4. **PAINS Patterns**: Pan-Assay Interference Compounds detection
+    5. **Duplicates & Conflicts**: Identical molecules with conflicting labels
+    6. **Physicochemical Properties**: MW, LogP, H-bonds, TPSA, rotatable bonds, etc.
+    7. **Lipinski Rule of Five**: Oral bioavailability prediction
+    8. **Veber Rules**: Additional drug-likeness criteria
+    9. **QED Drug-Likeness**: Quantitative drug-likeness scoring
+    10. **Outlier Detection**: Molecules with unusual properties
+    11. **Activity Distribution**: Classification balance or regression range analysis
+    12. **Activity Correlations**: Property-activity relationships
+    13. **Scaffold Diversity**: Chemical space coverage metrics
+    14. **Functional Group Analysis**: Common structural motifs
+    15. **Stereochemistry Analysis**: Chiral centers and E/Z bonds
+    16. **Charge State Analysis**: Formal charges and zwitterions
+    17. **Salts/Fragments/Solvents**: Multi-component entries detection
+    18. **Special Features**: Organometallics, isotopes, unusual rings
+    19. **Recommended Workflow**: Prioritized cleaning steps
+    
+    Produces both a detailed JSON report with all calculations and a human-readable
+    text report with interpretations and actionable recommendations.
     
     Parameters
     ----------

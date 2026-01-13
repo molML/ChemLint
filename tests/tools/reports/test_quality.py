@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import json
 from pathlib import Path
-from molml_mcp.tools.reports.quality import _perform_quality_report_calculations
+from molml_mcp.tools.reports.data_quality_analysis import _perform_quality_report_calculations
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
 

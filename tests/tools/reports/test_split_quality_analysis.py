@@ -13,7 +13,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from molml_mcp.tools.reports.data_splitting import analyze_split_quality
+from molml_mcp.tools.reports.data_split_analysis import analyze_split_quality
 from molml_mcp.infrastructure.resources import _store_resource
 
 

@@ -231,7 +231,19 @@ def scaffold_analysis(
     explanation: str = "Generated scaffold analysis report"
 ) -> Dict:
     """
-    Generate comprehensive scaffold analysis report with distribution, diversity, and optional activity enrichment.
+    🚀 PRIMARY TOOL FOR SCAFFOLD & CHEMICAL DIVERSITY ANALYSIS 🚀
+    
+    Comprehensive scaffold analysis with 5 key sections:
+    1. **Overview**: Total scaffolds, diversity ratio, coverage statistics
+    2. **Distribution**: Singleton/rare/common/abundant categorization with Gini & Shannon metrics
+    3. **Top Scaffolds**: Most frequent molecular frameworks (configurable top N)
+    4. **Structural Outliers**: Scaffolds dissimilar to others (potential novel chemotypes)
+    5. **Activity Enrichment** (optional): Statistical identification of privileged/inactive scaffolds
+    
+    Produces three outputs:
+    - Human-readable text report with interpretations
+    - Structured JSON report with all statistics
+    - Dataset with scaffold column added for further analysis
     
     Parameters
     ----------

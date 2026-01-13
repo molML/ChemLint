@@ -1546,7 +1546,7 @@ def _perform_quality_report_calculations(
     return json_filename
 
 
-def generate_quality_report(
+def data_quality_analysis(
     input_filename: str,
     project_manifest_path: str,
     smiles_col: str = 'SMILES',

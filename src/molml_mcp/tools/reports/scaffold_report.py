@@ -218,7 +218,7 @@ def _perform_enrichment_analysis(df: pd.DataFrame, scaffold_col: str,
     return results
 
 
-def generate_scaffold_report(
+def scaffold_analysis(
     dataset_filename: str,
     project_manifest_path: str,
     smiles_column: str,
@@ -539,11 +539,3 @@ def generate_scaffold_report(
         'note': "Mention to the user that report files are stored in the project resources directory."
     }
 
-
-def get_all_scaffold_report_tools():
-    """
-    Returns a list of MCP-exposed scaffold report functions for server registration.
-    """
-    return [
-        generate_scaffold_report,
-    ]

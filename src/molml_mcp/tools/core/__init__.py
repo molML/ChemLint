@@ -39,6 +39,8 @@ from molml_mcp.tools.core.outliers import (
 from molml_mcp.tools.core.plotting import (
     add_molecular_scatter_plot,
     add_histogram,
+    add_density_plot,
+    add_box_plot,
     remove_plot,
     list_active_plots,
 )
@@ -74,4 +76,6 @@ __all__ = [
     'remove_plot',
     'list_active_plots',
     'add_histogram',
+    'add_density_plot',
+    'add_box_plot',
 ]

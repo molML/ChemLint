@@ -184,5 +184,5 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Documentation: README.md"
-echo "Need help? Open an issue at: https://github.com/your-repo/molml_mcp"
+echo "Need help? Open an issue at: https://github.com/derekvantilborg/molml_mcp"
 echo ""

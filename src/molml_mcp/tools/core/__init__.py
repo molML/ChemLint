@@ -36,11 +36,11 @@ from molml_mcp.tools.core.statistics import (
 from molml_mcp.tools.core.outliers import (
     get_all_outlier_detection_tools,
 )
-from molml_mcp.tools.core.mol_scatter_plot import (
+from molml_mcp.tools.core.plotting import (
     add_molecular_scatter_plot,
+    add_histogram,
     remove_plot,
     list_active_plots,
-    create_molecular_scatter_plot,  # Deprecated but kept for compatibility
 )
 
 __all__ = [
@@ -73,5 +73,5 @@ __all__ = [
     'add_molecular_scatter_plot',
     'remove_plot',
     'list_active_plots',
-    'create_molecular_scatter_plot',
+    'add_histogram',
 ]

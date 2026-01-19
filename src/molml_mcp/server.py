@@ -122,18 +122,16 @@ for tool_func in get_all_clustering_tools():
     mcp.add_tool(tool_func)
 
 # Add plotting tools
-from molml_mcp.tools.core.plotting import plot_histogram
-from molml_mcp.tools.core.mol_scatter_plot import (
+from molml_mcp.tools.core.plotting import (
     add_molecular_scatter_plot,
+    add_histogram,
     remove_plot,
     list_active_plots,
-    create_molecular_scatter_plot  # Deprecated but kept for compatibility
 )
-mcp.add_tool(plot_histogram)
 mcp.add_tool(add_molecular_scatter_plot)
+mcp.add_tool(add_histogram)
 mcp.add_tool(remove_plot)
 mcp.add_tool(list_active_plots)
-mcp.add_tool(create_molecular_scatter_plot)  # Deprecated
 
 # Add ML metrics tools
 for tool_func in get_all_ml_tools():

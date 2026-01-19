@@ -1,413 +1,689 @@
 """
-Plotting functions for molecular data visualization.
+Interactive plotting functions for molecular data visualization.
+
+Uses a persistent Dash server with tabs - plots can be dynamically added/removed.
+Supports both scatter plots (with molecular structure tooltips) and histograms.
 """
 
+from dash import Dash, dcc, html, Input, Output, no_update, callback, ctx
+import plotly.graph_objects as go
+from rdkit import Chem
+from rdkit.Chem import Draw
+import base64
+from io import BytesIO
 import pandas as pd
-import io
-from plotnine import (
-    ggplot, aes, geom_histogram, geom_point, theme_minimal, theme, element_text, 
-    element_line, element_rect, labs, scale_fill_manual, scale_color_gradient,
-    scale_color_manual, scale_color_cmap, scale_color_cmap_d, guide_colorbar, guides
-)
-from mcp.server.fastmcp import Image
-from molml_mcp.infrastructure.resources import _load_resource
+import threading
+import time
+from molml_mcp.infrastructure.resources import _load_resource, _store_resource
+
+# Global state for persistent Dash server
+_dash_app = None
+_dash_thread = None
+_active_plots = {}  # plot_id -> plot_data dict
+_server_lock = threading.RLock()  # Use RLock for reentrant locking
+_PORT = 8050
 
 
-def plot_histogram(
-    input_filename: str,
-    column: str,
-    project_manifest_path: str,
-    bins: int = 30,
-    fill_color: str = "#577788",
-    title: str | None = None,
-    xlabel: str | None = None,
-    ylabel: str = "Count",
-    width: float = 6.0,
-    height: float = 4.0,
-    dpi: int = 300
-) -> list:
+def _mol_to_base64(smiles, size=(200, 200)):
     """
-    Create a publication-quality histogram using plotnine (Nature paper style).
+    Convert SMILES to base64 encoded PNG image.
     
-    Generates a clean, professional histogram with minimalist styling suitable
-    for scientific publications. Returns the image for inline display.
+    Parameters
+    ----------
+    smiles : str
+        SMILES string
+    size : tuple
+        Image size (width, height)
+    
+    Returns
+    -------
+    str or None
+        Base64 encoded data URI or None if invalid SMILES
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    img = Draw.MolToImage(mol, size=size)
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
+
+
+def _create_scatter_figure(df, x_col, y_col, color_col=None, size_col=None, plot_id="scatter"):
+    """
+    Create a plotly scatter plot figure.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataset
+    x_col : str
+        Column for x-axis
+    y_col : str
+        Column for y-axis
+    color_col : str, optional
+        Column for point colors
+    size_col : str, optional
+        Column for point sizes
+    plot_id : str
+        Unique identifier for this plot
+    
+    Returns
+    -------
+    go.Figure
+        Plotly figure object
+    """
+    marker_kwargs = {"size": 10}
+    
+    if color_col and color_col in df.columns:
+        marker_kwargs.update({
+            "color": df[color_col],
+            "colorscale": "Viridis",
+            "showscale": True,
+            "colorbar": {"title": color_col}
+        })
+    
+    if size_col and size_col in df.columns:
+        marker_kwargs["size"] = df[size_col]
+        marker_kwargs["sizemode"] = "diameter"
+        marker_kwargs["sizeref"] = df[size_col].max() / 20
+    
+    fig = go.Figure(data=go.Scatter(
+        x=df[x_col],
+        y=df[y_col],
+        mode='markers',
+        marker=marker_kwargs,
+        customdata=list(range(len(df)))  # Store row indices
+    ))
+    
+    # Turn off native plotly.js hover effects
+    fig.update_traces(hoverinfo="none", hovertemplate=None)
+    
+    fig.update_layout(
+        xaxis=dict(title=x_col),
+        yaxis=dict(title=y_col),
+        plot_bgcolor='rgba(255,255,255,0.1)',
+        hovermode='closest',
+        margin=dict(l=40, r=40, t=40, b=40)
+    )
+    
+    return fig
+
+
+def _build_plot_tab(plot_id, plot_data):
+    """Build a single plot tab with graph and tooltip."""
+    fig = plot_data['figure']
+    
+    if plot_data['show_structures']:
+        return dcc.Tab(
+            label=plot_data['label'],
+            value=plot_id,
+            children=[
+                html.Div([
+                    dcc.Graph(
+                        id={'type': 'graph', 'index': plot_id},
+                        figure=fig,
+                        clear_on_unhover=True,
+                        style={'height': '80vh'}
+                    ),
+                    dcc.Tooltip(id={'type': 'tooltip', 'index': plot_id}),
+                ])
+            ]
+        )
+    else:
+        return dcc.Tab(
+            label=plot_data['label'],
+            value=plot_id,
+            children=[
+                dcc.Graph(
+                    id={'type': 'graph', 'index': plot_id},
+                    figure=fig,
+                    style={'height': '80vh'}
+                )
+            ]
+        )
+
+
+def _update_layout():
+    """Update the Dash app layout with current plots."""
+    global _dash_app, _active_plots
+    
+    if not _active_plots:
+        _dash_app.layout = html.Div([
+            html.H3("Molecular Visualization Dashboard", style={'textAlign': 'center', 'padding': '20px'}),
+            html.P("No plots yet. Use add_molecular_scatter_plot or add_histogram to create visualizations.", 
+                   style={'textAlign': 'center', 'color': 'gray'})
+        ])
+        return
+    
+    tabs = [_build_plot_tab(plot_id, plot_data) for plot_id, plot_data in _active_plots.items()]
+    
+    _dash_app.layout = html.Div([
+        html.H3("Molecular Visualization Dashboard", style={'textAlign': 'center', 'padding': '10px'}),
+        dcc.Tabs(id="plot-tabs", value=list(_active_plots.keys())[0], children=tabs)
+    ])
+
+
+def _setup_universal_callback():
+    """Set up a single universal callback that handles all plot tooltips dynamically."""
+    global _dash_app
+    
+    # Use pattern-matching callbacks to handle all tooltips with a single callback
+    from dash import ALL
+    
+    @_dash_app.callback(
+        Output({'type': 'tooltip', 'index': ALL}, 'show'),
+        Output({'type': 'tooltip', 'index': ALL}, 'bbox'),
+        Output({'type': 'tooltip', 'index': ALL}, 'children'),
+        Input({'type': 'graph', 'index': ALL}, 'hoverData'),
+        prevent_initial_call=True
+    )
+    def universal_hover(*hover_data_list):
+        global _active_plots
+        
+        # Get the list of all registered plot IDs
+        plot_ids = list(_active_plots.keys())
+        n_plots = len(plot_ids)
+        
+        # Find which graph triggered the callback
+        triggered = ctx.triggered_id
+        if not triggered:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+        
+        plot_id = triggered['index']
+        
+        # Find the index in our plot_ids list
+        try:
+            trigger_idx = plot_ids.index(plot_id)
+        except ValueError:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+        
+        # Get hover data
+        if len(hover_data_list) == 0:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+            
+        # hover_data_list[0] is a list with entries for all tabs
+        # e.g., [{'points': [...]}, None] or [None, {'points': [...]}]
+        all_hover_data = hover_data_list[0]
+        
+        if not isinstance(all_hover_data, list) or len(all_hover_data) == 0:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+        
+        # Get the hover data for the triggered plot
+        if trigger_idx >= len(all_hover_data):
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+            
+        hoverData = all_hover_data[trigger_idx]
+        
+        # Check if hoverData is valid
+        if not hoverData or not isinstance(hoverData, dict) or "points" not in hoverData:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+        
+        plot_data = _active_plots[plot_id]
+        
+        if not plot_data['show_structures']:
+            return [no_update] * n_plots, [no_update] * n_plots, [no_update] * n_plots
+        
+        pt = hoverData["points"][0]
+        bbox = pt["bbox"]
+        num = pt["pointNumber"]
+
+        df = plot_data['dataframe']
+        df_row = df.iloc[num]
+        smiles = df_row[plot_data['smiles_column']]
+        
+        img_src = _mol_to_base64(smiles)
+        
+        properties = []
+        for col in df.columns:
+            if col != plot_data['smiles_column']:
+                value = df_row[col]
+                properties.append(
+                    html.P(
+                        f"{col}: {value:.2f}" if isinstance(value, (int, float)) else f"{col}: {value}",
+                        style={"margin": "2px"}
+                    )
+                )
+        
+        children = html.Div([
+            html.Img(src=img_src, style={"width": "200px", "display": "block", "margin": "0 auto"}) if img_src else None,
+            html.P(smiles, style={"font-family": "monospace", "text-align": "center", "margin": "5px"}),
+            html.Hr(style={"margin": "5px 0"}),
+            *properties
+        ], style={"width": "220px", "padding": "10px"})
+        
+        # Prepare outputs for all tooltips - use n_plots consistently
+        shows = [False] * n_plots
+        bboxes = [no_update] * n_plots
+        children_list = [no_update] * n_plots
+        
+        shows[trigger_idx] = True
+        bboxes[trigger_idx] = bbox
+        children_list[trigger_idx] = children
+        
+        return shows, bboxes, children_list
+
+
+def _ensure_server_running():
+    """Ensure the Dash server is running. Start it if not."""
+    global _dash_app, _dash_thread, _PORT
+    
+    with _server_lock:
+        if _dash_app is None:
+            _dash_app = Dash(__name__, suppress_callback_exceptions=True)
+            
+            # Set initial empty layout
+            _dash_app.layout = html.Div([
+                html.H3("Molecular Visualization Dashboard", style={'textAlign': 'center', 'padding': '20px'}),
+                html.P("Loading...", style={'textAlign': 'center', 'color': 'gray'})
+            ])
+            
+            # Register the universal callback BEFORE adding any plots
+            # This way pattern-matching will work for all future plot additions
+            _setup_universal_callback()
+            
+            def run_server():
+                # Suppress Flask/Werkzeug logging
+                import logging
+                log = logging.getLogger('werkzeug')
+                log.setLevel(logging.ERROR)
+                
+                try:
+                    _dash_app.run(debug=False, port=_PORT, use_reloader=False, host='127.0.0.1')
+                except OSError as e:
+                    # Port already in use - that's okay, server is already running
+                    if "Address already in use" in str(e) or "address already in use" in str(e):
+                        pass
+                    else:
+                        raise
+            
+            _dash_thread = threading.Thread(target=run_server, daemon=True)
+            _dash_thread.start()
+            
+            # Give the server a moment to start
+            time.sleep(0.5)
+
+
+def add_molecular_scatter_plot(
+    input_filename: str,
+    x_column: str,
+    y_column: str,
+    project_manifest_path: str,
+    plot_name: str,
+    explanation: str,
+    smiles_column: str = 'smiles',
+    color_column: str = None,
+    size_column: str = None,
+    show_structures_on_hover: bool = True
+) -> dict:
+    """
+    Add an interactive scatter plot to the persistent visualization dashboard.
+    
+    Creates a new tab in the Dash visualization server. If the server isn't running,
+    it will be started automatically. Multiple plots can coexist as tabs.
     
     Parameters
     ----------
     input_filename : str
-        Base filename of the input dataset resource.
-    column : str
-        Name of the column to plot.
+        Input dataset filename
+    x_column : str
+        Column name for x-axis
+    y_column : str
+        Column name for y-axis
     project_manifest_path : str
-        Path to the project manifest JSON file.
-    bins : int
-        Number of histogram bins (default: 30).
-    fill_color : str
-        Hex color for histogram bars (default: "#577788" - blue-gray).
-    title : str | None
-        Plot title (default: None for no title).
-    xlabel : str | None
-        X-axis label (default: column name).
-    ylabel : str
-        Y-axis label (default: "Count").
-    width : float
-        Figure width in inches (default: 6.0).
-    height : float
-        Figure height in inches (default: 4.0).
-    dpi : int
-        Resolution in dots per inch (default: 300).
+        Path to manifest.json
+    plot_name : str
+        Unique name for this plot (used as tab label and identifier)
+    explanation : str
+        Brief description of the plot
+    smiles_column : str, default='smiles'
+        Column containing SMILES strings
+    color_column : str, optional
+        Column to use for point colors
+    size_column : str, optional
+        Column to use for point sizes
+    show_structures_on_hover : bool, default=True
+        If True, show molecular structures on hover
     
     Returns
     -------
-    list
-        [Image, str] - FastMCP Image object and summary statistics string
+    dict
+        Contains plot_name, url, n_molecules, x_column, y_column, active_plots
     
     Examples
     --------
-    Basic histogram:
-    
-        img, stats = plot_histogram(
-            input_filename='dataset_AB12CD34.csv',
-            column='molecular_weight',
-            project_manifest_path='/path/to/manifest.json'
-        )
-    
-    Customized histogram:
-    
-        img, stats = plot_histogram(
-            input_filename='dataset_AB12CD34.csv',
-            column='logP',
-            project_manifest_path='/path/to/manifest.json',
-            bins=40,
-            fill_color='#3498DB',
-            title='LogP Distribution',
-            xlabel='LogP',
-            ylabel='Frequency'
-        )
+    >>> add_molecular_scatter_plot(
+    ...     input_filename="dataset_A1B2C3D4.csv",
+    ...     x_column="MW",
+    ...     y_column="LogP",
+    ...     project_manifest_path="/path/to/manifest.json",
+    ...     plot_name="MW vs LogP",
+    ...     explanation="Molecular weight vs lipophilicity"
+    ... )
     """
+    global _active_plots, _PORT
+    
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
     
-    # Validate column exists
-    if column not in df.columns:
-        available_columns = df.columns.tolist()
+    # Validate columns
+    required_cols = [x_column, y_column]
+    if show_structures_on_hover:
+        required_cols.append(smiles_column)
+    
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
         raise ValueError(
-            f"Column '{column}' not found in dataset. "
-            f"Available columns: {available_columns}"
+            f"Column(s) not found in dataset: {missing_cols}. "
+            f"Available columns: {list(df.columns)}"
         )
     
-    # Extract data and remove NaN values
+    # Generate unique plot ID
+    plot_id = plot_name.lower().replace(" ", "-").replace("/", "-")
+    
+    # Check if plot already exists
+    if plot_id in _active_plots:
+        raise ValueError(
+            f"Plot '{plot_name}' already exists. Use a different name or remove it first."
+        )
+    
+    # Create figure
+    fig = _create_scatter_figure(df, x_column, y_column, color_column, size_column, plot_id)
+    
+    # Store plot data
+    with _server_lock:
+        _active_plots[plot_id] = {
+            'label': plot_name,
+            'dataframe': df,
+            'figure': fig,
+            'x_column': x_column,
+            'y_column': y_column,
+            'smiles_column': smiles_column,
+            'color_column': color_column,
+            'size_column': size_column,
+            'show_structures': show_structures_on_hover,
+            'explanation': explanation
+        }
+        
+        # Ensure server is running
+        _ensure_server_running()
+        
+        # Update layout (no need to register callbacks - already done universally)
+        _update_layout()
+    
+    url = f"http://127.0.0.1:{_PORT}/"
+    
+    return {
+        "plot_name": plot_name,
+        "plot_id": plot_id,
+        "url": url,
+        "n_molecules": len(df),
+        "x_column": x_column,
+        "y_column": y_column,
+        "show_structures": show_structures_on_hover,
+        "active_plots": list(_active_plots.keys()),
+        "message": f"Plot '{plot_name}' added. Visit {url} to view all {len(_active_plots)} plot(s)."
+    }
+
+
+def add_histogram(
+    input_filename: str,
+    column: str,
+    project_manifest_path: str,
+    plot_name: str,
+    explanation: str,
+    bins: int = 30,
+    color: str = "#577788",
+    show_mean_line: bool = True,
+    show_median_line: bool = False
+) -> dict:
+    """
+    Add an interactive histogram to the persistent visualization dashboard.
+    
+    Creates a new tab in the Dash visualization server. If the server isn't running,
+    it will be started automatically. Multiple plots can coexist as tabs.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Input dataset filename
+    column : str
+        Column name to plot as histogram
+    project_manifest_path : str
+        Path to manifest.json
+    plot_name : str
+        Unique name for this plot (used as tab label and identifier)
+    explanation : str
+        Brief description of the plot
+    bins : int, default=30
+        Number of histogram bins
+    color : str, default="#577788"
+        Color for histogram bars (hex color)
+    show_mean_line : bool, default=True
+        If True, show a vertical line at the mean
+    show_median_line : bool, default=False
+        If True, show a vertical line at the median
+    
+    Returns
+    -------
+    dict
+        Contains plot_name, url, n_values, statistics, active_plots
+    
+    Examples
+    --------
+    >>> add_histogram(
+    ...     input_filename="dataset_A1B2C3D4.csv",
+    ...     column="MW",
+    ...     project_manifest_path="/path/to/manifest.json",
+    ...     plot_name="Molecular Weight Distribution",
+    ...     explanation="Distribution of molecular weights"
+    ... )
+    """
+    global _active_plots, _PORT
+    
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate column
+    if column not in df.columns:
+        raise ValueError(
+            f"Column '{column}' not found in dataset. "
+            f"Available columns: {list(df.columns)}"
+        )
+    
+    # Extract data and remove NaN
     data = df[column].dropna()
     
     if len(data) == 0:
         raise ValueError(f"Column '{column}' contains no valid (non-NaN) values")
     
     # Calculate statistics
-    stats = {
+    mean_val = float(data.mean())
+    median_val = float(data.median())
+    min_val = float(data.min())
+    max_val = float(data.max())
+    
+    # Generate unique plot ID
+    plot_id = plot_name.lower().replace(" ", "-").replace("/", "-")
+    
+    # Check if plot already exists
+    if plot_id in _active_plots:
+        raise ValueError(
+            f"Plot '{plot_name}' already exists. Use a different name or remove it first."
+        )
+    
+    # Create histogram figure
+    fig = go.Figure()
+    
+    # Add histogram
+    fig.add_trace(go.Histogram(
+        x=data,
+        nbinsx=bins,
+        marker=dict(color=color, line=dict(color='white', width=1)),
+        name='Distribution',
+        opacity=0.85
+    ))
+    
+    # Add mean line
+    if show_mean_line:
+        fig.add_vline(
+            x=mean_val,
+            line_dash="dash",
+            line_color="red",
+            line_width=2,
+            annotation_text=f"Mean: {mean_val:.2f}",
+            annotation_position="top"
+        )
+    
+    # Add median line
+    if show_median_line:
+        fig.add_vline(
+            x=median_val,
+            line_dash="dot",
+            line_color="green",
+            line_width=2,
+            annotation_text=f"Median: {median_val:.2f}",
+            annotation_position="top"
+        )
+    
+    # Update layout
+    fig.update_layout(
+        xaxis=dict(title=column),
+        yaxis=dict(title="Count"),
+        plot_bgcolor='rgba(255,255,255,0.1)',
+        showlegend=False,
+        margin=dict(l=40, r=40, t=40, b=40),
+        hovermode='x'
+    )
+    
+    # Store plot data
+    with _server_lock:
+        _active_plots[plot_id] = {
+            'label': plot_name,
+            'figure': fig,
+            'type': 'histogram',
+            'column': column,
+            'show_structures': False,  # Histograms don't have molecular tooltips
+            'explanation': explanation,
+            'statistics': {
+                'n_values': len(data),
+                'mean': mean_val,
+                'median': median_val,
+                'min': min_val,
+                'max': max_val
+            }
+        }
+        
+        # Ensure server is running
+        _ensure_server_running()
+        
+        # Update layout
+        _update_layout()
+    
+    url = f"http://127.0.0.1:{_PORT}/"
+    
+    return {
+        "plot_name": plot_name,
+        "plot_id": plot_id,
+        "url": url,
         "n_values": len(data),
-        "min": float(data.min()),
-        "max": float(data.max()),
-        "mean": float(data.mean()),
-        "median": float(data.median())
+        "statistics": {
+            "mean": mean_val,
+            "median": median_val,
+            "min": min_val,
+            "max": max_val
+        },
+        "active_plots": list(_active_plots.keys()),
+        "message": f"Histogram '{plot_name}' added. Visit {url} to view all {len(_active_plots)} plot(s)."
     }
-    
-    # Create DataFrame for plotnine
-    plot_df = pd.DataFrame({column: data})
-    
-    # Set default labels
-    if xlabel is None:
-        xlabel = column
-    
-    # Create the plot with Nature paper styling
-    p = (
-        ggplot(plot_df, aes(x=column))
-        + geom_histogram(bins=bins, fill=fill_color, color='white', size=0.3, alpha=0.9)
-        + labs(
-            title=title if title else '',
-            x=xlabel,
-            y=ylabel
-        )
-        + theme_minimal()
-        + theme(
-            # Text elements - clean and legible
-            text=element_text(family='Arial', size=11, color='#2C3E50'),
-            plot_title=element_text(size=13, face='bold', margin={'b': 15}) if title else element_text(size=0),
-            axis_title_x=element_text(size=11, face='bold', margin={'t': 10}),
-            axis_title_y=element_text(size=11, face='bold', margin={'r': 10}),
-            axis_text=element_text(size=9, color='#34495E'),
-            
-            # Grid - subtle and minimal
-            panel_grid_major=element_line(color='#ECF0F1', size=0.5),
-            panel_grid_minor=element_line(color='#ECF0F1', size=0.25),
-            
-            # Background - clean white
-            panel_background=element_rect(fill='white'),
-            plot_background=element_rect(fill='white'),
-            
-            # Axes - subtle lines
-            axis_line=element_line(color='#95A5A6', size=0.5),
-            
-            # Remove top and right spines for cleaner look
-            panel_border=element_rect(color='none'),
-            
-            # Adjust plot margins
-            plot_margin=0.05
-        )
-    )
-    
-    # Save the plot to a bytes buffer
-    buf = io.BytesIO()
-    p.save(buf, format='png', width=width, height=height, dpi=dpi, verbose=False)
-    buf.seek(0)
-    png_bytes = buf.read()
-    buf.close()
-    
-    # Create FastMCP Image object
-    img = Image(data=png_bytes, format="png")
-    
-    # Create summary statistics string
-    summary = (
-        f"Histogram of '{column}': {stats['n_values']} values, "
-        f"range [{stats['min']:.2f}, {stats['max']:.2f}], "
-        f"mean={stats['mean']:.2f}, median={stats['median']:.2f}"
-    )
-    
-    return [img, summary]
 
 
-def plot_scatter(
-    input_filename: str,
-    x_column: str,
-    y_column: str,
-    project_manifest_path: str,
-    color_column: str | None = None,
-    color_palette: str = "viridis",
-    treat_color_as_categorical: bool = False,
-    point_size: float = 3.0,
-    point_alpha: float = 0.7,
-    title: str | None = None,
-    xlabel: str | None = None,
-    ylabel: str | None = None,
-    width: float = 6.0,
-    height: float = 5.0,
-    dpi: int = 300
-) -> list:
+def remove_plot(plot_name: str) -> dict:
     """
-    Create a publication-quality scatter plot using plotnine (Nature paper style).
-    
-    Generates a clean, professional scatter plot with optional color-coding by
-    a third variable (categorical or continuous). Uses minimalist styling suitable
-    for scientific publications.
+    Remove a plot from the visualization dashboard.
     
     Parameters
     ----------
-    input_filename : str
-        Base filename of the input dataset resource.
-    x_column : str
-        Name of the column for x-axis.
-    y_column : str
-        Name of the column for y-axis.
-    project_manifest_path : str
-        Path to the project manifest JSON file.
-    color_column : str | None
-        Optional column name for color-coding points. Can be categorical or continuous.
-        If None, all points will be the same color (default: None).
-    color_palette : str
-        Color palette for continuous data or categorical data (default: "viridis").
-        Options: "viridis", "plasma", "inferno", "magma", "cividis" for continuous,
-        or "Set1", "Set2", "Set3", "Paired" for categorical.
-    treat_color_as_categorical : bool
-        Force color column to be treated as categorical even if it's numerical.
-        Useful for numerical cluster IDs (default: False).
-    point_size : float
-        Size of scatter points (default: 3.0).
-    point_alpha : float
-        Transparency of points, 0.0 (transparent) to 1.0 (opaque) (default: 0.7).
-    title : str | None
-        Plot title (default: None for no title).
-    xlabel : str | None
-        X-axis label (default: x_column name).
-    ylabel : str | None
-        Y-axis label (default: y_column name).
-    width : float
-        Figure width in inches (default: 6.0).
-    height : float
-        Figure height in inches (default: 5.0).
-    dpi : int
-        Resolution in dots per inch (default: 300).
+    plot_name : str
+        Name of the plot to remove (case-insensitive)
     
     Returns
     -------
-    list
-        [Image, str] - FastMCP Image object and summary statistics string
+    dict
+        Contains removed plot name, remaining plots, and url
     
     Examples
     --------
-    Basic scatter plot (no color):
-    
-        img, stats = plot_scatter(
-            input_filename='dataset_AB12CD34.csv',
-            x_column='molecular_weight',
-            y_column='logP',
-            project_manifest_path='/path/to/manifest.json'
-        )
-    
-    Scatter plot with continuous color variable:
-    
-        img, stats = plot_scatter(
-            input_filename='dataset_AB12CD34.csv',
-            x_column='molecular_weight',
-            y_column='logP',
-            color_column='pIC50',
-            project_manifest_path='/path/to/manifest.json',
-            color_palette='viridis',
-            title='MW vs LogP colored by activity'
-        )
-    
-    Scatter plot with categorical color variable:
-    
-        img, stats = plot_scatter(
-            input_filename='dataset_AB12CD34.csv',
-            x_column='PC1',
-            y_column='PC2',
-            color_column='cluster',
-            project_manifest_path='/path/to/manifest.json',
-            color_palette='Set2'
-        )
+    >>> remove_plot("MW vs LogP")
     """
-    # Load dataset
-    df = _load_resource(project_manifest_path, input_filename)
+    global _active_plots, _PORT
     
-    # Validate columns exist
-    required_columns = [x_column, y_column]
-    if color_column:
-        required_columns.append(color_column)
+    plot_id = plot_name.lower().replace(" ", "-").replace("/", "-")
     
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        available_columns = df.columns.tolist()
-        raise ValueError(
-            f"Column(s) {missing_columns} not found in dataset. "
-            f"Available columns: {available_columns}"
-        )
-    
-    # Create plot dataframe, removing rows with NaN in required columns
-    plot_df = df[required_columns].dropna()
-    
-    if len(plot_df) == 0:
-        raise ValueError(f"No valid (non-NaN) data points found")
-    
-    # Calculate statistics
-    stats = {
-        "n_points": len(plot_df),
-        "x_range": [float(plot_df[x_column].min()), float(plot_df[x_column].max())],
-        "y_range": [float(plot_df[y_column].min()), float(plot_df[y_column].max())],
-        "x_mean": float(plot_df[x_column].mean()),
-        "y_mean": float(plot_df[y_column].mean())
-    }
-    
-    # Set default labels
-    if xlabel is None:
-        xlabel = x_column
-    if ylabel is None:
-        ylabel = y_column
-    
-    # Determine if color column is categorical or continuous
-    is_categorical = False
-    if color_column:
-        # User can force categorical treatment
-        if treat_color_as_categorical:
-            is_categorical = True
-        # Check if column is categorical (object/string type or few unique values)
-        elif plot_df[color_column].dtype == 'object' or plot_df[color_column].dtype.name == 'category':
-            is_categorical = True
-        elif plot_df[color_column].nunique() <= 10:  # Heuristic: <= 10 unique values = categorical
-            is_categorical = True
+    with _server_lock:
+        if plot_id not in _active_plots:
+            available = [_active_plots[pid]['label'] for pid in _active_plots]
+            raise ValueError(
+                f"Plot '{plot_name}' not found. Available plots: {available if available else 'none'}"
+            )
         
-        # Convert numerical columns to strings if treating as categorical
-        if is_categorical and plot_df[color_column].dtype != 'object':
-            plot_df[color_column] = plot_df[color_column].astype(str)
+        removed_label = _active_plots[plot_id]['label']
+        del _active_plots[plot_id]
+        
+        # Update layout (no need to re-register callbacks - universal callback handles all)
+        _update_layout()
     
-    # Create the plot
-    if color_column:
-        p = ggplot(plot_df, aes(x=x_column, y=y_column, color=color_column))
-    else:
-        p = ggplot(plot_df, aes(x=x_column, y=y_column))
+    url = f"http://127.0.0.1:{_PORT}/"
     
-    # Add scatter points
-    if color_column:
-        p = p + geom_point(size=point_size, alpha=point_alpha)
-    else:
-        p = p + geom_point(size=point_size, alpha=point_alpha, color='#577788')
+    return {
+        "removed_plot": removed_label,
+        "remaining_plots": list(_active_plots.keys()),
+        "n_remaining": len(_active_plots),
+        "url": url if _active_plots else None,
+        "message": f"Plot '{removed_label}' removed. {len(_active_plots)} plot(s) remaining."
+    }
+
+
+def list_active_plots() -> dict:
+    """
+    List all active plots in the visualization dashboard.
     
-    # Add color scale
-    if color_column:
-        if is_categorical:
-            # Categorical color scale - use discrete cmap
-            p = p + scale_color_cmap_d(cmap_name=color_palette)
-        else:
-            # Continuous color scale
-            p = (p + scale_color_cmap(cmap_name=color_palette)
-                 + guides(color=guide_colorbar(title=color_column)))
+    Returns
+    -------
+    dict
+        Contains plot details, url, and count
     
-    # Add labels and theme
-    p = (p
-        + labs(
-            title=title if title else '',
-            x=xlabel,
-            y=ylabel
-        )
-        + theme_minimal()
-        + theme(
-            # Text elements - clean and legible
-            text=element_text(family='Arial', size=11, color='#2C3E50'),
-            plot_title=element_text(size=13, face='bold', margin={'b': 15}) if title else element_text(size=0),
-            axis_title_x=element_text(size=11, face='bold', margin={'t': 10}),
-            axis_title_y=element_text(size=11, face='bold', margin={'r': 10}),
-            axis_text=element_text(size=9, color='#34495E'),
-            
-            # Grid - subtle and minimal
-            panel_grid_major=element_line(color='#ECF0F1', size=0.5),
-            panel_grid_minor=element_line(color='#ECF0F1', size=0.25),
-            
-            # Background - clean white
-            panel_background=element_rect(fill='white'),
-            plot_background=element_rect(fill='white'),
-            
-            # Axes - subtle lines
-            axis_line=element_line(color='#95A5A6', size=0.5),
-            
-            # Remove top and right spines for cleaner look
-            panel_border=element_rect(color='none'),
-            
-            # Legend styling
-            legend_background=element_rect(fill='white', color='none'),
-            legend_key=element_rect(fill='white', color='none'),
-            legend_title=element_text(size=10, face='bold'),
-            legend_text=element_text(size=9),
-            
-            # Adjust plot margins
-            plot_margin=0.05
-        )
-    )
+    Examples
+    --------
+    >>> list_active_plots()
+    """
+    global _active_plots, _PORT
     
-    # Save the plot to a bytes buffer
-    buf = io.BytesIO()
-    p.save(buf, format='png', width=width, height=height, dpi=dpi, verbose=False)
-    buf.seek(0)
-    png_bytes = buf.read()
-    buf.close()
+    if not _active_plots:
+        return {
+            "active_plots": [],
+            "n_plots": 0,
+            "url": None,
+            "message": "No active plots. Use add_molecular_scatter_plot or add_histogram to create visualizations."
+        }
     
-    # Create FastMCP Image object
-    img = Image(data=png_bytes, format="png")
+    plots_info = []
+    for plot_id, plot_data in _active_plots.items():
+        plots_info.append({
+            "name": plot_data['label'],
+            "plot_id": plot_id,
+            "type": plot_data.get('type', 'scatter'),
+            "explanation": plot_data['explanation']
+        })
     
-    # Create summary statistics string
-    color_info = f", colored by '{color_column}'" if color_column else ""
-    summary = (
-        f"Scatter plot of '{y_column}' vs '{x_column}'{color_info}: "
-        f"{stats['n_points']} points, "
-        f"x range [{stats['x_range'][0]:.2f}, {stats['x_range'][1]:.2f}], "
-        f"y range [{stats['y_range'][0]:.2f}, {stats['y_range'][1]:.2f}]"
-    )
+    url = f"http://127.0.0.1:{_PORT}/"
     
-    return [img, summary]
+    return {
+        "plots": plots_info,
+        "n_plots": len(_active_plots),
+        "url": url,
+        "message": f"{len(_active_plots)} plot(s) active. Visit {url} to view the dashboard."
+    }
+
+

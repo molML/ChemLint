@@ -259,12 +259,35 @@ molml_mcp/
 └── server.py                  # FastMCP server registration
 ```
 
-### Resource Management
+### Resource Management & Traceability
 
-All data operations use a **manifest-based tracking system**:
+All data operations use a **manifest-based tracking system** that functions like a **digital lab journal**, providing complete traceability of your molecular ML workflow:
 
-- **Unique IDs**: Files named `{filename}_{8_HEX_ID}.{ext}` (e.g., `cleaned_data_A3F2B1D4.csv`)
-- **Manifest JSON**: Tracks all resources with metadata (created_at, created_by, explanation)
+**How it works:**
+- **Unique IDs**: Every file gets a unique identifier `{filename}_{8_HEX_ID}.{ext}` (e.g., `cleaned_data_A3F2B1D4.csv`)
+- **Manifest JSON**: A `manifest.json` file in your project directory logs every operation with:
+  - **Timestamp**: When the resource was created
+  - **Function**: Which tool generated it (e.g., `standardize_smiles_dataset`)
+  - **Explanation**: Human-readable description of what was done
+  - **Lineage**: Input filename (if applicable), creating a traceable chain
+
+**Example manifest entry:**
+```json
+{
+  "cleaned_molecules_A3F2B1D4.csv": {
+    "type": "csv",
+    "created_at": "2026-01-20T14:23:45.123456",
+    "created_by": "standardize_smiles_dataset",
+    "explanation": "Standardized SMILES with salt removal and neutralization"
+  }
+}
+```
+
+**Benefits:**
+- 📋 **Full Audit Trail**: Know exactly what operations were performed and when
+- 🔄 **Reproducibility**: Recreate your entire pipeline from the manifest log
+- 🔍 **Debugging**: Trace back through processing steps when investigating issues
+- 👥 **Collaboration**: Share projects with complete operation history
 - **Type Registry**: Handlers for CSV (pandas), models (joblib), JSON, PNG (matplotlib)
 - **Project Isolation**: Each project has its own manifest and resource directory
 

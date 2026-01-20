@@ -1,7 +1,7 @@
 """Quick test script for persistent Dash server functionality."""
 
 import pandas as pd
-from src.molml_mcp.tools.core.mol_scatter_plot import (
+from src.molml_mcp.tools.core.plotting import (
     add_molecular_scatter_plot,
     remove_plot,
     list_active_plots

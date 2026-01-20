@@ -413,58 +413,35 @@ def drop_from_dataset(input_filename: str, column_name: str, condition: str, pro
     }
 
 
-def keep_from_dataset(input_filename: str, column_name: str, condition: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
+def subset_dataset(input_filename: str, project_manifest_path: str, output_filename: str, explanation: str,
+                   filter_condition: str) -> dict:
     """
-    Keep rows by exact match or null check. For complex filters, use inspect_dataset_rows().
-
+    Subset rows using pandas query filter expressions.
+    
     Parameters
     ----------
     input_filename : str
-        Input dataset filename
-    column_name : str
-        Column to check
-    condition : str
-        Either "is None" (keeps nulls) or exact value to match (e.g., "Passed")
     project_manifest_path : str
-        Path to manifest.json
     output_filename : str
-        Output dataset name (no extension)
     explanation : str
-        Brief description
-
+    filter_condition : str
+        Pandas query string. Use backticks for columns with spaces.
+        Examples: 'status == "Passed"' | "value == 3" | "TPSA > 50" | "is_active == True" |
+        "TPSA > 20 and MolWt < 500" | "`Molecular Weight` > 300" | "smiles.notnull()" | "label.isnull()"
+    
     Returns
     -------
     dict
         Contains output_filename, n_rows, columns, preview
-    
-    Examples
-    --------
-    keep_from_dataset(fname, "status", "Passed", path, "passed_only", "Keep passed rows")
-    keep_from_dataset(fname, "label", "is None", path, "unlabeled", "Keep unlabeled rows")
     """
     import pandas as pd
     
     df = _load_resource(project_manifest_path, input_filename)
     
-    if column_name not in df.columns:
-        raise ValueError(f"Column {column_name} not found in dataset.")
-
-    if condition == 'is None':
-        df_filtered = df[df[column_name].isnull()]
-    else:
-        # Attempt to convert condition to match column dtype for proper comparison
-        col_data = df[column_name]
-        try:
-            # If column is numeric, try to convert condition to numeric
-            if pd.api.types.is_numeric_dtype(col_data):
-                condition_value = pd.to_numeric(condition)
-            else:
-                condition_value = condition
-        except (ValueError, TypeError):
-            # If conversion fails, use as-is
-            condition_value = condition
-        
-        df_filtered = df[df[column_name] == condition_value]
+    try:
+        df_filtered = df.query(filter_condition)
+    except Exception as e:
+        raise ValueError(f"Invalid filter condition '{filter_condition}': {e}")
 
     output_filename = _store_resource(df_filtered, project_manifest_path, output_filename, explanation, 'csv')
     return {
@@ -1265,7 +1242,7 @@ def get_all_dataset_tools():
         get_dataset_summary,
         inspect_dataset_rows,
         drop_from_dataset,
-        keep_from_dataset,
+        subset_dataset,
         drop_duplicate_rows,
         drop_empty_rows,
         drop_columns,

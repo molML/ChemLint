@@ -382,10 +382,10 @@ def test_drop_from_dataset(session_workdir, request):
     assert list(df_result5["A"]) == [2, 3]
 
 
-def test_keep_from_dataset(session_workdir, request):
-    """Test keeping rows in dataset with various conditions."""
+def test_subset_dataset(session_workdir, request):
+    """Test subsetting rows with pandas query filters."""
     from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import keep_from_dataset
+    from molml_mcp.tools.core.dataset_ops import subset_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -394,82 +394,121 @@ def test_keep_from_dataset(session_workdir, request):
     
     manifest_path = str(test_dir / "test_manifest.json")
     
-    # Test 1: Keep rows with exact numeric match
+    # Test 1: Exact match for numbers
     df1 = pd.DataFrame({"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50]})
-    filename1 = _store_resource(df1, manifest_path, "test_data_keep1", "Test", "csv")
+    filename1 = _store_resource(df1, manifest_path, "test_data1", "Test", "csv")
     
-    result1 = keep_from_dataset(
+    result1 = subset_dataset(
         input_filename=filename1,
-        column_name="A",
-        condition="3",
         project_manifest_path=manifest_path,
-        output_filename="kept_data1",
-        explanation="Keep rows with A == 3"
+        output_filename="result1",
+        explanation="Keep A == 3",
+        filter_condition="A == 3"
     )
     
-    assert "output_filename" in result1
-    assert "n_rows" in result1
-    assert result1["n_rows"] == 1  # Should have 1 row (A=3)
+    assert result1["n_rows"] == 1
     df_result1 = _load_resource(manifest_path, result1["output_filename"])
-    assert len(df_result1) == 1
     assert df_result1["A"].iloc[0] == 3
     
-    # Test 2: Keep rows with null values using "is None"
-    df2 = pd.DataFrame({"A": [1, None, 3, None, 5], "B": [10, 20, 30, 40, 50]})
-    filename2 = _store_resource(df2, manifest_path, "test_data_keep2", "Test", "csv")
-    
-    result2 = keep_from_dataset(
-        input_filename=filename2,
-        column_name="A",
-        condition="is None",
-        project_manifest_path=manifest_path,
-        output_filename="kept_data2",
-        explanation="Keep rows with null A"
-    )
-    
-    assert result2["n_rows"] == 2  # Should have 2 rows with null A
-    df_result2 = _load_resource(manifest_path, result2["output_filename"])
-    assert df_result2["A"].isnull().sum() == 2
-    assert len(df_result2) == 2
-    
-    # Test 3: Keep rows with exact string match
-    df3 = pd.DataFrame({
+    # Test 2: Exact match for strings
+    df2 = pd.DataFrame({
         "status": ["Passed", "Failed", "Passed", "Failed", "Passed"],
         "value": [1, 2, 3, 4, 5]
     })
-    filename3 = _store_resource(df3, manifest_path, "test_data_keep3", "Test", "csv")
+    filename2 = _store_resource(df2, manifest_path, "test_data2", "Test", "csv")
     
-    result3 = keep_from_dataset(
-        input_filename=filename3,
-        column_name="status",
-        condition="Passed",
+    result2 = subset_dataset(
+        input_filename=filename2,
         project_manifest_path=manifest_path,
-        output_filename="kept_data3",
-        explanation="Keep rows with status == Passed"
+        output_filename="result2",
+        explanation="Keep Passed",
+        filter_condition='status == "Passed"'
     )
     
-    assert result3["n_rows"] == 3  # Should have 3 Passed rows
+    assert result2["n_rows"] == 3
+    df_result2 = _load_resource(manifest_path, result2["output_filename"])
+    assert all(df_result2["status"] == "Passed")
+    
+    # Test 3: Comparison operators
+    result3 = subset_dataset(
+        input_filename=filename1,
+        project_manifest_path=manifest_path,
+        output_filename="result3",
+        explanation="Keep A > 3",
+        filter_condition="A > 3"
+    )
+    
+    assert result3["n_rows"] == 2
     df_result3 = _load_resource(manifest_path, result3["output_filename"])
-    assert all(df_result3["status"] == "Passed")
-    assert len(df_result3) == 3
+    assert all(df_result3["A"] > 3)
     
-    # Test 4: Keep multiple matching numeric values
-    df4 = pd.DataFrame({"A": [1, 2, 1, 3, 1], "B": [10, 20, 30, 40, 50]})
-    filename4 = _store_resource(df4, manifest_path, "test_data_keep4", "Test", "csv")
+    # Test 4: Boolean columns
+    df4 = pd.DataFrame({
+        "is_active": [True, False, True, False, True],
+        "value": [1, 2, 3, 4, 5]
+    })
+    filename4 = _store_resource(df4, manifest_path, "test_data4", "Test", "csv")
     
-    result4 = keep_from_dataset(
+    result4 = subset_dataset(
         input_filename=filename4,
-        column_name="A",
-        condition="1",
         project_manifest_path=manifest_path,
-        output_filename="kept_data4",
-        explanation="Keep all rows with A == 1"
+        output_filename="result4",
+        explanation="Keep active",
+        filter_condition="is_active == True"
     )
     
-    assert result4["n_rows"] == 3  # Should have 3 rows with A=1
+    assert result4["n_rows"] == 3
     df_result4 = _load_resource(manifest_path, result4["output_filename"])
-    assert all(df_result4["A"] == 1)
-    assert len(df_result4) == 3
+    assert all(df_result4["is_active"] == True)
+    
+    # Test 5: Multiple conditions with AND
+    df5 = pd.DataFrame({
+        "TPSA": [10, 25, 30, 15, 40],
+        "MolWt": [200, 400, 600, 300, 250]
+    })
+    filename5 = _store_resource(df5, manifest_path, "test_data5", "Test", "csv")
+    
+    result5 = subset_dataset(
+        input_filename=filename5,
+        project_manifest_path=manifest_path,
+        output_filename="result5",
+        explanation="TPSA > 20 and MolWt < 500",
+        filter_condition="TPSA > 20 and MolWt < 500"
+    )
+    
+    assert result5["n_rows"] == 2
+    df_result5 = _load_resource(manifest_path, result5["output_filename"])
+    assert all(df_result5["TPSA"] > 20)
+    assert all(df_result5["MolWt"] < 500)
+    
+    # Test 6: Multiple conditions with OR
+    result6 = subset_dataset(
+        input_filename=filename1,
+        project_manifest_path=manifest_path,
+        output_filename="result6",
+        explanation="A < 2 or A > 4",
+        filter_condition="A < 2 or A > 4"
+    )
+    
+    assert result6["n_rows"] == 2
+    df_result6 = _load_resource(manifest_path, result6["output_filename"])
+    assert set(df_result6["A"].tolist()) == {1, 5}
+    
+    # Test 7: Null checks
+    df7 = pd.DataFrame({"A": [1, None, 3, None, 5], "B": [10, 20, 30, 40, 50]})
+    filename7 = _store_resource(df7, manifest_path, "test_data7", "Test", "csv")
+    
+    result7 = subset_dataset(
+        input_filename=filename7,
+        project_manifest_path=manifest_path,
+        output_filename="result7",
+        explanation="Keep null A",
+        filter_condition="A.isnull()"
+    )
+    
+    assert result7["n_rows"] == 2
+    df_result7 = _load_resource(manifest_path, result7["output_filename"])
+    assert df_result7["A"].isnull().sum() == 2
 
 
 def test_drop_duplicate_rows(session_workdir, request):

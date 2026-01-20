@@ -288,8 +288,18 @@ def _ensure_server_running():
             def run_server():
                 # Suppress Flask/Werkzeug logging
                 import logging
+                import sys
+                import os
+                
                 log = logging.getLogger('werkzeug')
                 log.setLevel(logging.ERROR)
+                
+                # Redirect stdout/stderr to devnull to prevent MCP JSON errors
+                devnull = open(os.devnull, 'w')
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+                sys.stdout = devnull
+                sys.stderr = devnull
                 
                 try:
                     _dash_app.run(debug=False, port=_PORT, use_reloader=False, host='127.0.0.1')
@@ -299,6 +309,11 @@ def _ensure_server_running():
                         pass
                     else:
                         raise
+                finally:
+                    # Restore stdout/stderr
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
+                    devnull.close()
             
             _dash_thread = threading.Thread(target=run_server, daemon=True)
             _dash_thread.start()
@@ -1251,7 +1266,8 @@ def add_correlation_heatmap(
         'figure': fig,
         'explanation': explanation,
         'method': method,
-        'n_variables': len(corr_matrix.columns)
+        'n_variables': len(corr_matrix.columns),
+        'show_structures': False
     }
     
     _ensure_server_running()
@@ -1367,7 +1383,8 @@ def add_grouped_heatmap(
         'explanation': explanation,
         'aggregation': aggregation,
         'n_rows': len(pivot.index),
-        'n_cols': len(pivot.columns)
+        'n_cols': len(pivot.columns),
+        'show_structures': False
     }
     
     _ensure_server_running()

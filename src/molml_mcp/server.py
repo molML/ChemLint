@@ -127,6 +127,7 @@ from molml_mcp.tools.core.plotting import (
     add_histogram,
     add_density_plot,
     add_box_plot,
+    add_correlation_heatmap,
     remove_plot,
     list_active_plots,
 )
@@ -134,6 +135,7 @@ mcp.add_tool(add_molecular_scatter_plot)
 mcp.add_tool(add_histogram)
 mcp.add_tool(add_density_plot)
 mcp.add_tool(add_box_plot)
+mcp.add_tool(add_correlation_heatmap)
 mcp.add_tool(remove_plot)
 mcp.add_tool(list_active_plots)
 

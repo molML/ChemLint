@@ -1166,3 +1166,107 @@ def list_active_plots() -> dict:
     }
 
 
+def add_correlation_heatmap(
+    input_filename: str,
+    project_manifest_path: str,
+    columns: list[str],
+    plot_name: str,
+    explanation: str,
+    method: str = "pearson"
+) -> dict:
+    """
+    Add correlation heatmap to visualization dashboard.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Dataset filename
+    project_manifest_path : str
+        Path to manifest.json
+    columns : list[str]
+        Columns to include in correlation matrix
+    plot_name : str
+        Name for the plot tab
+    explanation : str
+        Brief description
+    method : str, default="pearson"
+        Correlation method: "pearson" or "spearman"
+    
+    Returns
+    -------
+    dict
+        Contains plot_name, plot_id, n_variables, url, message
+    
+    Examples
+    --------
+    >>> add_correlation_heatmap("data.csv", path, ["MW", "LogP", "TPSA"], "correlations", "Property correlations")
+    """
+    if method not in ["pearson", "spearman"]:
+        raise ValueError(f"Invalid method '{method}'. Must be 'pearson' or 'spearman'")
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate columns
+    missing = [c for c in columns if c not in df.columns]
+    if missing:
+        raise ValueError(f"Columns not found: {missing}. Available: {list(df.columns)}")
+    
+    # Select numeric columns only
+    df_subset = df[columns].select_dtypes(include=[np.number])
+    if df_subset.empty or len(df_subset.columns) < 2:
+        raise ValueError(f"Need at least 2 numeric columns. Got: {list(df_subset.columns)}")
+    
+    # Calculate correlation matrix
+    corr_matrix = df_subset.corr(method=method)
+    
+    # Create heatmap figure
+    fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=corr_matrix.columns,
+        y=corr_matrix.columns,
+        colorscale='RdBu_r',
+        zmid=0,
+        zmin=-1,
+        zmax=1,
+        text=np.round(corr_matrix.values, 2),
+        texttemplate='%{text}',
+        textfont={"size": 10},
+        colorbar=dict(title=f"{method.capitalize()}<br>Correlation")
+    ))
+    
+    fig.update_layout(
+        title=f"{method.capitalize()} Correlation Matrix",
+        xaxis_title="",
+        yaxis_title="",
+        width=max(600, len(corr_matrix.columns) * 80),
+        height=max(600, len(corr_matrix.columns) * 80),
+        template="plotly_white"
+    )
+    
+    plot_id = plot_name.lower().replace(" ", "-").replace("/", "-")
+    
+    plot_data = {
+        'label': plot_name,
+        'type': 'heatmap',
+        'figure': fig,
+        'explanation': explanation,
+        'method': method,
+        'n_variables': len(corr_matrix.columns)
+    }
+    
+    _ensure_server_running()
+    
+    with _server_lock:
+        _active_plots[plot_id] = plot_data
+        _update_layout()
+    
+    url = f"http://127.0.0.1:{_PORT}/"
+    
+    return {
+        "plot_name": plot_name,
+        "plot_id": plot_id,
+        "n_variables": len(corr_matrix.columns),
+        "method": method,
+        "url": url,
+        "message": f"Correlation heatmap '{plot_name}' added. Visit {url} to view."
+    }

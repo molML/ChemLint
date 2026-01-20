@@ -41,6 +41,7 @@ from molml_mcp.tools.core.plotting import (
     add_histogram,
     add_density_plot,
     add_box_plot,
+    add_correlation_heatmap,
     remove_plot,
     list_active_plots,
 )

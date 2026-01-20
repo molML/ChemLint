@@ -364,7 +364,7 @@ Special thanks to the **RDKit community** for maintaining the foundational chemi
 
 ## 📬 Contact
 
-**Derek van Tilborg** - [@derekvantilborg](https://github.com/derekvantilborg)
+**Derek van Tilborg** - [@derekvantilborg](https://derekvantilborg.com/)
 
 **Project Link**: [https://github.com/derekvantilborg/molml_mcp](https://github.com/derekvantilborg/molml_mcp)
 

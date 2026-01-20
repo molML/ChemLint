@@ -1270,3 +1270,120 @@ def add_correlation_heatmap(
         "url": url,
         "message": f"Correlation heatmap '{plot_name}' added. Visit {url} to view."
     }
+
+def add_grouped_heatmap(
+    input_filename: str,
+    project_manifest_path: str,
+    row_column: str,
+    col_column: str,
+    value_column: str,
+    plot_name: str,
+    explanation: str,
+    aggregation: str = "mean"
+) -> dict:
+    """
+    Add grouped heatmap with categorical row/column groupings.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Dataset filename
+    project_manifest_path : str
+        Path to manifest.json
+    row_column : str
+        Column for heatmap rows (categorical)
+    col_column : str
+        Column for heatmap columns (categorical)
+    value_column : str
+        Column with values to aggregate (numeric)
+    plot_name : str
+        Name for the plot tab
+    explanation : str
+        Brief description
+    aggregation : str, default="mean"
+        Aggregation method: "mean", "median", "count", "std", "min", "max", "sum"
+    
+    Returns
+    -------
+    dict
+        Contains plot_name, plot_id, n_rows, n_cols, url, message
+    
+    Examples
+    --------
+    >>> add_grouped_heatmap("data.csv", path, "scaffold", "cluster", "pKi", "activity_map", "Activity by scaffold", "mean")
+    """
+    valid_agg = ["mean", "median", "count", "std", "min", "max", "sum"]
+    if aggregation not in valid_agg:
+        raise ValueError(f"Invalid aggregation '{aggregation}'. Must be one of {valid_agg}")
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate columns
+    required = [row_column, col_column, value_column]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Columns not found: {missing}. Available: {list(df.columns)}")
+    
+    # Check value column is numeric
+    if not pd.api.types.is_numeric_dtype(df[value_column]):
+        raise ValueError(f"Value column '{value_column}' must be numeric. Got dtype: {df[value_column].dtype}")
+    
+    # Create pivot table with aggregation
+    pivot = df.pivot_table(
+        values=value_column,
+        index=row_column,
+        columns=col_column,
+        aggfunc=aggregation,
+        fill_value=np.nan
+    )
+    
+    # Create heatmap figure
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot.values,
+        x=pivot.columns.astype(str),
+        y=pivot.index.astype(str),
+        colorscale='Viridis',
+        text=np.round(pivot.values, 2),
+        texttemplate='%{text}',
+        textfont={"size": 9},
+        colorbar=dict(title=f"{aggregation.capitalize()}<br>{value_column}")
+    ))
+    
+    fig.update_layout(
+        title=f"{aggregation.capitalize()} of {value_column} by {row_column} and {col_column}",
+        xaxis_title=col_column,
+        yaxis_title=row_column,
+        width=max(700, len(pivot.columns) * 60),
+        height=max(500, len(pivot.index) * 30),
+        template="plotly_white"
+    )
+    
+    plot_id = plot_name.lower().replace(" ", "-").replace("/", "-")
+    
+    plot_data = {
+        'label': plot_name,
+        'type': 'grouped_heatmap',
+        'figure': fig,
+        'explanation': explanation,
+        'aggregation': aggregation,
+        'n_rows': len(pivot.index),
+        'n_cols': len(pivot.columns)
+    }
+    
+    _ensure_server_running()
+    
+    with _server_lock:
+        _active_plots[plot_id] = plot_data
+        _update_layout()
+    
+    url = f"http://127.0.0.1:{_PORT}/"
+    
+    return {
+        "plot_name": plot_name,
+        "plot_id": plot_id,
+        "n_rows": len(pivot.index),
+        "n_cols": len(pivot.columns),
+        "aggregation": aggregation,
+        "url": url,
+        "message": f"Grouped heatmap '{plot_name}' added. Visit {url} to view."
+    }

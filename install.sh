@@ -92,6 +92,7 @@ fi
 ##############################################
 
 log_info "Running server tests..."
+log_warning "First-time installation may take 1-2 minutes (loading RDKit, scikit-learn, etc.)"
 
 if "$UV_BIN" run --directory "$PROJECT_DIR" pytest tests/test_server.py::test_server_imports_and_initializes -v; then
     log_success "Server tests passed"

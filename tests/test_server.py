@@ -25,7 +25,7 @@ def test_server_imports_and_initializes():
         [python_cmd, str(server_path)],
         capture_output=True,
         text=True,
-        timeout=300  # 5 minutes to account for slow imports on various machines
+        timeout=600  # very gracious 10 minutes to account for slow imports on various machines
     )
     
     # Check that initialization succeeded

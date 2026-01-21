@@ -138,3 +138,7 @@ for tool_func in get_all_smiles_encoding_tools():
 from molml_mcp.tools.reports import get_all_report_tools
 for tool_func in get_all_report_tools():
     mcp.add_tool(tool_func)
+
+if __name__ == "__main__":
+    # For testing: server initializes successfully and exits
+    print("✓ Server initialized successfully with all tools registered")

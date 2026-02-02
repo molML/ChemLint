@@ -37,10 +37,10 @@ from molml_mcp.infrastructure.resources import _load_resource
 def _analyze_split_characteristics(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
     label_col: str,
+    val_path: Optional[str] = None,
     min_split_size: int = 50,
     imbalance_threshold: float = 0.1
 ) -> Dict:
@@ -55,18 +55,18 @@ def _analyze_split_characteristics(
         Filename of training split resource
     test_path : str
         Filename of test split resource
-    val_path : Optional[str]
-        Filename of validation split resource (if exists)
     project_manifest_path : str
         Path to manifest.json
     smiles_col : str
         Name of SMILES column
     label_col : str
         Name of label column
-    min_split_size : int
-        Minimum acceptable molecules per split (default: 50)
-    imbalance_threshold : float
-        Threshold for flagging imbalanced splits (default: 0.1 = 10%)
+    val_path : Optional[str], default=None
+        Filename of validation split resource (if exists)
+    min_split_size : int, default=50
+        Minimum acceptable molecules per split
+    imbalance_threshold : float, default=0.1
+        Threshold for flagging imbalanced splits (10%)
         
     Returns
     -------
@@ -247,9 +247,9 @@ def _analyze_split_characteristics(
 def _detect_exact_duplicates(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
+    val_path: Optional[str] = None,
     max_examples: int = 10
 ) -> Dict:
     """
@@ -264,14 +264,14 @@ def _detect_exact_duplicates(
         Filename of training split resource
     test_path : str
         Filename of test split resource
-    val_path : Optional[str]
-        Filename of validation split resource (if exists)
     project_manifest_path : str
         Path to manifest.json
     smiles_col : str
         Name of SMILES column
-    max_examples : int
-        Maximum number of duplicate examples to include (default: 10)
+    val_path : Optional[str], default=None
+        Filename of validation split resource (if exists)
+    max_examples : int, default=10
+        Maximum number of duplicate examples to include
         
     Returns
     -------
@@ -373,10 +373,10 @@ def _detect_exact_duplicates(
 def _detect_similarity_leakage(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
     label_col: str,
+    val_path: Optional[str] = None,
     similarity_threshold: float = 0.9,
     activity_cliff_similarity: float = 0.8,
     activity_cliff_fold_diff: float = 10.0,
@@ -699,9 +699,9 @@ def _detect_similarity_leakage(
 def _detect_scaffold_leakage(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
+    val_path: Optional[str] = None,
     max_examples: int = 10
 ) -> Dict:
     """
@@ -885,9 +885,9 @@ def _detect_scaffold_leakage(
 def _detect_stereoisomer_tautomer_leakage(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
+    val_path: Optional[str] = None,
     max_examples: int = 10
 ) -> Dict:
     """
@@ -1101,9 +1101,9 @@ def _detect_stereoisomer_tautomer_leakage(
 def _test_property_distributions(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
+    val_path: Optional[str] = None,
     alpha: float = 0.05
 ) -> Dict:
     """
@@ -1128,14 +1128,14 @@ def _test_property_distributions(
         Filename of training split resource
     test_path : str
         Filename of test split resource
-    val_path : Optional[str]
-        Filename of validation split resource (if exists)
     project_manifest_path : str
         Path to manifest.json
     smiles_col : str
         Name of SMILES column
-    alpha : float
-        Significance level for statistical tests (default: 0.05)
+    val_path : Optional[str], default=None
+        Filename of validation split resource (if exists)
+    alpha : float, default=0.05
+        Significance level for statistical tests
         
     Returns
     -------
@@ -1314,9 +1314,9 @@ def _test_property_distributions(
 def _test_activity_distributions(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     label_col: str,
+    val_path: Optional[str] = None,
     alpha: float = 0.05,
     imbalance_threshold: float = 0.3
 ) -> Dict:
@@ -1334,16 +1334,16 @@ def _test_activity_distributions(
         Filename of training split resource
     test_path : str
         Filename of test split resource
-    val_path : Optional[str]
-        Filename of validation split resource (if exists)
     project_manifest_path : str
         Path to manifest.json
     label_col : str
         Name of label column
-    alpha : float
-        Significance level for statistical tests (default: 0.05)
-    imbalance_threshold : float
-        Threshold for flagging class imbalance (default: 0.3)
+    val_path : Optional[str], default=None
+        Filename of validation split resource (if exists)
+    alpha : float, default=0.05
+        Significance level for statistical tests
+    imbalance_threshold : float, default=0.3
+        Threshold for flagging class imbalance
         If minority class < threshold * majority class, flag as imbalanced
         
     Returns
@@ -1595,9 +1595,9 @@ def _test_activity_distributions(
 def _analyze_functional_group_distribution(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
+    val_path: Optional[str] = None,
     min_occurrence_threshold: int = 2
 ) -> Dict:
     """
@@ -1821,11 +1821,11 @@ def _analyze_functional_group_distribution(
 def analyze_split_quality(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
     label_col: str,
     output_filename: str,
+    val_path: Optional[str] = None,
     explanation: str = "Data splitting quality analysis report",
     # Parameters for individual helpers
     min_split_size: int = 50,
@@ -1850,8 +1850,6 @@ def analyze_split_quality(
         Training split filename.
     test_path : str
         Test split filename.
-    val_path : Optional[str]
-        Validation split filename (if exists).
     project_manifest_path : str
         Path to manifest.json.
     smiles_col : str
@@ -1860,7 +1858,9 @@ def analyze_split_quality(
         Label column name.
     output_filename : str
         Output filename prefix.
-    explanation : str
+    val_path : Optional[str], default=None
+        Validation split filename (if exists).
+    explanation : str, default="Data splitting quality analysis report"
         Description for manifest.
     min_split_size : int, default=50
         Minimum acceptable split size.
@@ -1919,58 +1919,58 @@ def analyze_split_quality(
     # 1. Analyze split characteristics
     print("Running split characteristics analysis...")
     result['split_characteristics'] = _analyze_split_characteristics(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, label_col, min_split_size, imbalance_threshold
+        train_path, test_path, project_manifest_path,
+        smiles_col, label_col, val_path, min_split_size, imbalance_threshold
     )
     
     # 2. Detect exact duplicates (CRITICAL if found)
     print("Detecting exact duplicates...")
     result['exact_duplicates'] = _detect_exact_duplicates(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, max_examples
+        train_path, test_path, project_manifest_path,
+        smiles_col, val_path, max_examples
     )
     
     # 3. Detect similarity-based leakage
     print("Detecting similarity-based leakage...")
     result['similarity_leakage'] = _detect_similarity_leakage(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, label_col, similarity_threshold,
+        train_path, test_path, project_manifest_path,
+        smiles_col, label_col, val_path, similarity_threshold,
         activity_cliff_similarity, activity_cliff_fold_diff, max_examples
     )
     
     # 4. Detect scaffold leakage
     print("Detecting scaffold overlap...")
     result['scaffold_leakage'] = _detect_scaffold_leakage(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, max_examples
+        train_path, test_path, project_manifest_path,
+        smiles_col, val_path, max_examples
     )
     
     # 5. Detect stereoisomer/tautomer leakage
     print("Detecting stereoisomer/tautomer leakage...")
     result['stereoisomer_tautomer_leakage'] = _detect_stereoisomer_tautomer_leakage(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, max_examples
+        train_path, test_path, project_manifest_path,
+        smiles_col, val_path, max_examples
     )
     
     # 6. Test property distributions
     print("Testing property distributions...")
     result['property_distributions'] = _test_property_distributions(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, alpha
+        train_path, test_path, project_manifest_path,
+        smiles_col, val_path, alpha
     )
     
     # 7. Test activity distributions
     print("Testing activity distributions...")
     result['activity_distributions'] = _test_activity_distributions(
-        train_path, test_path, val_path, project_manifest_path,
-        label_col, alpha, imbalance_threshold
+        train_path, test_path, project_manifest_path,
+        label_col, val_path, alpha, imbalance_threshold
     )
     
     # 8. Analyze functional group distribution
     print("Analyzing functional group distributions...")
     result['functional_groups'] = _analyze_functional_group_distribution(
-        train_path, test_path, val_path, project_manifest_path,
-        smiles_col, min_occurrence_threshold
+        train_path, test_path, project_manifest_path,
+        smiles_col, val_path, min_occurrence_threshold
     )
     
     # Determine overall severity (highest severity found)
@@ -2084,11 +2084,11 @@ def analyze_split_quality(
 def data_split_quality_analysis(
     train_path: str,
     test_path: str,
-    val_path: Optional[str],
     project_manifest_path: str,
     smiles_col: str,
     label_col: str,
     output_filename: str,
+    val_path: Optional[str] = None,
     explanation: str = "Data splitting quality text report",
     # Parameters for quality analysis
     min_split_size: int = 50,
@@ -2122,8 +2122,6 @@ def data_split_quality_analysis(
         Training split filename.
     test_path : str
         Test split filename.
-    val_path : Optional[str]
-        Validation split filename (if exists).
     project_manifest_path : str
         Path to manifest.json.
     smiles_col : str
@@ -2132,7 +2130,9 @@ def data_split_quality_analysis(
         Label column name.
     output_filename : str
         Output filename prefix for text report.
-    explanation : str
+    val_path : Optional[str], default=None
+        Validation split filename (if exists).
+    explanation : str, default="Data splitting quality text report"
         Description for manifest.
     min_split_size : int, default=50
         Minimum acceptable split size.

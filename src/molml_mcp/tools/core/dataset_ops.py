@@ -669,14 +669,17 @@ def transform_column(
     explanation: str
 ) -> dict:
     """
-    Create new column using pandas.eval() expression.
+    Create or transform columns using pandas expressions.
+    
+    Supports math, type conversions, string operations, and method chaining.
 
     Parameters
     ----------
     input_filename : str
         Input dataset filename
     expression : str
-        Pandas eval expression with assignment (e.g., "pKi = -log10(Ki_nM / 1e9)")
+        Pandas expression with assignment.
+        Example: "Ki = Ki.str.replace('<', '').astype(float)"
     project_manifest_path : str
         Path to manifest.json
     output_filename : str
@@ -689,11 +692,43 @@ def transform_column(
     dict
         Contains output_filename, n_rows, columns, expression, preview
     """
+    import pandas as pd
+    import numpy as np
+    
     df = _load_resource(project_manifest_path, input_filename)
     
-    # Safe evaluation with numpy functions available
-    import numpy as np
-    df.eval(expression, inplace=True)
+    # Try pandas.eval() first for simple mathematical expressions
+    # If it fails, try direct execution for type conversions and string operations
+    try:
+        df.eval(expression, inplace=True)
+    except (SyntaxError, ValueError, KeyError, AttributeError) as e:
+        # pandas.eval() failed, try direct execution for more complex operations
+        # This allows type conversions, string operations, etc.
+        try:
+            # Create a safe execution environment with common pandas/numpy functions
+            safe_globals = {
+                'df': df,
+                'pd': pd,
+                'np': np,
+                'int': int,
+                'float': float,
+                'str': str,
+                'bool': bool,
+            }
+            # Execute the expression
+            exec(f"df.{expression}", safe_globals)
+            df = safe_globals['df']
+        except Exception as exec_error:
+            raise ValueError(
+                f"Failed to execute expression '{expression}'. "
+                f"pandas.eval error: {e}. "
+                f"Direct execution error: {exec_error}. "
+                "Examples of valid expressions:\n"
+                "  - Math: 'pKi = -log10(Ki_nM / 1e9)'\n"
+                "  - Type: 'age = age.astype(int)'\n"
+                "  - String: \"smiles = smiles.str.replace('Cl', 'Br')\"\n"
+                "  - Conditional: 'label = label.fillna(0)'"
+            )
     
     output_filename = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
     

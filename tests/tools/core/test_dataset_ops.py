@@ -696,6 +696,53 @@ def test_transform_column(session_workdir, request):
     # Verify pKi values: Ki=1nM -> pKi=9, Ki=10nM -> pKi=8, Ki=100nM -> pKi=7, Ki=1000nM -> pKi=6
     expected_pKi = [9.0, 8.0, 7.0, 6.0]
     assert np.allclose(df_result2["pKi"].values, expected_pKi, rtol=1e-9)
+    
+    # Test 3: String replacement
+    df3 = pd.DataFrame({"text": ["Hello", "World", "Test"]})
+    filename3 = _store_resource(df3, manifest_path, "test_data_transform3", "Test", "csv")
+    
+    result3 = transform_column(
+        input_filename=filename3,
+        expression="text = text.str.replace('o', 'X')",
+        project_manifest_path=manifest_path,
+        output_filename="transformed_data3",
+        explanation="Replace 'o' with 'X'"
+    )
+    
+    df_result3 = _load_resource(manifest_path, result3["output_filename"])
+    assert list(df_result3["text"]) == ["HellX", "WXrld", "Test"]
+    
+    # Test 4: Type conversion
+    df4 = pd.DataFrame({"value": ["1", "2", "3"]})
+    filename4 = _store_resource(df4, manifest_path, "test_data_transform4", "Test", "csv")
+    
+    result4 = transform_column(
+        input_filename=filename4,
+        expression="value = value.astype(int)",
+        project_manifest_path=manifest_path,
+        output_filename="transformed_data4",
+        explanation="Convert string to int"
+    )
+    
+    df_result4 = _load_resource(manifest_path, result4["output_filename"])
+    assert df_result4["value"].dtype == np.int64 or df_result4["value"].dtype == np.int32
+    assert list(df_result4["value"]) == [1, 2, 3]
+    
+    # Test 5: Chained operations (string replacement + type conversion)
+    df5 = pd.DataFrame({"Ki": ["<1.5", "10.0", "<2.5", "50.0"]})
+    filename5 = _store_resource(df5, manifest_path, "test_data_transform5", "Test", "csv")
+    
+    result5 = transform_column(
+        input_filename=filename5,
+        expression="Ki = Ki.str.replace('<', '').astype(float)",
+        project_manifest_path=manifest_path,
+        output_filename="transformed_data5",
+        explanation="Remove '<' and convert to float"
+    )
+    
+    df_result5 = _load_resource(manifest_path, result5["output_filename"])
+    assert df_result5["Ki"].dtype == np.float64
+    assert list(df_result5["Ki"]) == [1.5, 10.0, 2.5, 50.0]
 
 
 def test_scramble_column(session_workdir, request):

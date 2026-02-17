@@ -17,6 +17,7 @@ from molml_mcp.tools.core_mol.smiles_ops import (
     _calculate_conformer_energy,
     _select_isomer_from_mols,
     _has_chiral_centers,
+    _has_complete_stereochemistry,
     _deduplicate_isomers,
     _standardize_stereo_smiles,
     _canonicalize_tautomer_smiles,
@@ -208,6 +209,119 @@ def test_flatten_stereochemistry():
     result, comment = _flatten_stereochemistry(None)
     assert result is None
     assert "Invalid" in comment
+
+
+def test_has_complete_stereochemistry():
+    """Test stereochemistry completeness detection."""
+    # No stereochemistry - should pass
+    mol = Chem.MolFromSmiles("CC(C)C")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Fully specified chiral center - should pass
+    mol = Chem.MolFromSmiles("C[C@H](O)CC")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    mol = Chem.MolFromSmiles("C[C@@H](O)CC")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Unspecified chiral center - should fail
+    mol = Chem.MolFromSmiles("CC(O)CC")
+    assert _has_complete_stereochemistry(mol) is False
+    
+    # Fully specified E double bond - should pass
+    mol = Chem.MolFromSmiles("C/C=C/C")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Fully specified Z double bond - should pass
+    mol = Chem.MolFromSmiles("C/C=C\\C")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # No E/Z specification needed (symmetric) - should pass
+    mol = Chem.MolFromSmiles("CC=CC")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Multiple chiral centers, all specified - should pass
+    mol = Chem.MolFromSmiles("C[C@H](O)[C@@H](C)N")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Invalid stereochemistry gets removed by RDKit - should pass
+    mol = Chem.MolFromSmiles("[C@H]1(C)CCCC1")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Not a chiral center (quaternary carbon) - should pass
+    mol = Chem.MolFromSmiles("CC(C)(O)C")
+    assert _has_complete_stereochemistry(mol) is True
+    
+    # Both E/Z and chiral specified - should pass
+    mol = Chem.MolFromSmiles("C/C=C/[C@@H](C)O")
+    assert _has_complete_stereochemistry(mol) is True
+
+
+def test_standardize_stereo_smiles_with_require_complete():
+    """Test stereochemistry standardization with require_complete flag."""
+    # Fully specified chiral center with require_complete=True - should pass
+    result, comment = _standardize_stereo_smiles(
+        "C[C@H](O)CC", 
+        stereo_policy="keep", 
+        require_complete=True
+    )
+    assert result is not None
+    assert comment == "Passed"
+    
+    # Fully specified chiral center with require_complete=False - should pass
+    result, comment = _standardize_stereo_smiles(
+        "C[C@H](O)CC", 
+        stereo_policy="keep", 
+        require_complete=False
+    )
+    assert result is not None
+    assert comment == "Passed"
+    
+    # Unspecified chiral center with require_complete=True - should fail
+    result, comment = _standardize_stereo_smiles(
+        "CC(O)CC", 
+        stereo_policy="keep", 
+        require_complete=True
+    )
+    assert result is None
+    assert "Incomplete stereochemistry" in comment
+    
+    # Unspecified chiral center with require_complete=False - should pass
+    result, comment = _standardize_stereo_smiles(
+        "CC(O)CC", 
+        stereo_policy="keep", 
+        require_complete=False
+    )
+    assert result is not None
+    assert comment == "Passed"
+    
+    # Fully specified E bond with require_complete=True - should pass
+    result, comment = _standardize_stereo_smiles(
+        "C/C=C/C", 
+        stereo_policy="keep", 
+        require_complete=True
+    )
+    assert result is not None
+    assert comment == "Passed"
+    
+    # No stereochemistry with require_complete=True - should pass
+    result, comment = _standardize_stereo_smiles(
+        "CC(C)C", 
+        stereo_policy="keep", 
+        require_complete=True
+    )
+    assert result is not None
+    assert comment == "Passed"
+    
+    # Test with flatten policy and require_complete - should still work
+    result, comment = _standardize_stereo_smiles(
+        "C[C@H](O)CC", 
+        stereo_policy="flatten", 
+        require_complete=True
+    )
+    assert result is not None
+    assert "@" not in result
+    assert comment == "Passed"
 
 
 def test_remove_isotopes():

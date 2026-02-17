@@ -823,7 +823,8 @@ def standardize_stereochemistry(
     max_isomers: int = 32,
     try_embedding: bool = False,
     only_unassigned: bool = True,
-    random_seed: int = 42
+    random_seed: int = 42,
+    require_complete: bool = False
 ) -> tuple[list[str], list[str]]:
     """Standardize stereochemistry: keep, assign, or flatten. Output is always canonicalized.
     
@@ -843,6 +844,8 @@ def standardize_stereochemistry(
         Only enumerate unassigned stereocenters.
     random_seed : int
         Random seed for reproducibility.
+    require_complete : bool
+        If True, remove molecules with incomplete stereochemistry specification.
     
     Returns
     -------
@@ -860,7 +863,8 @@ def standardize_stereochemistry(
             max_isomers=max_isomers,
             try_embedding=try_embedding,
             only_unassigned=only_unassigned,
-            random_seed=random_seed
+            random_seed=random_seed,
+            require_complete=require_complete
         )
         standardized_smiles.append(std_smi)
         comments.append(comment)
@@ -879,7 +883,8 @@ def standardize_stereochemistry_dataset(
     max_isomers: int = 32,
     try_embedding: bool = False,
     only_unassigned: bool = True,
-    random_seed: int = 42
+    random_seed: int = 42,
+    require_complete: bool = False
 ) -> dict:
     """Standardize stereochemistry in dataset: keep, assign, or flatten. Output always canonicalized.
     
@@ -907,6 +912,10 @@ def standardize_stereochemistry_dataset(
         Only enumerate unassigned stereocenters.
     random_seed : int
         Random seed.
+    require_complete : bool
+        If True, remove molecules with incomplete stereochemistry specification.
+        Only keeps molecules that have either no stereochemistry or fully
+        specified stereochemistry (all chiral centers and E/Z bonds defined).
     
     Returns
     -------
@@ -927,7 +936,8 @@ def standardize_stereochemistry_dataset(
         max_isomers=max_isomers,
         try_embedding=try_embedding,
         only_unassigned=only_unassigned,
-        random_seed=random_seed
+        random_seed=random_seed,
+        require_complete=require_complete
     )
 
     df['smiles_after_stereo_standardization'] = standardized_smiles
@@ -940,6 +950,11 @@ def standardize_stereochemistry_dataset(
         "assign": f"Stereoisomers have been enumerated and selected using '{assign_policy}' policy.",
         "flatten": "All stereochemical information has been removed. Stereoisomers are now indistinguishable."
     }
+    
+    require_complete_note = ""
+    if require_complete:
+        n_incomplete = sum(1 for c in comments if "Incomplete stereochemistry" in c)
+        require_complete_note = f" {n_incomplete} molecules with incomplete stereochemistry were removed (require_complete=True)."
 
     return {
         "output_filename": output_filename,
@@ -947,9 +962,9 @@ def standardize_stereochemistry_dataset(
         "columns": list(df.columns),
         "comments": dict(Counter(comments)),
         "preview": df.head(5).to_dict(orient="records"),
-        "note": f"Successful standardization is marked by 'Passed' in comments. Output SMILES are canonicalized. Policy used: '{stereo_policy}'. {policy_notes.get(stereo_policy, '')}",
-        "suggestions": "Review molecules that failed standardization. If using 'flatten' policy, consider deduplicating the dataset as stereoisomers are now identical. If using 'assign', verify that the automated selection is appropriate for your use case.",
-        "question_to_user": f"You used stereo_policy='{stereo_policy}'. Is this appropriate for your analysis? Would you like to review the results or try a different policy?",
+        "note": f"Successful standardization is marked by 'Passed' in comments. Output SMILES are canonicalized. Policy used: '{stereo_policy}'. {policy_notes.get(stereo_policy, '')}{require_complete_note}",
+        "suggestions": "Review molecules that failed standardization. If using 'flatten' policy, consider deduplicating the dataset as stereoisomers are now identical. If using 'assign', verify that the automated selection is appropriate for your use case. If using require_complete=True, consider whether removing molecules with incomplete stereochemistry is appropriate for your downstream analysis.",
+        "question_to_user": f"You used stereo_policy='{stereo_policy}' with require_complete={require_complete}. Is this appropriate for your analysis? Would you like to review the results or try a different policy?",
     }
 
 

@@ -410,6 +410,50 @@ def _has_chiral_centers(mol: Chem.Mol) -> bool:
         return False
 
 
+def _has_complete_stereochemistry(mol: Chem.Mol) -> bool:
+    """
+    Check if molecule has complete stereochemistry specification.
+    
+    Returns True if:
+    - Molecule has no stereochemistry at all (no chiral centers, no E/Z bonds)
+    - Molecule has stereochemistry AND all of it is fully specified
+    
+    Returns False if:
+    - Molecule has partial stereochemistry (some specified, some unspecified)
+    
+    Args:
+        mol: RDKit molecule object
+        
+    Returns:
+        bool: True if stereochemistry is complete (or absent), False otherwise
+    """
+    try:
+        # Check chiral centers - FindMolChiralCenters returns (atom_idx, label)
+        # where label is 'R', 'S', or '?' for unassigned
+        chiral_centers = FindMolChiralCenters(mol, includeUnassigned=True)
+        
+        if len(chiral_centers) > 0:
+            # Check if any chiral center is unassigned (marked with '?')
+            for _, label in chiral_centers:
+                if label == '?':
+                    return False  # Has unassigned chiral center
+        
+        # Check E/Z double bonds
+        # Only flag as incomplete if RDKit detected a stereogenic bond but it's unspecified
+        for bond in mol.GetBonds():
+            if bond.GetBondType() == Chem.BondType.DOUBLE:
+                stereo = bond.GetStereo()
+                # STEREOANY means RDKit detected potential stereochemistry but it's unspecified
+                if stereo == Chem.BondStereo.STEREOANY:
+                    return False  # Has unspecified E/Z bond
+        
+        # If we get here, either there's no stereochemistry or it's all specified
+        return True
+        
+    except Exception:
+        return False
+
+
 def _deduplicate_isomers(isomer_mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """
     Remove duplicate stereoisomers based on canonical SMILES.
@@ -433,6 +477,7 @@ def _standardize_stereo_smiles(
     only_unassigned: bool = True,
     only_unique: bool = True,
     random_seed: int = 42,
+    require_complete: bool = False,
 ) -> tuple[str, str]:
     """
     1→1 stereochemistry handling for use in a cleaning/standardization pipeline.
@@ -449,9 +494,13 @@ def _standardize_stereo_smiles(
             - "lowest":  lowest MMFF94/UFF energy
         max_isomers, try_embedding, only_unassigned, only_unique, random_seed:
             Parameters forwarded to enumeration / energy evaluation.
+        require_complete: If True, remove molecules with incomplete stereochemistry
+            specification (partial chiral centers or E/Z bonds). Only keeps molecules
+            that have either no stereochemistry or fully specified stereochemistry.
 
     Returns:
-        Tuple of (SMILES string, comment). Returns (None, error message) if the input is invalid.
+        Tuple of (SMILES string, comment). Returns (None, error message) if the input is invalid
+        or if require_complete=True and stereochemistry is incomplete.
     """
     # Handle None or NaN input (failed previous step or missing data)
     if _is_invalid_smiles(smiles):
@@ -462,6 +511,10 @@ def _standardize_stereo_smiles(
         return None, "Failed: Invalid SMILES string"
 
     try:
+        # Check for complete stereochemistry if required
+        if require_complete and not _has_complete_stereochemistry(mol):
+            return None, "Failed: Incomplete stereochemistry (require_complete=True)"
+        
         # Handle flatten policy
         if stereo_policy == "flatten":
             return _flatten_stereochemistry(smiles)

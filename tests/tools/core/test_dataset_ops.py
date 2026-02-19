@@ -42,6 +42,44 @@ def test_import_csv_from_path(session_workdir, request):
     assert df_loaded.equals(df_original)
 
 
+def test_import_excel_from_path(session_workdir, request):
+    """Test importing Excel file as dataset."""
+    from molml_mcp.tools.core.dataset_ops import import_excel_from_path
+    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Create test Excel file
+    excel_path = test_dir / "test.xlsx"
+    df_original = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+    df_original.to_excel(excel_path, index=False)
+    
+    # Store as dataset
+    result = import_excel_from_path(
+        file_path=str(excel_path),
+        project_manifest_path=manifest_path,
+        filename="test_excel_data",
+        explanation="Test Excel dataset"
+    )
+    
+    assert "output_filename" in result
+    assert "n_rows" in result
+    assert result["n_rows"] == 3
+    assert "columns" in result
+    assert set(result["columns"]) == {"A", "B"}
+    assert "sheet_name" in result
+    assert result["sheet_name"] == 0
+    
+    # Verify data can be loaded back
+    df_loaded = _load_resource(manifest_path, result["output_filename"])
+    assert df_loaded.equals(df_original)
+
+
 def test_import_csv_from_text(session_workdir, request):
     """Test importing CSV text as dataset."""
     from molml_mcp.tools.core.dataset_ops import import_csv_from_text

@@ -55,6 +55,55 @@ def import_csv_from_path(file_path: str, project_manifest_path: str, filename: s
     }
 
 
+def import_excel_from_path(file_path: str, project_manifest_path: str, filename: str, explanation: str, sheet_name: int | str = 0) -> dict:
+    """
+    ENTRY POINT: Import an Excel file from a filesystem path into the project.
+    
+    CRITICAL: USE THIS FUNCTION when the user provides an Excel file path like "/path/to/data.xlsx"
+    
+    The Excel file will be read and stored as CSV in the project system.
+    After calling this function, use the returned output_filename for all subsequent
+    operations (NOT the original file_path).
+
+    When user says: "Use /Users/me/compounds.xlsx", call this function!!!
+    
+    Parameters
+    ----------
+    file_path : str
+        Full filesystem path to the Excel file (e.g., "/Users/name/data.xlsx")
+    project_manifest_path : str
+        Path to the project's manifest.json file
+    filename : str
+        Descriptive name for the dataset (no .csv extension needed)
+    explanation : str
+        Brief description of what this dataset contains
+    sheet_name : int | str, default=0
+        Sheet name (string) or index (0-based integer) to read from Excel file
+
+    Returns
+    -------
+    dict
+        Contains:
+        - output_filename: Use this for all future operations on this dataset
+        - n_rows: Number of rows loaded
+        - columns: List of column names
+        - sheet_name: Which sheet was read
+    """
+    import pandas as pd
+
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+
+    output_filename = _store_resource(df, project_manifest_path, filename, explanation, "csv")
+
+    return {
+        "output_filename": output_filename,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "sheet_name": sheet_name,
+        "note": "Excel file imported and stored as CSV. Datasets are imported in a containerized directory, attempts to access the original file path may not work. Use MolML-MCP operations to interact with files through the manifest system after importing.",
+    }
+
+
 def import_csv_from_text(csv_content: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
     """
     Import CSV data from text string.
@@ -1285,6 +1334,7 @@ def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
         import_csv_from_path,
+        import_excel_from_path,
         import_csv_from_text,
         get_dataset_head,
         get_dataset_full,

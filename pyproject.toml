@@ -15,6 +15,7 @@ dependencies = [
     "scipy",
     "scikit-learn",
     "pandas",
+    "openpyxl>=3.1.0",
     "cairosvg>=2.8.2",
     "joblib>=1.5.2",
     "kneed>=0.8.5",
@@ -22,6 +23,7 @@ dependencies = [
     "pytest>=9.0.2",
     "plotly>=6.5.2",
     "dash>=3.3.0",
+    "deepchem>=2.8.0",
 ]
 
 [tool.setuptools]

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from sklearn.datasets import make_classification, make_regression
-from molml_mcp.tools.ml.trad_ml.singular_models import (
+from chemlint.tools.ml.trad_ml.singular_models import (
     # Sample classification models
     _train_random_forest_classifier,
     _train_logistic_regression,

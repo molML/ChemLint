@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from molml_mcp.tools.clustering.clust import (
+from chemlint.tools.clustering.clust import (
     eigenvalue_cluster_approx,
     cluster_dbscan_on_similarity,
     cluster_hierarchical_on_similarity,
@@ -11,7 +11,7 @@ from molml_mcp.tools.clustering.clust import (
     cluster_kmeans_on_features,
     cluster_butina_on_similarity
 )
-from molml_mcp.infrastructure.resources import _store_resource, read_project_manifest
+from chemlint.infrastructure.resources import _store_resource, read_project_manifest
 
 # Cache for sample data files within a test session
 _sample_data_cache = {}
@@ -51,7 +51,7 @@ def create_sample_dataset_and_features(session_workdir, test_name):
             return existing_dataset, existing_features, manifest_path
     except FileNotFoundError:
         # Manifest doesn't exist yet, create it
-        from molml_mcp.infrastructure.resources import create_project_manifest
+        from chemlint.infrastructure.resources import create_project_manifest
         create_project_manifest(str(test_dir), "test")
     
     # Create sample dataset with SMILES

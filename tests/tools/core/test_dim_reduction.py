@@ -11,7 +11,7 @@ def _get_or_create_test_data_with_ecfp(session_workdir, manifest_path):
     This function creates the dataset and fingerprints once and reuses them
     across multiple tests within the same session to speed up testing.
     """
-    from molml_mcp.infrastructure.resources import _store_resource
+    from chemlint.infrastructure.resources import _store_resource
     from rdkit import Chem
     from rdkit.Chem import AllChem
     
@@ -52,8 +52,8 @@ def _get_or_create_test_data_with_ecfp(session_workdir, manifest_path):
 
 def test_reduce_dimensions_pca_with_real_data_and_ecfp(session_workdir):
     """Test PCA with real molecular data and computed ECFP fingerprints."""
-    from molml_mcp.infrastructure.resources import _load_resource
-    from molml_mcp.tools.core.dim_reduction import reduce_dimensions_pca
+    from chemlint.infrastructure.resources import _load_resource
+    from chemlint.tools.core.dim_reduction import reduce_dimensions_pca
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -78,8 +78,8 @@ def test_reduce_dimensions_pca_with_real_data_and_ecfp(session_workdir):
     
 def test_reduce_dimensions_tsne_with_real_data_and_ecfp(session_workdir):
     """Test t-SNE with real molecular data and computed ECFP fingerprints."""
-    from molml_mcp.infrastructure.resources import _load_resource
-    from molml_mcp.tools.core.dim_reduction import reduce_dimensions_tsne
+    from chemlint.infrastructure.resources import _load_resource
+    from chemlint.tools.core.dim_reduction import reduce_dimensions_tsne
     
     manifest_path = str(session_workdir / "test_manifest.json")
     

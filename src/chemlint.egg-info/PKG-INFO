@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: chemlint
+Version: 0.1.0
+Summary: ChemLint: MCP server for molecular machine learning
+Requires-Python: >=3.13
+License-File: LICENSE
+Requires-Dist: mcp[cli]>=1.20.0
+Requires-Dist: rdkit>=2025.9.1
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: pandas
+Requires-Dist: openpyxl>=3.1.0
+Requires-Dist: cairosvg>=2.8.2
+Requires-Dist: joblib>=1.5.2
+Requires-Dist: kneed>=0.8.5
+Requires-Dist: statsmodels>=0.14.0
+Requires-Dist: pytest>=9.0.2
+Requires-Dist: plotly>=6.5.2
+Requires-Dist: dash>=3.3.0
+Dynamic: license-file

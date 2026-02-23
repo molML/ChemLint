@@ -13,8 +13,8 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from molml_mcp.tools.reports.data_split_analysis import analyze_split_quality
-from molml_mcp.infrastructure.resources import _store_resource
+from chemlint.tools.reports.data_split_analysis import analyze_split_quality
+from chemlint.infrastructure.resources import _store_resource
 
 
 # Test data paths

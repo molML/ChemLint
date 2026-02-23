@@ -10,7 +10,7 @@ import pytest
 def test_server_imports_and_initializes():
     """Test that server.py can be imported and initialized without errors."""
     # Run server.py with __main__ block which initializes and exits cleanly
-    server_path = Path(__file__).parent.parent / "src" / "molml_mcp" / "server.py"
+    server_path = Path(__file__).parent.parent / "src" / "chemlint" / "server.py"
     
     # Try to find the virtual environment python
     venv_python = Path(__file__).parent.parent / ".venv" / "bin" / "python"

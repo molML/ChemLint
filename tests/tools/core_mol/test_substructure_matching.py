@@ -2,7 +2,7 @@
 
 import pytest
 import pandas as pd
-from molml_mcp.tools.core_mol.substructure_matching import (
+from chemlint.tools.core_mol.substructure_matching import (
     get_available_structural_patterns,
     get_available_functional_group_patterns,
     smiles_has_structural_pattern,
@@ -163,7 +163,7 @@ def test_find_structural_patterns_in_list_of_smiles():
 
 def test_add_substructure_matches_to_dataset_functional_groups(session_workdir, request):
     """Test adding functional group match columns to dataset."""
-    from molml_mcp.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
     
     # Create test directory
     test_dir = session_workdir / request.node.name
@@ -211,7 +211,7 @@ def test_add_substructure_matches_to_dataset_functional_groups(session_workdir, 
 
 def test_add_substructure_matches_to_dataset_structural(session_workdir, request):
     """Test adding structural pattern match columns to dataset."""
-    from molml_mcp.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
     
     # Create test directory
     test_dir = session_workdir / request.node.name
@@ -249,7 +249,7 @@ def test_add_substructure_matches_to_dataset_structural(session_workdir, request
 
 def test_add_substructure_matches_to_dataset_all_patterns(session_workdir, request):
     """Test adding all patterns when specific_patterns is None."""
-    from molml_mcp.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _load_resource, _store_resource, create_project_manifest
     
     # Create test directory
     test_dir = session_workdir / request.node.name
@@ -280,7 +280,7 @@ def test_add_substructure_matches_to_dataset_all_patterns(session_workdir, reque
 
 def test_add_substructure_matches_to_dataset_errors(session_workdir, request):
     """Test error handling in add_substructure_matches_to_dataset."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     
     # Create test directory
     test_dir = session_workdir / request.node.name

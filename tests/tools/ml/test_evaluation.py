@@ -16,14 +16,14 @@ import json
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, Ridge
-from molml_mcp.tools.ml.evaluation import (
+from chemlint.tools.ml.evaluation import (
     _eval_single_ml_model,
     predict_ml_model,
     evaluate_models,
     _evaluate_fold_metrics,
     _aggregate_metrics
 )
-from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+from chemlint.infrastructure.resources import _store_resource, _load_resource
 
 
 # Fixtures
@@ -374,7 +374,7 @@ def test_predict_ml_model_single_with_uncertainty(session_workdir):
     
     # Train a BayesianEnsemble model
     from sklearn.datasets import make_classification
-    from molml_mcp.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
+    from chemlint.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
     X_train, y_train = make_classification(n_samples=50, n_features=5, random_state=42)
     
     # Pass the class, not an instance
@@ -501,7 +501,7 @@ def test_predict_ml_model_cv_with_uncertainty(session_workdir):
     
     # Train multiple BayesianEnsemble models for CV
     from sklearn.datasets import make_classification
-    from molml_mcp.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
+    from chemlint.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
     X_train, y_train = make_classification(n_samples=50, n_features=5, random_state=42)
     
     models = []
@@ -598,7 +598,7 @@ def test_predict_ml_model_regressor_with_uncertainty(session_workdir):
     
     # Train a BayesianEnsemble regressor
     from sklearn.datasets import make_regression
-    from molml_mcp.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
+    from chemlint.tools.ml.trad_ml.ensembled_models import BayesianEnsemble
     X_train, y_train = make_regression(n_samples=50, n_features=5, random_state=42)
     
     ensemble_model = BayesianEnsemble(

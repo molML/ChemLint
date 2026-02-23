@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import pytest
-from molml_mcp.tools.ml.metrics import (
+from chemlint.tools.ml.metrics import (
     _accuracy,
     _balanced_accuracy,
     _precision,
@@ -22,7 +22,7 @@ from molml_mcp.tools.ml.metrics import (
     list_all_supported_metrics,
     calculate_metrics,
 )
-from molml_mcp.infrastructure.resources import create_project_manifest, _store_resource
+from chemlint.infrastructure.resources import create_project_manifest, _store_resource
 
 
 # ============================================================================

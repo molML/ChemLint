@@ -9,7 +9,7 @@ import pytest
 
 def test_calculate_smiles_branches():
     """Test that _calculate_smiles_branches runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_smiles_branches
+    from chemlint.tools.core_mol.complexity import _calculate_smiles_branches
     
     # Simple branched molecule
     result = _calculate_smiles_branches("CC(C)C")
@@ -23,7 +23,7 @@ def test_calculate_smiles_branches():
 
 def test_calculate_molecular_shannon_entropy():
     """Test that _calculate_molecular_shannon_entropy runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_molecular_shannon_entropy
+    from chemlint.tools.core_mol.complexity import _calculate_molecular_shannon_entropy
     
     # Simple molecule
     result = _calculate_molecular_shannon_entropy("CCO")
@@ -38,7 +38,7 @@ def test_calculate_molecular_shannon_entropy():
 
 def test_calculate_smiles_shannon_entropy():
     """Test that _calculate_smiles_shannon_entropy runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_smiles_shannon_entropy
+    from chemlint.tools.core_mol.complexity import _calculate_smiles_shannon_entropy
     
     # Simple molecule
     result = _calculate_smiles_shannon_entropy("CCO")
@@ -52,7 +52,7 @@ def test_calculate_smiles_shannon_entropy():
 
 def test_calculate_num_tokens():
     """Test that _calculate_num_tokens runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_num_tokens
+    from chemlint.tools.core_mol.complexity import _calculate_num_tokens
     
     # Simple molecule
     result = _calculate_num_tokens("CCO")
@@ -66,7 +66,7 @@ def test_calculate_num_tokens():
 
 def test_calculate_bertz_complexity():
     """Test that _calculate_bertz_complexity runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_bertz_complexity
+    from chemlint.tools.core_mol.complexity import _calculate_bertz_complexity
     
     # Simple molecule
     result = _calculate_bertz_complexity("CCO")
@@ -81,7 +81,7 @@ def test_calculate_bertz_complexity():
 
 def test_calculate_bottcher_complexity():
     """Test that _calculate_bottcher_complexity runs successfully."""
-    from molml_mcp.tools.core_mol.complexity import _calculate_bottcher_complexity
+    from chemlint.tools.core_mol.complexity import _calculate_bottcher_complexity
     
     # Simple molecule
     result = _calculate_bottcher_complexity("CCO")
@@ -94,8 +94,8 @@ def test_calculate_bottcher_complexity():
 
 def test_add_complexity_columns(session_workdir):
     """Test that add_complexity_columns runs successfully."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.complexity import add_complexity_columns
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.complexity import add_complexity_columns
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -126,8 +126,8 @@ def test_add_complexity_columns(session_workdir):
 
 def test_add_complexity_columns_multiple_metrics(session_workdir):
     """Test add_complexity_columns with multiple metrics."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.complexity import add_complexity_columns
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.complexity import add_complexity_columns
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -158,8 +158,8 @@ def test_add_complexity_columns_multiple_metrics(session_workdir):
 
 def test_add_complexity_columns_invalid_metric(session_workdir):
     """Test that invalid metric raises error."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.complexity import add_complexity_columns
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.complexity import add_complexity_columns
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -179,8 +179,8 @@ def test_add_complexity_columns_invalid_metric(session_workdir):
 
 def test_add_complexity_columns_invalid_column(session_workdir):
     """Test that invalid SMILES column raises error."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.complexity import add_complexity_columns
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.complexity import add_complexity_columns
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -200,8 +200,8 @@ def test_add_complexity_columns_invalid_column(session_workdir):
 
 def test_add_complexity_columns_with_nan(session_workdir):
     """Test handling of NaN SMILES values."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.complexity import add_complexity_columns
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.complexity import add_complexity_columns
     
     manifest_path = str(session_workdir / "test_manifest.json")
     

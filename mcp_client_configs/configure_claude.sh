@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ##############################################
-# Configure MolML MCP for Claude Desktop
+# Configure ChemLint for Claude Desktop
 ##############################################
 # This script configures Claude Desktop to use
-# the MolML MCP server
+# the ChemLint server
 ##############################################
 
 # Color codes for pretty output
@@ -140,7 +140,7 @@ server_config = {
         project_dir,
         'mcp',
         'run',
-        './src/molml_mcp/server.py'
+        './src/chemlint/server.py'
     ],
     'enabled': True
 }

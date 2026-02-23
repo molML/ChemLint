@@ -6,7 +6,7 @@ from pathlib import Path
 
 def test_default_SMILES_standardization_pipeline_basic(session_workdir, request):
     """Test basic SMILES standardization pipeline with valid molecules."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Test with simple valid SMILES
     smiles = ["CCO", "c1ccccc1", "CC(=O)O"]
@@ -25,7 +25,7 @@ def test_default_SMILES_standardization_pipeline_basic(session_workdir, request)
 
 def test_default_SMILES_standardization_pipeline_invalid_smiles(session_workdir, request):
     """Test pipeline handles invalid SMILES correctly."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv data with invalid SMILES
     smiles = [
@@ -52,7 +52,7 @@ def test_default_SMILES_standardization_pipeline_invalid_smiles(session_workdir,
 
 def test_default_SMILES_standardization_pipeline_salt_removal(session_workdir, request):
     """Test pipeline removes salts correctly."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use valid SMILES with salts that should be removable
     smiles = [
@@ -76,7 +76,7 @@ def test_default_SMILES_standardization_pipeline_salt_removal(session_workdir, r
 
 def test_default_SMILES_standardization_pipeline_solvent_removal(session_workdir, request):
     """Test pipeline removes solvents correctly."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use valid SMILES with solvents
     smiles = [
@@ -95,7 +95,7 @@ def test_default_SMILES_standardization_pipeline_solvent_removal(session_workdir
 
 def test_default_SMILES_standardization_pipeline_stereochemistry_flatten(session_workdir, request):
     """Test pipeline flattens stereochemistry by default."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv stereoisomer examples
     smiles = [
@@ -122,7 +122,7 @@ def test_default_SMILES_standardization_pipeline_stereochemistry_flatten(session
 
 def test_default_SMILES_standardization_pipeline_stereochemistry_keep(session_workdir, request):
     """Test pipeline preserves stereochemistry when requested."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv stereoisomer examples
     smiles = [
@@ -146,7 +146,7 @@ def test_default_SMILES_standardization_pipeline_stereochemistry_keep(session_wo
 
 def test_default_SMILES_standardization_pipeline_isotope_removal(session_workdir, request):
     """Test pipeline removes isotopes by default."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv isotope examples
     smiles = [
@@ -174,7 +174,7 @@ def test_default_SMILES_standardization_pipeline_isotope_removal(session_workdir
 
 def test_default_SMILES_standardization_pipeline_isotope_preservation(session_workdir, request):
     """Test pipeline preserves isotopes when requested."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv isotope examples
     smiles = [
@@ -204,7 +204,7 @@ def test_default_SMILES_standardization_pipeline_isotope_preservation(session_wo
 
 def test_default_SMILES_standardization_pipeline_metal_disconnection(session_workdir, request):
     """Test pipeline disconnects metals when requested."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv metal complex examples
     smiles = [
@@ -233,7 +233,7 @@ def test_default_SMILES_standardization_pipeline_metal_disconnection(session_wor
 
 def test_default_SMILES_standardization_pipeline_charged_species(session_workdir, request):
     """Test pipeline neutralizes charged species correctly."""
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline
     
     # Use dummy_cleaning.csv charged species examples
     smiles = [
@@ -255,8 +255,8 @@ def test_default_SMILES_standardization_pipeline_charged_species(session_workdir
 
 def test_default_SMILES_standardization_pipeline_dataset_basic(session_workdir, request):
     """Test dataset pipeline with basic SMILES standardization."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -305,8 +305,8 @@ def test_default_SMILES_standardization_pipeline_dataset_basic(session_workdir, 
 
 def test_default_SMILES_standardization_pipeline_dataset_with_dummy_data(session_workdir, request):
     """Test dataset pipeline with actual dummy_cleaning.csv data."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -351,8 +351,8 @@ def test_default_SMILES_standardization_pipeline_dataset_with_dummy_data(session
 
 def test_default_SMILES_standardization_pipeline_dataset_stereo_keep(session_workdir, request):
     """Test dataset pipeline preserves stereochemistry when requested."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -393,8 +393,8 @@ def test_default_SMILES_standardization_pipeline_dataset_stereo_keep(session_wor
 
 def test_default_SMILES_standardization_pipeline_dataset_metal_disconnection(session_workdir, request):
     """Test dataset pipeline disconnects metals when requested."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -437,8 +437,8 @@ def test_default_SMILES_standardization_pipeline_dataset_metal_disconnection(ses
 
 def test_default_SMILES_standardization_pipeline_dataset_isotope_handling(session_workdir, request):
     """Test dataset pipeline handles isotopes correctly."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -498,8 +498,8 @@ def test_default_SMILES_standardization_pipeline_dataset_isotope_handling(sessio
 
 def test_default_SMILES_standardization_pipeline_dataset_comment_columns(session_workdir, request):
     """Test dataset pipeline adds comment columns for each step."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.cleaning.mol_cleaning import default_SMILES_standardization_pipeline_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name

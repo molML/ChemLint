@@ -36,7 +36,7 @@ log_error() {
 # 1. Detect project directory
 ##############################################
 
-log_info "Installing MolML MCP Server..."
+log_info "Installing ChemLint..."
 echo ""
 
 # Get the directory where this script is located

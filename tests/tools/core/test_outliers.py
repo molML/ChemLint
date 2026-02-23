@@ -6,8 +6,8 @@ from pathlib import Path
 
 def test_detect_outliers_zscore(session_workdir):
     """Test Z-score outlier detection."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.outliers import detect_outliers_zscore
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.outliers import detect_outliers_zscore
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -42,8 +42,8 @@ def test_detect_outliers_zscore(session_workdir):
 
 def test_detect_outliers_modified_zscore(session_workdir):
     """Test Modified Z-score outlier detection."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.outliers import detect_outliers_modified_zscore
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.outliers import detect_outliers_modified_zscore
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -77,8 +77,8 @@ def test_detect_outliers_modified_zscore(session_workdir):
 
 def test_detect_outliers_iqr(session_workdir):
     """Test IQR outlier detection."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.outliers import detect_outliers_iqr
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.outliers import detect_outliers_iqr
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -112,8 +112,8 @@ def test_detect_outliers_iqr(session_workdir):
 
 def test_detect_outliers_grubbs(session_workdir):
     """Test Grubbs' test outlier detection."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.outliers import detect_outliers_grubbs
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.outliers import detect_outliers_grubbs
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -147,8 +147,8 @@ def test_detect_outliers_grubbs(session_workdir):
 
 def test_detect_outliers_gesd(session_workdir):
     """Test Generalized ESD outlier detection."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.outliers import detect_outliers_gesd
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.outliers import detect_outliers_gesd
     
     manifest_path = str(session_workdir / "test_manifest.json")
     

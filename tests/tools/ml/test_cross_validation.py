@@ -11,7 +11,7 @@ Tests cover:
 import pytest
 import numpy as np
 import pandas as pd
-from molml_mcp.tools.ml.cross_validation import (
+from chemlint.tools.ml.cross_validation import (
     get_cv_splits,
     cv_splits_kfold,
     cv_splits_stratifiedkfold,

@@ -10,8 +10,8 @@ from pathlib import Path
 
 def test_random_split_dataset_basic(session_workdir):
     """Test basic random split (80/20 train/test)."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import random_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import random_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -46,8 +46,8 @@ def test_random_split_dataset_basic(session_workdir):
 
 def test_random_split_dataset_with_validation(session_workdir):
     """Test random split with validation set (70/20/10)."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import random_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import random_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -81,8 +81,8 @@ def test_random_split_dataset_with_validation(session_workdir):
 
 def test_random_split_dataset_invalid_sizes(session_workdir):
     """Test that invalid split sizes raise errors."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import random_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import random_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -104,8 +104,8 @@ def test_random_split_dataset_invalid_sizes(session_workdir):
 
 def test_stratified_split_dataset_classification(session_workdir):
     """Test stratified split with classification labels."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import stratified_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import stratified_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -140,8 +140,8 @@ def test_stratified_split_dataset_classification(session_workdir):
 
 def test_stratified_split_dataset_regression(session_workdir):
     """Test stratified split with regression (continuous) labels."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import stratified_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import stratified_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -172,8 +172,8 @@ def test_stratified_split_dataset_regression(session_workdir):
 
 def test_stratified_split_dataset_with_validation(session_workdir):
     """Test stratified split with validation set."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import stratified_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import stratified_split_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -205,9 +205,9 @@ def test_stratified_split_dataset_with_validation(session_workdir):
 
 def test_scaffold_split_dataset_basic(session_workdir):
     """Test basic scaffold split."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import scaffold_split_dataset
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import scaffold_split_dataset
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -254,9 +254,9 @@ def test_scaffold_split_dataset_basic(session_workdir):
 
 def test_scaffold_split_dataset_with_validation(session_workdir):
     """Test scaffold split with validation set."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import scaffold_split_dataset
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import scaffold_split_dataset
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -299,8 +299,8 @@ def test_scaffold_split_dataset_with_validation(session_workdir):
 
 def test_cluster_based_split_dataset_basic(session_workdir):
     """Test basic cluster-based split."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core_mol.data_splitting import cluster_based_split_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core_mol.data_splitting import cluster_based_split_dataset
     from sklearn.cluster import KMeans
     from rdkit import Chem
     from rdkit.Chem import AllChem
@@ -353,8 +353,8 @@ def test_cluster_based_split_dataset_basic(session_workdir):
 
 def test_cluster_based_split_dataset_with_validation(session_workdir):
     """Test cluster-based split with validation set."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.data_splitting import cluster_based_split_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.data_splitting import cluster_based_split_dataset
     from sklearn.cluster import KMeans
     from rdkit import Chem
     from rdkit.Chem import AllChem

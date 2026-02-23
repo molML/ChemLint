@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from rdkit import Chem
-from molml_mcp.tools.core_mol.smiles_ops import (
+from chemlint.tools.core_mol.smiles_ops import (
     _is_invalid_smiles,
     _canonicalize_smiles,
     _remove_pattern,

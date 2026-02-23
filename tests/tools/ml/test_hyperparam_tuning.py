@@ -12,11 +12,11 @@ import numpy as np
 import pandas as pd
 import json
 from pathlib import Path
-from molml_mcp.tools.ml.hyperparam_tuning import (
+from chemlint.tools.ml.hyperparam_tuning import (
     _define_search_space,
     tune_hyperparameters
 )
-from molml_mcp.infrastructure.resources import _store_resource
+from chemlint.infrastructure.resources import _store_resource
 
 
 # Fixtures
@@ -508,7 +508,7 @@ def test_tune_hyperparameters_success_rate(sample_tuning_data):
 
 def test_tune_hyperparameters_stored_resource(sample_tuning_data):
     """Test that best hyperparameters are stored as JSON resource."""
-    from molml_mcp.infrastructure.resources import _load_resource
+    from chemlint.infrastructure.resources import _load_resource
     
     param_grid = {
         'n_estimators': [5, 10]
@@ -678,7 +678,7 @@ def test_tune_hyperparameters_invalid_search_strategy(sample_tuning_data):
 
 def test_tune_and_use_best_params(sample_tuning_data):
     """Test that tuned hyperparameters can be loaded and used."""
-    from molml_mcp.infrastructure.resources import _load_resource
+    from chemlint.infrastructure.resources import _load_resource
     
     param_grid = {
         'n_estimators': [5, 10],

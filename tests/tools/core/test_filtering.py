@@ -6,8 +6,8 @@ from pathlib import Path
 
 def test_filter_by_property_range(session_workdir):
     """Test filtering by property ranges."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_property_range
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_property_range
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -40,8 +40,8 @@ def test_filter_by_property_range(session_workdir):
 
 def test_filter_by_lipinski_ro5(session_workdir):
     """Test Lipinski Rule of Five filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_lipinski_ro5
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_lipinski_ro5
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -82,8 +82,8 @@ def test_filter_by_lipinski_ro5(session_workdir):
 
 def test_filter_by_veber_rules(session_workdir):
     """Test Veber rules filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_veber_rules
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_veber_rules
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -120,8 +120,8 @@ def test_filter_by_veber_rules(session_workdir):
 
 def test_filter_by_pains(session_workdir):
     """Test PAINS filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_pains
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_pains
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -157,8 +157,8 @@ def test_filter_by_pains(session_workdir):
 
 def test_filter_by_lead_likeness(session_workdir):
     """Test lead-likeness filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_lead_likeness
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_lead_likeness
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -192,8 +192,8 @@ def test_filter_by_lead_likeness(session_workdir):
 
 def test_filter_by_rule_of_three(session_workdir):
     """Test Rule of Three filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_rule_of_three
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_rule_of_three
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -229,8 +229,8 @@ def test_filter_by_rule_of_three(session_workdir):
 
 def test_filter_by_qed(session_workdir):
     """Test QED filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_qed
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_qed
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -265,8 +265,8 @@ def test_filter_by_qed(session_workdir):
 
 def test_filter_by_scaffold(session_workdir):
     """Test scaffold-based filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_scaffold
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_scaffold
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -298,8 +298,8 @@ def test_filter_by_scaffold(session_workdir):
 
 def test_filter_by_functional_groups(session_workdir):
     """Test functional group filtering."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-    from molml_mcp.tools.core.filtering import filter_by_functional_groups
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.tools.core.filtering import filter_by_functional_groups
     from pathlib import Path
     
     manifest_path = str(session_workdir / "test_manifest.json")

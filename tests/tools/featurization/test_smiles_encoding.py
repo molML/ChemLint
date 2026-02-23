@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import pytest
-from molml_mcp.tools.featurization.SMILES_encoding import (
+from chemlint.tools.featurization.SMILES_encoding import (
     _tokenize_smiles,
     discover_tokens_from_dataset,
     create_default_vocab_json,
@@ -14,7 +14,7 @@ from molml_mcp.tools.featurization.SMILES_encoding import (
     batch_smiles_to_one_hot,
     flag_smiles_vocab_fit,
 )
-from molml_mcp.infrastructure.resources import create_project_manifest, _store_resource
+from chemlint.infrastructure.resources import create_project_manifest, _store_resource
 
 
 def test_tokenize_smiles():

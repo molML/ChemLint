@@ -10,7 +10,7 @@ from pathlib import Path
 
 def test_get_scaffold_bemis_murcko():
     """Test _get_scaffold with Bemis-Murcko scaffold type."""
-    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    from chemlint.tools.core_mol.scaffolds import _get_scaffold
     
     # Molecule with ring - should succeed
     scaffold, comment = _get_scaffold("c1ccccc1CCO", "bemis_murcko")
@@ -36,7 +36,7 @@ def test_get_scaffold_bemis_murcko():
 
 def test_get_scaffold_generic():
     """Test _get_scaffold with generic scaffold type."""
-    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    from chemlint.tools.core_mol.scaffolds import _get_scaffold
     
     # Molecule with heteroatoms: phenol with nitrogen in side chain
     # O=C(NCc1ccccn1)c1ccccc1 should give a generic scaffold with only carbons
@@ -57,7 +57,7 @@ def test_get_scaffold_generic():
 
 def test_get_scaffold_cyclic_skeleton():
     """Test _get_scaffold with cyclic_skeleton scaffold type."""
-    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    from chemlint.tools.core_mol.scaffolds import _get_scaffold
     
     # Molecule with ring and sidechains with heteroatoms
     # CCCN(Cc1ccccn1)C(=O)c1cc(C)cc(OCCCON=C(N)N)c1
@@ -84,7 +84,7 @@ def test_get_scaffold_cyclic_skeleton():
 
 def test_get_scaffold_invalid_type():
     """Test _get_scaffold with invalid scaffold type."""
-    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    from chemlint.tools.core_mol.scaffolds import _get_scaffold
     
     scaffold, comment = _get_scaffold("c1ccccc1", "invalid_type")
     assert scaffold is None
@@ -93,7 +93,7 @@ def test_get_scaffold_invalid_type():
 
 def test_calculate_scaffolds_basic():
     """Test calculate_scaffolds with basic SMILES list."""
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds
     
     smiles = ["c1ccccc1CCO", "CCCC", "c1ccc(O)cc1"]
     scaffolds, comments = calculate_scaffolds(smiles)
@@ -117,7 +117,7 @@ def test_calculate_scaffolds_basic():
 
 def test_calculate_scaffolds_with_invalid():
     """Test calculate_scaffolds handles invalid SMILES."""
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds
     
     smiles = ["c1ccccc1", None, "invalid", np.nan, "CCO"]
     scaffolds, comments = calculate_scaffolds(smiles)
@@ -142,7 +142,7 @@ def test_calculate_scaffolds_with_invalid():
 
 def test_calculate_scaffolds_all_types():
     """Test calculate_scaffolds with all scaffold types."""
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds
     
     smiles = ["c1ccccc1CCO"]
     
@@ -164,7 +164,7 @@ def test_calculate_scaffolds_all_types():
 
 def test_calculate_scaffolds_empty_list():
     """Test calculate_scaffolds with empty list."""
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds
     
     scaffolds, comments = calculate_scaffolds([])
     assert scaffolds == []
@@ -173,8 +173,8 @@ def test_calculate_scaffolds_empty_list():
 
 def test_calculate_scaffolds_dataset_basic(session_workdir):
     """Test calculate_scaffolds_dataset with dummy data."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -213,8 +213,8 @@ def test_calculate_scaffolds_dataset_basic(session_workdir):
 
 def test_calculate_scaffolds_dataset_generic_type(session_workdir):
     """Test calculate_scaffolds_dataset with generic scaffold type."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -240,8 +240,8 @@ def test_calculate_scaffolds_dataset_generic_type(session_workdir):
 
 def test_calculate_scaffolds_dataset_cyclic_skeleton(session_workdir):
     """Test calculate_scaffolds_dataset with cyclic_skeleton type."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -266,8 +266,8 @@ def test_calculate_scaffolds_dataset_cyclic_skeleton(session_workdir):
 
 def test_calculate_scaffolds_dataset_with_real_data(session_workdir):
     """Test calculate_scaffolds_dataset with dummy_data_raw_small.csv."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds_dataset
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds_dataset
     
     manifest_path = str(session_workdir / "test_manifest.json")
     
@@ -294,7 +294,7 @@ def test_calculate_scaffolds_dataset_with_real_data(session_workdir):
 
 def test_calculate_scaffolds_preserves_order():
     """Test that calculate_scaffolds preserves input order."""
-    from molml_mcp.tools.core_mol.scaffolds import calculate_scaffolds
+    from chemlint.tools.core_mol.scaffolds import calculate_scaffolds
     
     smiles = [f"c1ccc(C{'C'*i})cc1" for i in range(5)]  # Different chain lengths
     scaffolds, comments = calculate_scaffolds(smiles)

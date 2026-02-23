@@ -6,8 +6,8 @@ from pathlib import Path
 
 def test_import_csv_from_path(session_workdir, request):
     """Test importing CSV file as dataset."""
-    from molml_mcp.tools.core.dataset_ops import import_csv_from_path
-    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import import_csv_from_path
+    from chemlint.infrastructure.resources import _load_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -44,8 +44,8 @@ def test_import_csv_from_path(session_workdir, request):
 
 def test_import_excel_from_path(session_workdir, request):
     """Test importing Excel file as dataset."""
-    from molml_mcp.tools.core.dataset_ops import import_excel_from_path
-    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import import_excel_from_path
+    from chemlint.infrastructure.resources import _load_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -82,8 +82,8 @@ def test_import_excel_from_path(session_workdir, request):
 
 def test_import_csv_from_text(session_workdir, request):
     """Test importing CSV text as dataset."""
-    from molml_mcp.tools.core.dataset_ops import import_csv_from_text
-    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import import_csv_from_text
+    from chemlint.infrastructure.resources import _load_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -120,8 +120,8 @@ def test_import_csv_from_text(session_workdir, request):
 
 def test_get_dataset_head(session_workdir, request):
     """Test getting dataset head."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import get_dataset_head
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import get_dataset_head
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -154,8 +154,8 @@ def test_get_dataset_head(session_workdir, request):
 
 def test_get_dataset_full(session_workdir, request):
     """Test getting full dataset."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import get_dataset_full
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import get_dataset_full
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -186,8 +186,8 @@ def test_get_dataset_full(session_workdir, request):
 
 def test_get_dataset_summary(session_workdir, request):
     """Test getting dataset summary."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import get_dataset_summary
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import get_dataset_summary
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -220,8 +220,8 @@ def test_get_dataset_summary(session_workdir, request):
 
 def test_inspect_dataset_rows(session_workdir, request):
     """Test inspecting specific dataset rows with index and filter conditions."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import inspect_dataset_rows
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import inspect_dataset_rows
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -305,8 +305,8 @@ def test_inspect_dataset_rows(session_workdir, request):
 
 def test_drop_from_dataset(session_workdir, request):
     """Test dropping rows from dataset with various conditions."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import drop_from_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import drop_from_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -422,8 +422,8 @@ def test_drop_from_dataset(session_workdir, request):
 
 def test_subset_dataset(session_workdir, request):
     """Test subsetting rows with pandas query filters."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import subset_dataset
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import subset_dataset
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -551,8 +551,8 @@ def test_subset_dataset(session_workdir, request):
 
 def test_drop_duplicate_rows(session_workdir, request):
     """Test dropping duplicate rows."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import drop_duplicate_rows
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import drop_duplicate_rows
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -581,8 +581,8 @@ def test_drop_duplicate_rows(session_workdir, request):
 
 def test_drop_empty_rows(session_workdir, request):
     """Test dropping rows where ALL values are null."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import drop_empty_rows
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import drop_empty_rows
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -617,8 +617,8 @@ def test_drop_empty_rows(session_workdir, request):
 
 def test_drop_columns(session_workdir, request):
     """Test dropping columns."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import drop_columns
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import drop_columns
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -648,8 +648,8 @@ def test_drop_columns(session_workdir, request):
 
 def test_keep_columns(session_workdir, request):
     """Test keeping specific columns."""
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import keep_columns
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import keep_columns
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -679,8 +679,8 @@ def test_keep_columns(session_workdir, request):
 
 def test_transform_column(session_workdir, request):
     """Test transforming a column."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import transform_column
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import transform_column
     import numpy as np
     
     # Create test-specific subdirectory
@@ -801,8 +801,8 @@ def test_transform_column(session_workdir, request):
 
 def test_scramble_column(session_workdir, request):
     """Test scrambling a column for permutation testing."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import scramble_column
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import scramble_column
     import numpy as np
     
     # Create test-specific subdirectory
@@ -901,8 +901,8 @@ def test_scramble_column(session_workdir, request):
 
 def test_combine_datasets_vertical(session_workdir, request):
     """Test combining datasets vertically."""
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
-    from molml_mcp.tools.core.dataset_ops import combine_datasets_vertical
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import combine_datasets_vertical
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -985,8 +985,8 @@ def test_combine_datasets_vertical(session_workdir, request):
 
 def test_combine_datasets_horizontal(session_workdir, request):
     """Test horizontal dataset combination (column-wise concatenation)."""
-    from molml_mcp.tools.core.dataset_ops import combine_datasets_horizontal
-    from molml_mcp.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
+    from chemlint.tools.core.dataset_ops import combine_datasets_horizontal
+    from chemlint.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
     
     # Setup
     test_dir = session_workdir / request.node.name
@@ -1111,8 +1111,8 @@ def test_combine_datasets_horizontal(session_workdir, request):
 
 def test_merge_datasets_on_smiles(session_workdir, request):
     """Test merging datasets based on SMILES structures."""
-    from molml_mcp.tools.core.dataset_ops import merge_datasets_on_smiles
-    from molml_mcp.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
+    from chemlint.tools.core.dataset_ops import merge_datasets_on_smiles
+    from chemlint.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
     
     # Setup
     test_dir = session_workdir / request.node.name
@@ -1321,7 +1321,7 @@ def test_merge_datasets_on_smiles(session_workdir, request):
 
 def test_get_all_dataset_tools():
     """Test getting all dataset tools."""
-    from molml_mcp.tools.core.dataset_ops import get_all_dataset_tools
+    from chemlint.tools.core.dataset_ops import get_all_dataset_tools
     
     tools = get_all_dataset_tools()
     
@@ -1331,8 +1331,8 @@ def test_get_all_dataset_tools():
 
 def test_read_txt(session_workdir, request):
     """Test reading text files from project resources."""
-    from molml_mcp.tools.core.dataset_ops import read_txt
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import read_txt
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -1366,8 +1366,8 @@ def test_read_txt(session_workdir, request):
 
 def test_read_json(session_workdir, request):
     """Test reading JSON files from project resources."""
-    from molml_mcp.tools.core.dataset_ops import read_json
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import read_json
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     import json
     
     # Create test-specific subdirectory
@@ -1413,8 +1413,8 @@ def test_read_json(session_workdir, request):
 
 def test_read_json_list(session_workdir, request):
     """Test reading JSON files containing lists."""
-    from molml_mcp.tools.core.dataset_ops import read_json
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import read_json
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name
@@ -1445,8 +1445,8 @@ def test_read_json_list(session_workdir, request):
 
 def test_read_txt_invalid_type(session_workdir, request):
     """Test error handling when reading wrong resource type as text."""
-    from molml_mcp.tools.core.dataset_ops import read_txt
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import read_txt
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     import pandas as pd
     
     # Create test-specific subdirectory
@@ -1467,8 +1467,8 @@ def test_read_txt_invalid_type(session_workdir, request):
 
 def test_read_json_invalid_type(session_workdir, request):
     """Test error handling when reading wrong resource type as JSON."""
-    from molml_mcp.tools.core.dataset_ops import read_json
-    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    from chemlint.tools.core.dataset_ops import read_json
+    from chemlint.infrastructure.resources import _store_resource, create_project_manifest
     
     # Create test-specific subdirectory
     test_dir = session_workdir / request.node.name

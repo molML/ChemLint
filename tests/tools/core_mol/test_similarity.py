@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from molml_mcp.tools.core_mol.similarity import (
+from chemlint.tools.core_mol.similarity import (
     _levenshtein_distance,
     _edit_distance_similarity,
     _tanimoto_similarity,
@@ -14,7 +14,7 @@ from molml_mcp.tools.core_mol.similarity import (
     add_similarity_statistics_dataset,
     add_training_set_similarity_statistics,
 )
-from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+from chemlint.infrastructure.resources import _store_resource, _load_resource
 
 
 def test_levenshtein_distance():

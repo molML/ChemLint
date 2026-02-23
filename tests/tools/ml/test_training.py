@@ -14,12 +14,12 @@ import pandas as pd
 import tempfile
 import json
 from pathlib import Path
-from molml_mcp.tools.ml.training import (
+from chemlint.tools.ml.training import (
     train_single_ml_model,
     train_ml_models_cross_validation,
     _train_ml_model
 )
-from molml_mcp.infrastructure.resources import _store_resource
+from chemlint.infrastructure.resources import _store_resource
 
 
 # Fixtures
@@ -372,7 +372,7 @@ def test_train_single_ml_model_missing_features(sample_train_data):
     incomplete_features = {k: v for k, v in list(sample_train_data['feature_dict'].items())[:5]}
     
     # Store incomplete features
-    from molml_mcp.infrastructure.resources import _store_resource
+    from chemlint.infrastructure.resources import _store_resource
     incomplete_filename = _store_resource(
         incomplete_features,
         sample_train_data['manifest_path'],
@@ -682,7 +682,7 @@ def test_train_ml_models_cv_default_hyperparameters(sample_cv_data):
 
 def test_single_and_cv_produce_valid_models(sample_train_data):
     """Test that both training functions produce valid, loadable models."""
-    from molml_mcp.infrastructure.resources import _load_resource
+    from chemlint.infrastructure.resources import _load_resource
     
     # Train single model
     result_single = train_single_ml_model(

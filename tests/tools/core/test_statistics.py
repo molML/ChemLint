@@ -6,8 +6,8 @@ import pytest
 
 def test_shapiro_wilk_normal_data(session_workdir):
     """Test Shapiro-Wilk normality test with normally distributed data - should be not significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_shapiro_wilk
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_shapiro_wilk
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -36,8 +36,8 @@ def test_shapiro_wilk_normal_data(session_workdir):
 
 def test_kolmogorov_smirnov_norm_normal_data(session_workdir):
     """Test K-S normality test with normally distributed data - should be not significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_kolmogorov_smirnov_norm
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_kolmogorov_smirnov_norm
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -66,8 +66,8 @@ def test_kolmogorov_smirnov_norm_normal_data(session_workdir):
 
 def test_anderson_darling_normal_data(session_workdir):
     """Test Anderson-Darling normality test with normally distributed data - should be not significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_anderson_darling
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_anderson_darling
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -95,8 +95,8 @@ def test_anderson_darling_normal_data(session_workdir):
 
 def test_paired_ttest_significant_difference(session_workdir):
     """Test paired t-test with significant difference between before and after - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_paired_ttest
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_paired_ttest
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -135,8 +135,8 @@ def test_paired_ttest_significant_difference(session_workdir):
 
 def test_wilcoxon_signed_rank_significant(session_workdir):
     """Test Wilcoxon signed-rank test with significant difference - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_wilcoxon_signed_rank
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_wilcoxon_signed_rank
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -170,8 +170,8 @@ def test_wilcoxon_signed_rank_significant(session_workdir):
 
 def test_pearson_correlation_strong_positive(session_workdir):
     """Test Pearson correlation with strong positive linear correlation - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_pearson_correlation
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_pearson_correlation
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -206,8 +206,8 @@ def test_pearson_correlation_strong_positive(session_workdir):
 
 def test_spearman_correlation_monotonic(session_workdir):
     """Test Spearman correlation with monotonic relationship - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_spearman_correlation
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_spearman_correlation
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -242,8 +242,8 @@ def test_spearman_correlation_monotonic(session_workdir):
 
 def test_independent_ttest_significant(session_workdir):
     """Test independent t-test with significant difference between groups - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_independent_ttest
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_independent_ttest
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -279,8 +279,8 @@ def test_independent_ttest_significant(session_workdir):
 
 def test_mann_whitney_u_significant(session_workdir):
     """Test Mann-Whitney U test with significant difference between groups - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_mann_whitney_u
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_mann_whitney_u
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -314,8 +314,8 @@ def test_mann_whitney_u_significant(session_workdir):
 
 def test_kolmogorov_smirnov_two_sample_different(session_workdir):
     """Test two-sample K-S test with different distributions - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_kolmogorov_smirnov_two_sample
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_kolmogorov_smirnov_two_sample
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -349,8 +349,8 @@ def test_kolmogorov_smirnov_two_sample_different(session_workdir):
 
 def test_one_way_anova_significant(session_workdir):
     """Test one-way ANOVA with significant differences between groups - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_one_way_anova
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_one_way_anova
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -385,8 +385,8 @@ def test_one_way_anova_significant(session_workdir):
 
 def test_kruskal_wallis_significant(session_workdir):
     """Test Kruskal-Wallis test with significant differences between groups - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_kruskal_wallis
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_kruskal_wallis
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -421,8 +421,8 @@ def test_kruskal_wallis_significant(session_workdir):
 
 def test_chi_square_significant(session_workdir):
     """Test chi-square test with strong association - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_chi_square
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_chi_square
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -455,8 +455,8 @@ def test_chi_square_significant(session_workdir):
 
 def test_fisher_exact_significant(session_workdir):
     """Test Fisher's exact test with clear association in 2x2 table - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_fisher_exact
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_fisher_exact
 
     manifest_path = str(session_workdir / "test_manifest.json")
 
@@ -488,8 +488,8 @@ def test_fisher_exact_significant(session_workdir):
 
 def test_mcnemar_significant_change(session_workdir):
     """Test McNemar's test with significant change in paired binary data - should be significant."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core.statistics import test_mcnemar
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core.statistics import test_mcnemar
 
     manifest_path = str(session_workdir / "test_manifest.json")
 

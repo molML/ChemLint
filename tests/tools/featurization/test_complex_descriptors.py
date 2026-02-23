@@ -3,14 +3,14 @@
 import pandas as pd
 import numpy as np
 import pytest
-from molml_mcp.tools.featurization.supported.ecfps import smiles_to_ecfp_dataset
-from molml_mcp.tools.featurization.supported.maccs import smiles_to_maccs_dataset
-from molml_mcp.tools.featurization.supported.rdkit import smiles_to_rdkit_fp_dataset
-from molml_mcp.tools.featurization.supported.avalon import smiles_to_avalon_dataset
-from molml_mcp.tools.featurization.supported.atompair import smiles_to_atompair_dataset
-from molml_mcp.tools.featurization.supported.torsion import smiles_to_torsion_dataset
-from molml_mcp.tools.featurization.supported.cats import smiles_to_cats_dataset
-from molml_mcp.infrastructure.resources import create_project_manifest, _store_resource, _load_resource
+from chemlint.tools.featurization.supported.ecfps import smiles_to_ecfp_dataset
+from chemlint.tools.featurization.supported.maccs import smiles_to_maccs_dataset
+from chemlint.tools.featurization.supported.rdkit import smiles_to_rdkit_fp_dataset
+from chemlint.tools.featurization.supported.avalon import smiles_to_avalon_dataset
+from chemlint.tools.featurization.supported.atompair import smiles_to_atompair_dataset
+from chemlint.tools.featurization.supported.torsion import smiles_to_torsion_dataset
+from chemlint.tools.featurization.supported.cats import smiles_to_cats_dataset
+from chemlint.infrastructure.resources import create_project_manifest, _store_resource, _load_resource
 
 
 def test_smiles_to_ecfp_dataset(session_workdir, request):

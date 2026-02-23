@@ -5,7 +5,7 @@ import shutil
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from molml_mcp.infrastructure.resources import create_project_manifest
+from chemlint.infrastructure.resources import create_project_manifest
 
 @pytest.fixture(scope="session")
 def session_workdir():
@@ -23,7 +23,7 @@ def session_workdir():
 # # Add src to path
 # sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-# from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+# from chemlint.infrastructure.resources import _store_resource, _load_resource
 
 # # Test manifest path
 # TEST_MANIFEST = Path(__file__).parent / 'data' / 'test_manifest.json'

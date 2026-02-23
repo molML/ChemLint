@@ -11,7 +11,7 @@ def test_compute_fold_difference_matrix_basic():
     - 10 vs 100: ratio = 10.0 (this would be 1-fold in orders of magnitude)
     - 10 vs 1000: ratio = 100.0 (this would be 2-fold in orders of magnitude)
     """
-    from molml_mcp.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
+    from chemlint.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
     
     # Simple activity values: 100, 10, 50 (e.g., IC50 in nM)
     activities = np.array([100.0, 10.0, 50.0])
@@ -42,7 +42,7 @@ def test_compute_fold_difference_matrix_basic():
 
 def test_compute_fold_difference_matrix_always_gte_one():
     """Test that fold-differences (ratios) are always >= 1.0."""
-    from molml_mcp.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
+    from chemlint.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
     
     activities = np.array([0.5, 5.0, 50.0, 500.0])
     
@@ -54,7 +54,7 @@ def test_compute_fold_difference_matrix_always_gte_one():
 
 def test_compute_fold_difference_matrix_zero_handling():
     """Test handling of zero activity values."""
-    from molml_mcp.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
+    from chemlint.tools.core_mol.activity_cliffs import _compute_fold_difference_matrix
     
     # Include a zero value (should result in inf)
     activities = np.array([100.0, 0.0, 10.0])
@@ -73,8 +73,8 @@ def test_compute_fold_difference_matrix_zero_handling():
 
 def test_annotate_activity_cliff_molecules_basic(session_workdir):
     """Test basic activity cliff annotation."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
     import joblib
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -132,8 +132,8 @@ def test_annotate_activity_cliff_molecules_basic(session_workdir):
 
 def test_annotate_activity_cliff_molecules_no_cliffs(session_workdir):
     """Test when no activity cliffs exist."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
     import joblib
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -173,8 +173,8 @@ def test_annotate_activity_cliff_molecules_no_cliffs(session_workdir):
 
 def test_annotate_activity_cliff_molecules_all_cliffs(session_workdir):
     """Test when all similar molecules form activity cliffs."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
     import joblib
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -214,8 +214,8 @@ def test_annotate_activity_cliff_molecules_all_cliffs(session_workdir):
 
 def test_annotate_activity_cliff_molecules_missing_columns(session_workdir):
     """Test error handling for missing columns."""
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
     import joblib
     
     manifest_path = str(session_workdir / "test_manifest.json")
@@ -263,8 +263,8 @@ def test_annotate_activity_cliff_molecules_threshold_variations(session_workdir)
     - threshold of 3.0 = ratio of 3 (0.48 orders of magnitude)
     - threshold of 10.0 = ratio of 10 (1.0 order of magnitude)
     """
-    from molml_mcp.infrastructure.resources import _store_resource
-    from molml_mcp.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
+    from chemlint.infrastructure.resources import _store_resource
+    from chemlint.tools.core_mol.activity_cliffs import annotate_activity_cliff_molecules
     import joblib
     
     manifest_path = str(session_workdir / "test_manifest.json")

@@ -3,13 +3,13 @@
 import pandas as pd
 import numpy as np
 import pytest
-from molml_mcp.tools.featurization.simple_descriptors import (
+from chemlint.tools.featurization.simple_descriptors import (
     list_rdkit_descriptors,
     calculate_simple_descriptors,
     calculate_descriptor_vectors,
     normalize_feature_vectors,
 )
-from molml_mcp.infrastructure.resources import create_project_manifest, _store_resource, _load_resource
+from chemlint.infrastructure.resources import create_project_manifest, _store_resource, _load_resource
 
 
 def test_list_rdkit_descriptors():

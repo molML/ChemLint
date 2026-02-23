@@ -1,7 +1,7 @@
-# 🧬 MolML MCP Server
+# 🧬 ChemLint
 
 <div align="left">
-  <img src="img/logo.png" alt="MolML MCP Logo" width="600"/>
+  <img src="img/logo.png" alt="ChemLint Logo" width="600"/>
 </div>
 
 > **Molecular Machine Learning for AI Assistants** — An MCP server that gives LLMs native access to cheminformatics and molecular ML workflows
@@ -14,7 +14,7 @@
 
 ## Summary
 
-**MolML MCP** transforms AI assistants into powerful molecular machine learning workbenches. Through the Model Context Protocol (MCP), LLMs gain the ability to manipulate molecular structures, calculate descriptors, train ML models, and generate comprehensive analysis reports — all through natural conversation.
+**ChemLint** transforms AI assistants into powerful molecular machine learning workbenches. Through the Model Context Protocol (MCP), LLMs gain the ability to manipulate molecular structures, calculate descriptors, train ML models, and generate comprehensive analysis reports — all through natural conversation.
 
 Simply chat with Claude Desktop (or any MCP client) to perform complex cheminformatics workflows that would normally require writing Python scripts and juggling multiple libraries.
 
@@ -223,7 +223,7 @@ For clients other than Claude Desktop, add this to your MCP client configuration
 ```json
 {
   "mcpServers": {
-    "molml-mcp": {
+    "chemlint": {
       "command": "/path/to/uv",
       "args": [
         "run",
@@ -233,7 +233,7 @@ For clients other than Claude Desktop, add this to your MCP client configuration
         "/path/to/molml_mcp",
         "mcp",
         "run",
-        "./src/molml_mcp/server.py"
+        "./src/chemlint/server.py"
       ],
       "enabled": true
     }

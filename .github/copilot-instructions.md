@@ -1,4 +1,4 @@
-# MolML MCP Server - AI Coding Agent Instructions
+# ChemLint - AI Coding Agent Instructions
 
 ## Project Overview
 This is an **MCP (Model Context Protocol) server** that enables LLMs to perform molecular machine learning tasks. Built with FastMCP, it exposes 150+ tools for molecular structure manipulation, dataset operations, and ML workflows.

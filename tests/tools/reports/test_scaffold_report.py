@@ -7,14 +7,14 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from molml_mcp.tools.reports.scaffold_analysis import (
+from chemlint.tools.reports.scaffold_analysis import (
     _calculate_gini_coefficient,
     _calculate_shannon_entropy,
     _calculate_scaffold_similarity,
     _perform_enrichment_analysis,
     scaffold_analysis
 )
-from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+from chemlint.infrastructure.resources import _store_resource, _load_resource
 
 
 # ============================================================================

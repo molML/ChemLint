@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def test_store_load_resource(session_workdir):
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource
+    from chemlint.infrastructure.resources import _store_resource, _load_resource
 
     data = {"a": 1, "b": 2}
     filename = _store_resource(data, session_workdir / "test_manifest.json", "store_resource_test_data", "Test data storage", "json")
@@ -13,7 +13,7 @@ def test_store_load_resource(session_workdir):
 
 
 def test_create_project_manifest(session_workdir):
-    from molml_mcp.infrastructure.resources import create_project_manifest
+    from chemlint.infrastructure.resources import create_project_manifest
     
     manifest = create_project_manifest(str(session_workdir), "test_project")
     
@@ -24,7 +24,7 @@ def test_create_project_manifest(session_workdir):
 
 
 def test_read_project_manifest(session_workdir):
-    from molml_mcp.infrastructure.resources import create_project_manifest, read_project_manifest
+    from chemlint.infrastructure.resources import create_project_manifest, read_project_manifest
     
     create_project_manifest(str(session_workdir), "read_test")
     manifest = read_project_manifest(str(session_workdir / "read_test_manifest.json"))
@@ -34,7 +34,7 @@ def test_read_project_manifest(session_workdir):
 
 
 def test_add_to_project_manifest(session_workdir):
-    from molml_mcp.infrastructure.resources import create_project_manifest, add_to_project_manifest, read_project_manifest
+    from chemlint.infrastructure.resources import create_project_manifest, add_to_project_manifest, read_project_manifest
     
     manifest_path = str(session_workdir / "add_test_manifest.json")
     create_project_manifest(str(session_workdir), "add_test")
@@ -53,7 +53,7 @@ def test_add_to_project_manifest(session_workdir):
 
 
 def test_remove_from_project_manifest(session_workdir):
-    from molml_mcp.infrastructure.resources import (
+    from chemlint.infrastructure.resources import (
         create_project_manifest, 
         add_to_project_manifest, 
         remove_from_project_manifest,
@@ -75,7 +75,7 @@ def test_remove_from_project_manifest(session_workdir):
 
 
 def test_list_untracked_resources(session_workdir):
-    from molml_mcp.infrastructure.resources import (
+    from chemlint.infrastructure.resources import (
         create_project_manifest,
         add_to_project_manifest,
         list_untracked_resources_in_project
@@ -97,7 +97,7 @@ def test_list_untracked_resources(session_workdir):
 
 
 def test_get_supported_resource_types():
-    from molml_mcp.infrastructure.resources import get_supported_resource_types
+    from chemlint.infrastructure.resources import get_supported_resource_types
     
     types = get_supported_resource_types()
     
@@ -109,7 +109,7 @@ def test_get_supported_resource_types():
 
 def test_store_and_load_csv(session_workdir):
     import pandas as pd
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     
     manifest_path = str(session_workdir / "csv_test_manifest.json")
     create_project_manifest(str(session_workdir), "csv_test")
@@ -124,7 +124,7 @@ def test_store_and_load_csv(session_workdir):
 def test_store_and_load_model(session_workdir):
     from sklearn.ensemble import RandomForestClassifier
     import numpy as np
-    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
     
     manifest_path = str(session_workdir / "model_test_manifest.json")
     create_project_manifest(str(session_workdir), "model_test")
@@ -159,7 +159,7 @@ def test_store_and_load_model(session_workdir):
 
 
 def test_load_nonexistent_resource(session_workdir):
-    from molml_mcp.infrastructure.resources import _load_resource, create_project_manifest
+    from chemlint.infrastructure.resources import _load_resource, create_project_manifest
     
     manifest_path = str(session_workdir / "error_test_manifest.json")
     create_project_manifest(str(session_workdir), "error_test")
@@ -169,7 +169,7 @@ def test_load_nonexistent_resource(session_workdir):
 
 
 def test_create_manifest_twice_fails(session_workdir):
-    from molml_mcp.infrastructure.resources import create_project_manifest
+    from chemlint.infrastructure.resources import create_project_manifest
     
     create_project_manifest(str(session_workdir), "duplicate_test")
     
@@ -178,7 +178,7 @@ def test_create_manifest_twice_fails(session_workdir):
 
 
 def test_check_data_directory_content_with_projects(session_workdir):
-    from molml_mcp.infrastructure.resources import (
+    from chemlint.infrastructure.resources import (
         create_project_manifest, 
         _store_resource,
         check_data_directory_content
@@ -228,7 +228,7 @@ def test_check_data_directory_content_with_projects(session_workdir):
 
 
 def test_check_data_directory_content_no_manifests(session_workdir):
-    from molml_mcp.infrastructure.resources import check_data_directory_content
+    from chemlint.infrastructure.resources import check_data_directory_content
     
     # Create empty directory
     empty_dir = session_workdir / "empty"
@@ -242,7 +242,7 @@ def test_check_data_directory_content_no_manifests(session_workdir):
 
 
 def test_check_data_directory_content_nonexistent(session_workdir):
-    from molml_mcp.infrastructure.resources import check_data_directory_content
+    from chemlint.infrastructure.resources import check_data_directory_content
     
     result = check_data_directory_content(str(session_workdir / "nonexistent"))
     
@@ -252,7 +252,7 @@ def test_check_data_directory_content_nonexistent(session_workdir):
 
 
 def test_check_data_directory_content_single_project(session_workdir):
-    from molml_mcp.infrastructure.resources import (
+    from chemlint.infrastructure.resources import (
         create_project_manifest,
         _store_resource,
         check_data_directory_content

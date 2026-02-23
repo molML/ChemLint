@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "molml-mcp"
+name = "chemlint"
 version = "0.1.0"
-description = "MCP server for molecular machine learning"
+description = "ChemLint: MCP server for molecular machine learning"
 requires-python = ">=3.13"
 
 dependencies = [

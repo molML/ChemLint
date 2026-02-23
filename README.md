@@ -4,7 +4,7 @@
   <img src="img/logo.png" alt="ChemLint Logo" width="600"/>
 </div>
 
-> **Molecular Machine Learning for AI Assistants** — An MCP server that gives LLMs native access to cheminformatics and molecular ML workflows
+> **ChemLint** — An MCP server that gives LLMs native access to cheminformatics and molecular ML tools
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-363%20passed-brightgreen.svg)](tests/)
@@ -173,8 +173,8 @@ Simply run the installer script - it handles installation, configuration, and de
 
 ```bash
 # Clone repository
-git clone https://github.com/derekvantilborg/molml_mcp.git
-cd molml_mcp
+git clone https://github.com/derekvantilborg/ChemLint.git
+cd ChemLint
 
 # Run installer (installs AND configures Claude Desktop)
 ./install.sh
@@ -203,8 +203,8 @@ If you prefer manual setup or use a different MCP client:
 
 ```bash
 # 1. Clone and install dependencies
-git clone https://github.com/derekvantilborg/molml_mcp.git
-cd molml_mcp
+git clone https://github.com/derekvantilborg/ChemLint.git
+cd ChemLint
 uv sync
 
 # 2. Run tests to verify installation
@@ -230,7 +230,7 @@ For clients other than Claude Desktop, add this to your MCP client configuration
         "--with",
         "mcp[cli]",
         "--directory",
-        "/path/to/molml_mcp",
+        "/path/to/ChemLint",
         "mcp",
         "run",
         "./src/chemlint/server.py"
@@ -329,7 +329,7 @@ uv run pytest tests/tools/reports/test_quality.py -v
 uv run pytest -m server -v
 
 # Run with coverage
-uv run pytest --cov=molml_mcp --cov-report=html
+uv run pytest --cov=chemlint --cov-report=html
 ```
 
 **Test Coverage:**
@@ -370,6 +370,6 @@ Special thanks to the **RDKit community** for maintaining the foundational chemi
 
 **Derek van Tilborg** - [@derekvantilborg](https://derekvantilborg.com/)
 
-**Project Link**: [https://github.com/derekvantilborg/molml_mcp](https://github.com/derekvantilborg/molml_mcp)
+**Project Link**: [https://github.com/derekvantilborg/ChemLint](https://github.com/derekvantilborg/ChemLint)
 
-**Issues & Feature Requests**: [GitHub Issues](https://github.com/derekvantilborg/molml_mcp/issues)
+**Issues & Feature Requests**: [GitHub Issues](https://github.com/derekvantilborg/ChemLint/issues)

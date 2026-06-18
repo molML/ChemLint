@@ -366,6 +366,28 @@ Special thanks to the **RDKit community** for maintaining the foundational chemi
 
 ---
 
+## ✍️ Cite
+
+If you use ChemLint in your research, please cite our work:
+
+> van Tilborg, D., & Grisoni, F. (2026). *ChemLint: Conversational Cheminformatics with Large Language Models*. ChemRxiv. https://doi.org/10.26434/chemrxiv.15000386
+
+The preprint is available on [ChemRxiv](https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000386/v1).
+
+### BibTeX
+
+```bibtex
+@article{vanTilborg2026chemlint,
+  title   = {{ChemLint}: Conversational Cheminformatics with Large Language Models},
+  author  = {van Tilborg, Derek and Grisoni, Francesca},
+  year    = {2026},
+  journal = {ChemRxiv},
+  doi     = {10.26434/chemrxiv.15000386},
+  url     = {https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000386/v1}
+}
+```
+---
+
 ## 📬 Contact
 
 **Derek van Tilborg** - [@derekvantilborg](https://derekvantilborg.com/)

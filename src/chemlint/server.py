@@ -23,7 +23,10 @@ from chemlint.tools.cleaning import get_all_cleaning_tools, find_duplicates_data
 from chemlint.tools.core_mol import get_all_scaffold_tools, get_all_complexity_tools, get_all_activity_cliff_tools
 from chemlint.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from chemlint.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
-from chemlint.tools.core_mol.data_splitting import random_split_dataset, scaffold_split_dataset, stratified_split_dataset, cluster_based_split_dataset
+from chemlint.tools.core_mol.data_splitting import (
+    random_split_dataset, scaffold_split_dataset, stratified_split_dataset,
+    cluster_based_split_dataset, get_validation_strategy_guidance
+)
 from chemlint.tools.core_mol.similarity import (
     compute_similarity_matrix,
     find_k_nearest_neighbors,
@@ -41,8 +44,27 @@ from chemlint.tools.featurization.simple_descriptors import (
 from chemlint.tools.featurization.complex_descriptors import get_all_complex_descriptor_tools
 from chemlint.tools.ml import get_all_ml_tools
 
-# create an MCP server 
-mcp = FastMCP("chemlint") 
+# create an MCP server
+_INSTRUCTIONS = """
+You are a cheminformatics assistant powered by ChemLint.
+
+KEY RULES:
+1. Before choosing a data-split or cross-validation strategy, call
+   get_validation_strategy_guidance() or ask the user whether they are building
+   a GLOBAL model (novel scaffolds) or a LOCAL lead-optimization model.
+   Scaffold/cluster splits are required for global models.
+
+2. Always use a fixed random_state for any stochastic operation (splits,
+   cross-validation, model training). Record the seed in the manifest.
+
+3. Drug-likeness rules (Lipinski Ro5, Veber, QED) are crude guidelines, not
+   pass/fail gates. Flag results as informational; do not label compounds as
+   'bad' based solely on these criteria.
+
+4. For outlier detection, prefer detect_outliers_modified_zscore (robust to
+   existing outliers) unless the user explicitly requests another method.
+"""
+mcp = FastMCP("chemlint", instructions=_INSTRUCTIONS)
 
 # Add supported resource types tool
 for tool_func in get_all_resources_tools():
@@ -111,7 +133,8 @@ for tool_func in get_all_complex_descriptor_tools():
 mcp.add_tool(smiles_to_acs1996_png)
 mcp.add_tool(smiles_grid_to_acs1996_png)
 
-# Add data splitting tool
+# Add data splitting tools (includes validation strategy guidance)
+mcp.add_tool(get_validation_strategy_guidance)
 mcp.add_tool(random_split_dataset)
 mcp.add_tool(scaffold_split_dataset)
 mcp.add_tool(stratified_split_dataset)

@@ -788,5 +788,63 @@ def cluster_based_split_dataset(
             f"{'✓ No cluster overlap detected.' if not has_overlap else '⚠ CLUSTER OVERLAP DETECTED!'}"
         )
     }
-    
+
     return result
+
+
+def get_validation_strategy_guidance() -> str:
+    """Return guidance on choosing a data-splitting and validation strategy.
+
+    IMPORTANT: Call this tool (or ask the user directly) BEFORE choosing any
+    split or cross-validation strategy. The right choice depends on the
+    intended scope of the model being built.
+
+    Returns
+    -------
+    str
+        Decision guide for split/CV strategy selection.
+    """
+    return """
+================================================================================
+VALIDATION STRATEGY DECISION GUIDE
+================================================================================
+
+Before splitting data or running cross-validation, ask the user:
+
+  "Is this model intended to generalize to novel chemical scaffolds / diverse
+   chemical matter (global model), or is it focused on a narrow congeneric
+   series for lead optimization (local model)?"
+
+────────────────────────────────────────────────────────────────────────────────
+GLOBAL MODEL  (diverse chemical space, predicting on new scaffolds)
+────────────────────────────────────────────────────────────────────────────────
+Goal:      Extrapolate to structurally novel compounds.
+Split:     scaffold_split_dataset (DEFAULT) or cluster_based_split_dataset.
+           These ensure held-out compounds have scaffolds/clusters not seen
+           during training, giving a realistic estimate of generalization.
+CV:        train_ml_models_cross_validation with cv_strategy='scaffold' or
+           'cluster'. Requires a scaffold or cluster column.
+Rationale: Random splits leak scaffold information into the test set and
+           overestimate performance on novel matter.
+
+────────────────────────────────────────────────────────────────────────────────
+LOCAL MODEL  (narrow congeneric series, interpolating within known scaffold)
+────────────────────────────────────────────────────────────────────────────────
+Goal:      Rank / prioritize compounds within a well-defined chemical series.
+Split:     random_split_dataset or stratified_split_dataset.
+           Scaffold splits may be overly pessimistic when all compounds share
+           the same core and generalization within the series is the goal.
+CV:        cv_strategy='kfold' or 'montecarlo'.
+Rationale: Chemical space is already constrained; structural diversity between
+           train and test is low regardless of split method.
+
+────────────────────────────────────────────────────────────────────────────────
+GENERAL RULES
+────────────────────────────────────────────────────────────────────────────────
+• Always set a fixed random_state for reproducibility; record it in the manifest.
+• Report both train and test (and val) metrics; do not optimise on test set.
+• For imbalanced classification, use stratified_split_dataset so class ratios
+  are preserved across splits.
+• Dataset size < ~200 compounds: prefer leave-one-out or Monte-Carlo CV.
+================================================================================
+"""

@@ -128,23 +128,11 @@ def filter_by_lipinski_ro5(
     Flag compounds against Lipinski's Rule of Five (MW≤500, LogP≤5, HBD≤5, HBA≤10).
     Results are informational flags; violations do not indicate poor compounds.
     
-    Parameters
-    ----------
-    input_filename : str
-        Input dataset filename
-    project_manifest_path : str
-        Path to manifest.json
-    smiles_column : str
-        SMILES column name
-    output_filename : str
-        Output dataset name (no extension)
-    explanation : str
-        Brief description
-    
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, filters_applied, lipinski_properties_added, columns, warning, note
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
+        percent_retained, filters_applied, lipinski_properties_added, guideline_note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -263,23 +251,11 @@ def filter_by_veber_rules(
     Flag compounds against Veber's oral bioavailability rules (TPSA≤140, RotBonds≤10).
     Results are informational flags; violations do not indicate poor compounds.
     
-    Parameters
-    ----------
-    input_filename : str
-        Input dataset filename
-    project_manifest_path : str
-        Path to manifest.json
-    smiles_column : str
-        SMILES column name
-    output_filename : str
-        Output dataset name (no extension)
-    explanation : str
-        Brief description
-    
     Returns
     -------
     dict
-        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles, percent_retained, filters_applied, veber_properties_added, columns, warning, note
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
+        percent_retained, filters_applied, veber_properties_added, guideline_note
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)

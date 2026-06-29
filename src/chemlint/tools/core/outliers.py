@@ -32,16 +32,10 @@ def detect_outliers_zscore(
     Detect outliers using Z-score method. Formula: z = (x - μ) / σ. Outlier if |z| > threshold.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to manifest.json
-        columns: Columns to check for outliers
-        output_filename: Output dataset name
-        explanation: Description of operation
-        threshold: Number of standard deviations (default: 3.0)
-        
+        threshold: Number of standard deviations above/below mean (default: 3.0)
+    
     Returns:
-        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column, 
-        total_outliers, outlier_columns_added, threshold, preview, summary
+        Dict with output_filename, columns_checked, outliers_per_column, total_outliers, outlier_columns_added
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -129,16 +123,10 @@ def detect_outliers_modified_zscore(
     Preferred over Z-score because MAD is not inflated by the outliers being detected.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to manifest.json
-        columns: Columns to check for outliers
-        output_filename: Output dataset name
-        explanation: Description of operation
         threshold: Modified Z-score threshold (default: 3.5)
-        
+
     Returns:
-        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
-        total_outliers, outlier_columns_added, threshold, preview, summary
+        Dict with output_filename, columns_checked, outliers_per_column, total_outliers, outlier_columns_added
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -224,16 +212,10 @@ def detect_outliers_iqr(
     Non-parametric, robust to extremes. Use k=1.5 for outliers, k=3.0 for far outliers.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to manifest.json
-        columns: Columns to check for outliers
-        output_filename: Output dataset name
-        explanation: Description of operation
-        multiplier: IQR multiplier k (default: 1.5)
-        
+        multiplier: IQR multiplier k — use 1.5 for outliers, 3.0 for far outliers (default: 1.5)
+
     Returns:
-        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
-        total_outliers, outlier_columns_added, bounds_per_column, multiplier, preview, summary
+        Dict with output_filename, columns_checked, outliers_per_column, bounds_per_column, total_outliers, outlier_columns_added
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -327,16 +309,10 @@ def detect_outliers_grubbs(
     Test statistic: G = max|x_i - mean| / std. Detects ONE outlier per run.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to manifest.json
-        columns: Columns to check for outliers
-        output_filename: Output dataset name
-        explanation: Description of operation
         alpha: Significance level (default: 0.05)
-        
+
     Returns:
-        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
-        total_outliers, outlier_columns_added, alpha, preview, summary
+        Dict with output_filename, columns_checked, outliers_per_column, total_outliers, outlier_columns_added
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -457,17 +433,11 @@ def detect_outliers_gesd(
     Extension of Grubbs' test that iteratively removes extreme values up to max_outliers.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to manifest.json
-        columns: Columns to check for outliers
-        output_filename: Output dataset name
-        explanation: Description of operation
-        max_outliers: Maximum outliers to detect (default: 10)
+        max_outliers: Upper bound on outliers to detect (default: 10)
         alpha: Significance level (default: 0.05)
-        
+
     Returns:
-        Dictionary with output_filename, n_rows, columns, columns_checked, outliers_per_column,
-        total_outliers, outlier_columns_added, max_outliers, alpha, preview, summary
+        Dict with output_filename, columns_checked, outliers_per_column, total_outliers, outlier_columns_added
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)

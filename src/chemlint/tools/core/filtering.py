@@ -125,7 +125,8 @@ def filter_by_lipinski_ro5(
     explanation: str
 ) -> dict:
     """
-    Filter by Lipinski's Rule of Five (MW≤500, LogP≤5, HBD≤5, HBA≤10).
+    Flag compounds against Lipinski's Rule of Five (MW≤500, LogP≤5, HBD≤5, HBA≤10).
+    Results are informational flags; violations do not indicate poor compounds.
     
     Parameters
     ----------
@@ -241,7 +242,7 @@ def filter_by_lipinski_ro5(
         "filters_applied": filters_applied,
         "lipinski_properties_added": lipinski_properties,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ Lipinski's Rule of Five is a crude guideline, not a strict rule. Many successful drugs violate these criteria. Use with caution and validate results.",
+        "guideline_note": ("Lipinski's Rule of Five is an informational flag, not a quality gate. Many approved drugs violate one or more criteria — it does not apply to biologics, natural products, or actively-transported compounds. Do not label compounds as unsuitable based solely on Ro5."),
         "note": (
             f"Lipinski Rule of Five filtering: {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
             f"Removed {n_invalid} invalid SMILES. "
@@ -259,7 +260,8 @@ def filter_by_veber_rules(
     explanation: str
 ) -> dict:
     """
-    Filter by Veber's rules for oral bioavailability (TPSA≤140, RotBonds≤10).
+    Flag compounds against Veber's oral bioavailability rules (TPSA≤140, RotBonds≤10).
+    Results are informational flags; violations do not indicate poor compounds.
     
     Parameters
     ----------
@@ -365,7 +367,7 @@ def filter_by_veber_rules(
         "filters_applied": filters_applied,
         "veber_properties_added": veber_properties,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ Veber's rules are crude predictors of oral bioavailability. Many factors beyond TPSA and rotatable bonds affect absorption. Use with caution.",
+        "guideline_note": ("Veber's rules are informational flags for oral bioavailability, not strict filters. TPSA and rotatable bonds are crude proxies; many approved oral drugs fall outside these thresholds."),
         "note": (
             f"Veber rules filtering: {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
             f"Removed {n_invalid} invalid SMILES. "
@@ -484,7 +486,7 @@ def filter_by_pains(
         "percent_retained": percent_retained,
         "action": action,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ PAINS filters are controversial and may remove valid compounds. Context-dependent - a PAINS hit in one assay may be fine in another. Use with caution.",
+        "guideline_note": ("PAINS alerts are informational. False-positive rates are high: a matched substructure does not confirm assay interference. Evaluate flagged compounds in context rather than discarding them automatically."),
         "note": note_text
     }
 
@@ -648,7 +650,7 @@ def filter_by_lead_likeness(
         "filters_applied": filters_applied,
         "lead_properties_added": lead_properties,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ Lead-likeness rules are crude guidelines for hit-to-lead optimization. Optimal ranges vary by target class and project goals. Use with caution.",
+        "guideline_note": ("Lead-likeness criteria are informational flags. Optimal property ranges vary by target class; these thresholds are empirical starting points, not definitive quality gates."),
         "note": (
             f"Lead-likeness filtering ({criteria_mode}): {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
             f"Removed {n_invalid} invalid SMILES. "
@@ -814,7 +816,7 @@ def filter_by_rule_of_three(
         "filters_applied": filters_applied,
         "ro3_properties_added": ro3_properties,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ Rule of Three is a crude guideline for fragment libraries. Fragment quality depends heavily on binding mode and target. Use with caution.",
+        "guideline_note": ("Rule of Three criteria are informational flags for fragment screening. Fragment quality ultimately depends on binding efficiency and target context, not property cutoffs alone."),
         "note": (
             f"Rule of Three filtering ({criteria_mode}): {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
             f"Removed {n_invalid} invalid SMILES. "
@@ -939,7 +941,7 @@ def filter_by_qed(
         "mean_qed": mean_qed,
         "median_qed": median_qed,
         "columns": df_filtered.columns.tolist(),
-        "warning": "⚠️ QED is a crude composite drug-likeness score. High QED doesn't guarantee success, and many approved drugs have low QED. Use with caution.",
+        "guideline_note": ("QED is an informational composite score, not a quality gate. Many approved drugs score below 0.5, and high QED does not correlate with clinical success. Use to prioritize, not to exclude."),
         "note": (
             f"QED filtering: {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
             f"Removed {n_invalid} invalid SMILES. "

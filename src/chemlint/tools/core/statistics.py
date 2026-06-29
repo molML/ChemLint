@@ -155,7 +155,7 @@ def test_kolmogorov_smirnov_norm(
         raise ValueError(f"Standard deviation is zero for column '{column}'")
     
     # Perform K-S test comparing data to normal distribution
-    statistic, p_value = stats.kstest(data, 'norm', args=(mean, std))
+    statistic, p_value = stats.kstest(data, stats.norm(loc=mean, scale=std).cdf)
     
     # Interpret result
     is_normal = p_value > alpha

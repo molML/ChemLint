@@ -51,6 +51,7 @@ def import_csv_from_path(file_path: str, project_manifest_path: str, filename: s
         "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
+        "preview": df.head(5).to_dict("records"),
         "note": "Datasets are imported in a containerized directory, attempts to access the original file path may not work. Use MolML-MCP operations to interact with files through the manifest system after importing.",
     }
 

@@ -2054,6 +2054,11 @@ def analyze_split_quality(
                 for k in ['test_vs_train', 'val_vs_train', 'val_vs_test']
                 if result['similarity_leakage'].get(k) is not None
             ),
+            'activity_cliffs': sum(
+                result['similarity_leakage'].get(k, {}).get('n_activity_cliffs', 0)
+                for k in ['test_vs_train', 'val_vs_train', 'val_vs_test']
+                if result['similarity_leakage'].get(k) is not None
+            ),
             'scaffold_overlap_pct': result['scaffold_leakage'].get('train_test_overlap', {}).get('pct_split2_in_split1', 0),
             'stereoisomer_pairs': result['stereoisomer_tautomer_leakage'].get('total_stereoisomer_pairs', 0),
             'tautomer_pairs': result['stereoisomer_tautomer_leakage'].get('total_tautomer_pairs', 0),

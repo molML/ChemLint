@@ -178,7 +178,14 @@ def _strip_common_solvent_fragments(smi: str) -> tuple[str, str]:
 
 
 def _defragment_smiles(smiles: str, keep_largest_fragment: bool = True) -> tuple[str, str]:
-    """ Defragment a SMILES string by removing smaller fragments. """
+    """Defragment a SMILES string by keeping the largest fragment (parent compound).
+
+    "Largest" is determined by SMILES string length as a proxy for heavy-atom count.
+    This heuristic works well after salt/solvent removal but can be fooled by
+    fragments with many implicit hydrogens or long SMARTS strings. Always run
+    salt and solvent removal BEFORE defragmentation so the largest remaining
+    fragment is the true parent molecule.
+    """
 
     # Handle None or NaN input (failed previous step or missing data)
     if _is_invalid_smiles(smiles):

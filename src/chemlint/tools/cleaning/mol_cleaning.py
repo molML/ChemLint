@@ -58,13 +58,13 @@ Step 3: Solvent Removal
     Output Column: smiles_after_solvent_removal
 
 Step 4: Defragmentation
-    Function: defragment_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename, 
+    Function: defragment_smiles_dataset(input_filename, column_name, project_manifest_path, output_filename,
                                          keep_largest_fragment=True)
-    Purpose: Isolate largest molecular component
-    Rationale: After salt/solvent removal, keep the main molecule
-    LIMITATION: Uses SMILES string length heuristic (not bulletproof - doesn't
-                account for implicit hydrogens or molecular weight)
-    DEPENDENCY: MUST run after salt and solvent removal
+    Purpose: Isolate parent molecule — keeps the largest fragment by SMILES string length
+    Rationale: After salt/solvent removal, the longest remaining SMILES is the parent structure
+    LIMITATION: SMILES length is a proxy for heavy-atom count and can be fooled by fragments
+                with many implicit hydrogens or unusually compact SMARTS representations
+    DEPENDENCY: MUST run after salt and solvent removal (steps 2 and 3)
     Output Column: smiles_after_defragmentation
 
 **PHASE 2: FUNCTIONAL GROUP STANDARDIZATION**
@@ -683,30 +683,20 @@ def defragment_smiles_dataset(
     explanation: str = "Remove disconnected fragments from SMILES",
     keep_largest_fragment: bool = True
 ) -> dict:
-    """Remove smaller fragments from SMILES in a dataset column.
-    
-    WARNING: Remove salts/solvents BEFORE this. Uses SMILES string length (imperfect heuristic).
-    
-    Parameters
-    ----------
-    input_filename : str
-        Input dataset filename.
-    column_name : str
-        Column with SMILES to defragment.
-    project_manifest_path : str
-        Path to project manifest.
-    output_filename : str
-        Output filename (without extension).
-    explanation : str
-        Description of operation.
-    keep_largest_fragment : bool
-        If True, keeps largest fragment. If False, keeps original if fragmented.
-    
-    Returns
-    -------
-    dict
-        output_filename, n_rows, columns, comments (counts), preview, note, warning, suggestions, question_to_user.
-        Adds columns: smiles_after_defragmentation, comments_after_defragmentation.
+    """Remove disconnected fragments from SMILES, keeping the largest fragment (parent compound).
+
+    The parent is selected as the fragment with the longest SMILES string, which serves as a
+    proxy for heavy-atom count. This heuristic is reliable after salt and solvent removal, but
+    can fail for fragments with many implicit hydrogens. Always run salt and solvent removal
+    BEFORE defragmentation so the true parent molecule is the largest remaining fragment.
+
+    Args:
+        keep_largest_fragment: If True (default), retains the longest SMILES fragment (parent).
+            If False, leaves fragmented SMILES unchanged.
+
+    Returns:
+        dict with output_filename; adds smiles_after_defragmentation and
+        comments_after_defragmentation columns.
     """
     df = _load_resource(project_manifest_path, input_filename)
     

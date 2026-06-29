@@ -50,10 +50,10 @@ def _get_parent_info() -> dict:
         
         parent_frame = None
         for frame_info in stack[2:]:  # Skip _get_parent_info and _store_resource
-            # Look for the first frame that's not in this resources.py module
-            # This helps skip internal helper functions
-            frame_filename = frame_info.filename
-            if 'resources.py' not in frame_filename:
+            # Look for the first frame that's not in this resources.py module.
+            # Use exact basename comparison to avoid matching test_resources.py etc.
+            frame_basename = Path(frame_info.filename).name
+            if frame_basename != 'resources.py':
                 parent_frame = frame_info
                 break
         

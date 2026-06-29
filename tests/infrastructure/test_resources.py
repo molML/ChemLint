@@ -276,3 +276,60 @@ def test_check_data_directory_content_single_project(session_workdir):
     
     assert result["n_projects"] == 1
     assert "Found 1 project with 3 tracked resources" in result["message"]
+
+
+def test_manifest_auto_logs_any_tool_call(session_workdir, tmp_path):
+    """
+    Verify that any new tool that calls _store_resource is automatically captured
+    in the manifest with its function name and inputs, without extra wiring.
+
+    This tests that the generic stack-introspection in _get_parent_info() works
+    for a brand-new mock tool that was never explicitly registered.
+    """
+    import pandas as pd
+    from chemlint.infrastructure.resources import (
+        create_project_manifest, _store_resource, read_project_manifest
+    )
+
+    tool_dir = tmp_path / "auto_log_test"
+    tool_dir.mkdir()
+    manifest_path = str(tool_dir / "auto_log_manifest.json")
+    create_project_manifest(str(tool_dir), "auto_log")
+
+    # Define a brand-new mock tool that was never registered with the server.
+    # Its only job is to call _store_resource.
+    def my_novel_tool(data, project_manifest_path: str, output_filename: str, explanation: str):
+        """Save data as a new CSV resource."""
+        return _store_resource(data, project_manifest_path, output_filename, explanation, "csv")
+
+    df = pd.DataFrame({"x": [1, 2, 3]})
+    filename = my_novel_tool(df, manifest_path, "novel_output", "Output from novel tool")
+
+    # The manifest must have captured this tool call automatically
+    manifest = read_project_manifest(manifest_path)
+    assert len(manifest["resources"]) == 1
+
+    entry = manifest["resources"][0]
+    assert entry["filename"] == filename
+    assert entry["type_tag"] == "csv"
+    # Generic introspection must capture the calling function's name
+    assert entry["parent_function_name"] == "my_novel_tool"
+    # And at least some of its inputs
+    assert "project_manifest_path" in entry["parent_function_inputs"]
+
+
+def test_manifest_records_library_versions(tmp_path):
+    """Verify that create_project_manifest captures key library versions."""
+    from chemlint.infrastructure.resources import create_project_manifest
+
+    tool_dir = tmp_path / "version_test"
+    tool_dir.mkdir()
+    manifest = create_project_manifest(str(tool_dir), "version_test")
+
+    assert "library_versions" in manifest
+    versions = manifest["library_versions"]
+    assert "python" in versions
+    assert "rdkit" in versions
+    assert "scikit-learn" in versions
+    assert "numpy" in versions
+    assert "pandas" in versions

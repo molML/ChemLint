@@ -121,7 +121,8 @@ def test_stratified_split_dataset_classification(session_workdir):
         train_output_filename="train_strat",
         test_output_filename="test_strat",
         train_ratio=0.8,
-        test_ratio=0.2
+        test_ratio=0.2,
+        random_state=42
     )
     
     # Check structure
@@ -158,7 +159,8 @@ def test_stratified_split_dataset_regression(session_workdir):
         test_output_filename="test_strat_reg",
         train_ratio=0.8,
         test_ratio=0.2,
-        n_bins=5
+        n_bins=5,
+        random_state=42
     )
     
     # Check it detected regression
@@ -191,7 +193,8 @@ def test_stratified_split_dataset_with_validation(session_workdir):
         val_output_filename="val",
         train_ratio=0.7,
         test_ratio=0.2,
-        val_ratio=0.1
+        val_ratio=0.1,
+        random_state=42
     )
     
     # Check all three splits
@@ -234,7 +237,8 @@ def test_scaffold_split_dataset_basic(session_workdir):
         train_output_filename="train_scaffold",
         test_output_filename="test_scaffold",
         train_ratio=0.8,
-        test_ratio=0.2
+        test_ratio=0.2,
+        random_state=42
     )
     
     # Check structure
@@ -285,7 +289,8 @@ def test_scaffold_split_dataset_with_validation(session_workdir):
         val_output_filename="val",
         train_ratio=0.7,
         test_ratio=0.2,
-        val_ratio=0.1
+        val_ratio=0.1,
+        random_state=42
     )
     
     # Check all three splits

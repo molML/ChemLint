@@ -26,10 +26,13 @@ def random_split_dataset(
     explanation: str = "Random train/test/val split",
     test_size: float = 0.2,
     val_size: float = 0.0,
-    random_state: int = 42,
+    random_state: int | None = None,
 ) -> dict:
     """
     Randomly split dataset into train, test, and optionally validation sets.
+
+    random_state is required (no silent default) to ensure reproducibility.
+    Record the seed you use in the project manifest.
     
     Parameters
     ----------
@@ -50,7 +53,7 @@ def random_split_dataset(
     val_size : float
         Validation set proportion (0.0-1.0), default 0.0
     random_state : int
-        Random seed, default 42
+        Random seed (required; no default to ensure reproducibility)
     
     Returns
     -------
@@ -68,7 +71,9 @@ def random_split_dataset(
         raise ValueError(f"test_size + val_size must be < 1.0, got {test_size + val_size}")
     if val_size > 0 and val_df_output_filename is None:
         raise ValueError("val_df_output_filename is required when val_size > 0")
-    
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible splits.")
+
     df = _load_resource(project_manifest_path, input_filename)
 
     df_train_val, df_test = train_test_split(df, test_size=test_size, random_state=random_state)
@@ -92,6 +97,7 @@ def random_split_dataset(
         "n_test_rows": len(df_test),
         "val_df_output_filename": val_df_output_filename,
         "n_val_rows": len(df_val) if val_size > 0 else 0,
+        "random_state": random_state,
     }  
 
     return result
@@ -109,7 +115,7 @@ def stratified_split_dataset(
     test_ratio: float = 0.2,
     val_ratio: float = 0.0,
     n_bins: int = 5,
-    random_state: int = 42
+    random_state: int | None = None
 ) -> dict:
     """
     Split dataset preserving label distribution (classification or regression).
@@ -133,9 +139,11 @@ def stratified_split_dataset(
         dict with train/test/val_output_filename, n_rows, label_distribution, is_regression, bin_edges, note
     """
     from sklearn.model_selection import train_test_split
-    
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible splits.")
+
     df = _load_resource(project_manifest_path, input_filename)
-    
+
     # Validate
     if abs(train_ratio + test_ratio + val_ratio - 1.0) > 1e-6:
         raise ValueError(f"Ratios must sum to 1.0, got {train_ratio + test_ratio + val_ratio:.6f}")
@@ -232,7 +240,7 @@ def scaffold_split_dataset(
     test_ratio: float = 0.2,
     val_ratio: float = 0.0,
     method: str = 'balanced',
-    random_state: int = 42,
+    random_state: int | None = None,
     handle_no_scaffold: str = 'assign_to_train'
 ) -> dict:
     """
@@ -265,7 +273,7 @@ def scaffold_split_dataset(
     method : str
         'random' or 'balanced' (greedy bin packing), default 'balanced'
     random_state : int
-        Random seed, default 42
+        Random seed (required; no default to ensure reproducibility)
     handle_no_scaffold : str
         'assign_to_train' or 'random', default 'assign_to_train'
     
@@ -295,7 +303,9 @@ def scaffold_split_dataset(
     
     if val_ratio > 0 and val_output_filename is None:
         raise ValueError("val_output_filename is required when val_ratio > 0")
-    
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible splits.")
+
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
     n_total = len(df)
@@ -544,7 +554,7 @@ def cluster_based_split_dataset(
     test_ratio: float = 0.2,
     val_ratio: float = 0.0,
     method: str = 'balanced',
-    random_state: int = 42,
+    random_state: int | None = None,
     handle_noise: str = 'assign_to_train'
 ) -> dict:
     """
@@ -575,7 +585,9 @@ def cluster_based_split_dataset(
     
     if val_ratio > 0 and val_output_filename is None:
         raise ValueError("val_output_filename is required when val_ratio > 0")
-    
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible splits.")
+
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
     n_total = len(df)

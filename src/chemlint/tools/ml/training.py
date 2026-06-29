@@ -25,7 +25,7 @@ def train_single_ml_model(
     explanation: str,
     model_algorithm: str = "random_forest_classifier",
     hyperparameters: dict = None,
-    random_state: int = 42
+    random_state: int | None = None
 ) -> dict:
     """
     Train a single ML model on molecular data.
@@ -65,11 +65,13 @@ def train_single_ml_model(
         Dict with output_filename, model_algorithm, n_features
     """
     from chemlint.tools.ml.trad_ml.singular_models import get_available_models
-    
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible training.")
+
     # Load training data
     train_df = _load_resource(project_manifest_path, train_input_filename)
     train_features_dict = _load_resource(project_manifest_path, train_feature_vectors_filename)
-    
+
     # Validate required columns
     if train_smiles_column not in train_df.columns:
         raise ValueError(f"SMILES column '{train_smiles_column}' not found in {train_input_filename}")
@@ -157,7 +159,7 @@ def train_ml_models_cross_validation(
     shuffle: bool = True,
     p: int = 1,
     max_splits: Optional[int] = None,
-    random_state: int = 42
+    random_state: int | None = None
 ) -> dict:
     """
     Train multiple models via cross-validation (one model per fold, stored for ensemble use).
@@ -210,9 +212,12 @@ def train_ml_models_cross_validation(
     Returns:
         Dict with output_filename, n_models, cv_strategy, model_algorithm
     """
+    if random_state is None:
+        raise ValueError("random_state is required. Provide an integer seed to ensure reproducible cross-validation.")
+
     from chemlint.tools.ml.cross_validation import get_cv_splits
     from chemlint.tools.ml.trad_ml.singular_models import get_available_models
-    
+
     # Load data
     df = _load_resource(project_manifest_path, input_filename)
     feature_vectors_dict = _load_resource(project_manifest_path, feature_vectors_filename)

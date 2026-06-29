@@ -350,15 +350,35 @@ def create_project_manifest(path: str, project_name: str) -> dict:
     if not Path(path).exists():
         Path(path).mkdir(parents=True, exist_ok=True)
 
+    # Capture library versions for reproducibility
+    import json
+    import sys
+    import importlib.metadata as _meta
+
+    def _pkg_version(name: str) -> str:
+        try:
+            return _meta.version(name)
+        except Exception:
+            return "unknown"
+
+    library_versions = {
+        "python": sys.version,
+        "rdkit": _pkg_version("rdkit"),
+        "scikit-learn": _pkg_version("scikit-learn"),
+        "numpy": _pkg_version("numpy"),
+        "pandas": _pkg_version("pandas"),
+        "scipy": _pkg_version("scipy"),
+    }
+
     # create empty manifest structure
     manifest = {
         "project_name": project_name,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        "library_versions": library_versions,
         "resources": []
     }
 
     # save manifest to file
-    import json
     with open(project_manifest_path, "w") as f:
         json.dump(manifest, f, indent=4)
     return manifest

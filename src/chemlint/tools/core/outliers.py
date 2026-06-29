@@ -1,16 +1,16 @@
 """
 Outlier detection methods for dataset analysis.
 
-All methods operate on dataset columns and add boolean pass/fail columns:
+All methods add boolean pass/fail columns to the dataset (True = not an outlier).
 
-Statistical Methods:
-- Z-score method: Detects outliers beyond ±3 standard deviations
-- Modified Z-score method: Uses median absolute deviation (MAD), more robust to outliers
-- IQR method: Detects outliers beyond Q1 - 1.5×IQR or Q3 + 1.5×IQR
+DEFAULT: Use detect_outliers_modified_zscore — it is robust to extreme values and
+does not assume normality, making it the safest general-purpose choice.
 
-Parametric Tests:
-- Grubbs' test: Statistical test for single outlier (assumes normality)
-- Generalized ESD test: Detects multiple outliers iteratively (assumes normality)
+Alternative methods (opt-in):
+- detect_outliers_zscore: Faster but sensitive to existing outliers (assumes normality)
+- detect_outliers_iqr: Non-parametric, good for skewed distributions
+- detect_outliers_grubbs: Statistical test for a single outlier (assumes normality)
+- detect_outliers_gesd: Multiple-outlier extension of Grubbs (assumes normality)
 """
 
 import pandas as pd
@@ -124,8 +124,9 @@ def detect_outliers_modified_zscore(
     threshold: float = 3.5
 ) -> Dict:
     """
-    Detect outliers using Modified Z-score (robust to outliers). 
+    [RECOMMENDED DEFAULT] Detect outliers using Modified Z-score (robust to existing outliers).
     Formula: M = 0.6745 × (x - median) / MAD, where MAD = median(|x - median|). Outlier if |M| > threshold.
+    Preferred over Z-score because MAD is not inflated by the outliers being detected.
     
     Args:
         input_filename: CSV dataset resource filename

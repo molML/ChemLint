@@ -1,3 +1,14 @@
+"""
+ML model training utilities.
+
+DEFAULT algorithm: random_forest_classifier / random_forest_regressor.
+These are robust, require minimal tuning, and handle molecular feature vectors well.
+Alternative algorithms are available but should be chosen intentionally.
+
+DEFAULT CV strategy (train_ml_models_cross_validation): scaffold-based cross-validation
+for global models; k-fold or Monte-Carlo for narrow local series.
+"""
+
 from typing import List, Optional, Dict, Any
 import numpy as np
 import pandas as pd
@@ -17,7 +28,11 @@ def train_single_ml_model(
     random_state: int = 42
 ) -> dict:
     """
-    Train single ML model on molecular data.
+    Train a single ML model on molecular data.
+
+    DEFAULT algorithm: "random_forest_classifier" (classification) or
+    "random_forest_regressor" (regression). Use these unless you have a specific
+    reason to choose another algorithm.
 
     Available model_algorithm options (33 total):
     - Classification: random_forest_classifier, gradient_boosting_classifier, logistic_regression,
@@ -145,8 +160,16 @@ def train_ml_models_cross_validation(
     random_state: int = 42
 ) -> dict:
     """
-    Train multiple models using cross-validation. Creates train/val splits, trains one model per fold, stores all for ensemble use.
-    
+    Train multiple models via cross-validation (one model per fold, stored for ensemble use).
+
+    DEFAULT cv_strategy:
+    - Global / diverse-space models: use 'scaffold' or 'cluster' to test generalization
+      to unseen scaffolds/clusters. Requires a scaffold_column or cluster_column.
+    - Local / congeneric-series models: 'kfold' or 'montecarlo' is sufficient.
+    Ask the user about their model scope if not already known.
+
+    DEFAULT algorithm: "random_forest_classifier" / "random_forest_regressor".
+
     CV strategies: 'kfold', 'stratified', 'montecarlo', 'scaffold' (needs scaffold_column), 'cluster' (needs cluster_column), 'leavepout' (needs p)
 
     Available model_algorithm options (33 total):

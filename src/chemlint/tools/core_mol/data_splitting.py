@@ -1,3 +1,14 @@
+"""
+Dataset splitting utilities.
+
+DEFAULT STRATEGY:
+- Global / broad-coverage models (diverse chemical space): use scaffold_split_dataset
+  to ensure held-out scaffolds are never seen at training time.
+- Local / lead-optimization models (narrow, congeneric series): random_split_dataset
+  is acceptable because the chemical space is already constrained.
+
+Ask the user about the intended model scope BEFORE choosing a split strategy.
+"""
 
 import pandas as pd
 import numpy as np
@@ -225,8 +236,9 @@ def scaffold_split_dataset(
     handle_no_scaffold: str = 'assign_to_train'
 ) -> dict:
     """
-    Split by molecular scaffolds to prevent data leakage.
-    Assigns entire scaffold groups to splits, ensuring no scaffold appears across splits.
+    [RECOMMENDED DEFAULT for global models] Split by molecular scaffolds to prevent data leakage.
+    Assigns entire scaffold groups to splits so no scaffold appears across splits.
+    Use this when the model should generalize to novel chemical scaffolds.
     
     Parameters
     ----------
